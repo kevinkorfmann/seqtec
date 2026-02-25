@@ -1,0 +1,71 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Cost per human genome over time.}}{6}{figure.1.1}%
+\contentsline {figure}{\numberline {1.2}{\ignorespaces The general sequencing workflow.}}{10}{figure.1.2}%
+\contentsline {figure}{\numberline {1.3}{\ignorespaces Sequencing platform comparison.}}{14}{figure.1.3}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Simplified DNA structure.}}{21}{figure.2.1}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces Chromatin organisation hierarchy.}}{23}{figure.2.2}%
+\contentsline {figure}{\numberline {2.3}{\ignorespaces The Central Dogma of molecular biology.}}{25}{figure.2.3}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Sequencing by synthesis (SBS) principle.}}{39}{figure.3.1}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Nanopore sequencing principle.}}{41}{figure.3.2}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces SMRT sequencing principle.}}{42}{figure.3.3}%
+\contentsline {figure}{\numberline {3.4}{\ignorespaces GC bias in sequencing.}}{52}{figure.3.4}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Illumina bridge amplification}}{58}{figure.4.1}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Illumina SBS cycle}}{59}{figure.4.2}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Short-read platform decision guide}}{68}{figure.4.3}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Zero-mode waveguide (ZMW) principle}}{73}{figure.5.1}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Nanopore sequencing principle}}{76}{figure.5.2}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces General library preparation workflow}}{88}{figure.6.1}%
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Tagmentation with Tn5 transposase}}{92}{figure.6.2}%
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Illumina Y-adapter structure}}{93}{figure.6.3}%
+\contentsline {figure}{\numberline {6.4}{\ignorespaces Target enrichment decision flowchart}}{102}{figure.6.4}%
+\contentsline {figure}{\numberline {6.5}{\ignorespaces Library preparation decision flowchart}}{104}{figure.6.5}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {7.1}{\ignorespaces Visual comparison of genomic coverage achieved by whole-genome sequencing, whole-exome sequencing, and targeted gene panels. WGS covers the entire genome at moderate depth; WES selectively captures exonic regions at higher depth; targeted panels focus on a small gene set at very high depth.}}{122}{figure.7.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {8.1}{\ignorespaces The spectrum of genetic variation, from single nucleotide variants (SNVs) to complex structural rearrangements. Each variant class requires different detection strategies and tools. Sizes are shown on a logarithmic scale.}}{135}{figure.8.1}%
+\contentsline {figure}{\numberline {8.2}{\ignorespaces Decision flowchart for selecting appropriate variant calling tools based on the experimental design, data type, and variant classes of interest.}}{148}{figure.8.2}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {9.1}{\ignorespaces Comparison of 16S amplicon sequencing and shotgun metagenomics workflows. Amplicon sequencing uses targeted PCR amplification of phylogenetic markers, while shotgun metagenomics sequences all DNA, enabling functional profiling, strain-level resolution, and genome-resolved metagenomics.}}{174}{figure.9.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {10.1}{\ignorespaces Schematic of the dUTP strand-specific library preparation method. The second-strand cDNA is synthesized with dUTP (dashed orange) and subsequently digested by USER enzyme, ensuring that only the first-strand cDNA (blue) is amplified. This preserves strand-of-origin information.}}{193}{figure.10.1}%
+\contentsline {figure}{\numberline {10.2}{\ignorespaces Overview of the bulk RNA-seq bioinformatics workflow. Two main paths exist after trimming: alignment-based quantification (left, using STAR/HISAT2 followed by featureCounts) or pseudo-alignment-based quantification (right, using Salmon/kallisto). Both converge at differential expression analysis.}}{198}{figure.10.2}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {11.1}{\ignorespaces Schematic of the 10x Genomics Chromium droplet-based scRNA-seq workflow. Single cells and gel beads are co-encapsulated in Gel Bead-in-Emulsions (GEMs), where cell lysis and reverse transcription occur. Each gel bead carries millions of oligonucleotide copies with a shared cell barcode and diverse UMIs. The resulting cDNA is uniquely labeled with a cell barcode and a UMI for each original mRNA molecule.}}{214}{figure.11.1}%
+\contentsline {figure}{\numberline {11.2}{\ignorespaces Standard computational workflow for scRNA-seq analysis. After generating a cell-by-gene count matrix, cells are filtered, normalized, dimensionality-reduced, clustered, and annotated. Downstream analyses include differential expression, trajectory inference, and cell--cell communication.}}{218}{figure.11.2}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {12.1}{\ignorespaces Overview of spatial transcriptomics technology categories. Sequencing-based methods (left) capture RNA at spatially barcoded positions and sequence it off-tissue. Imaging-based methods (center) visualize individual RNA molecules in situ using fluorescent probes. In situ sequencing methods (right) perform the sequencing reaction directly within the tissue section.}}{234}{figure.12.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {13.1}{\ignorespaces Bisulfite conversion chemistry for methylation detection.}}{256}{figure.13.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {14.1}{\ignorespaces ATAC-seq principle: Tn5 transposase tagmentation of open chromatin.}}{277}{figure.14.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {15.1}{\ignorespaces Comparison of ChIP-seq, CUT\&RUN, and CUT\&Tag workflows.}}{302}{figure.15.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {16.1}{\ignorespaces Hierarchical levels of 3D genome organisation.}}{318}{figure.16.1}%
+\contentsline {figure}{\numberline {16.2}{\ignorespaces Hi-C proximity ligation principle.}}{320}{figure.16.2}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {17.1}{\ignorespaces The single-cell multiomics landscape.}}{362}{figure.17.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {18.1}{\ignorespaces Principle of ribosome profiling (Ribo-seq).}}{367}{figure.18.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {19.1}{\ignorespaces The evolving sequencing technology landscape.}}{410}{figure.19.1}%
+\contentsline {figure}{\numberline {19.2}{\ignorespaces Sequencing cost trajectory: 2001--2026.}}{411}{figure.19.2}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {20.1}{\ignorespaces Bioinformatics computing stack.}}{440}{figure.20.1}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {22.1}{\ignorespaces Balanced batch design.}}{489}{figure.22.1}%
+\contentsline {figure}{\numberline {22.2}{\ignorespaces Sequencing strategy decision tree.}}{493}{figure.22.2}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {23.1}{\ignorespaces The NGS data lifecycle.}}{514}{figure.23.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {24.1}{\ignorespaces Field sequencing setup}}{529}{figure.24.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {25.1}{\ignorespaces DNA QC decision tree}}{554}{figure.25.1}%
+\addvspace {10\p@ }

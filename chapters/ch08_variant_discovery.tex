@@ -1,0 +1,1173 @@
+\chapter{Variant Discovery and Interpretation}
+\label{ch:variants}
+
+Every human genome carries approximately 4--5 million genetic variants relative to the reference sequence. The vast majority are benign polymorphisms inherited from our ancestors, but a small fraction can cause disease, influence drug response, or drive cancer. Identifying these variants from sequencing data---and distinguishing the pathogenic needles from the benign haystack---is one of the central challenges of modern genomics. This chapter provides a comprehensive treatment of variant types, calling algorithms, quality control, annotation, and clinical interpretation, with practical pipeline examples in both Snakemake and Nextflow.
+
+%% ============================================================
+\section{Types of Genetic Variants}
+\label{sec:variant_types}
+%% ============================================================
+
+Genetic variants span a wide size range, from single nucleotide changes to chromosome-scale rearrangements. Understanding this spectrum is essential for selecting appropriate detection methods.
+
+\subsection{Single Nucleotide Variants (SNVs) and Single Nucleotide Polymorphisms (SNPs)}
+
+An SNV is a change of a single nucleotide at a specific genomic position. When an SNV is present in $\geq$1\% of a population, it is conventionally called a \textbf{single nucleotide polymorphism (SNP)}. SNVs are the most abundant variant class: a typical human genome contains $\sim$4.1--4.5 million SNVs compared to the GRCh38 reference.
+
+SNVs in coding regions are classified by their effect on the encoded protein:
+\begin{description}[nosep]
+  \item[Synonymous (silent)] The nucleotide change does not alter the amino acid due to codon degeneracy.
+  \item[Missense] The change results in a different amino acid.
+  \item[Nonsense] The change creates a premature stop codon, truncating the protein.
+  \item[Splice-site] The change disrupts a canonical splice donor (GT) or acceptor (AG) site, altering mRNA splicing.
+\end{description}
+
+\subsection{Insertions and Deletions (Indels)}
+
+Indels are small insertions or deletions, typically defined as 1--50\basepair{} in length. A typical human genome contains $\sim$500,000--600,000 indels. Indels in coding regions can be:
+
+\begin{description}[nosep]
+  \item[Frameshift] The insertion or deletion length is not a multiple of 3, shifting the reading frame of all downstream codons. Usually severely disruptive.
+  \item[In-frame] The length is a multiple of 3, adding or removing one or more amino acids without disrupting the reading frame.
+\end{description}
+
+\begin{warningbox}[title={Indel Representation Ambiguity}]
+Indels in repetitive regions can be represented at multiple equivalent positions (left-aligned vs.\ right-aligned). This ``indel normalisation'' problem can cause the same biological variant to appear as different VCF records. Always use \software{bcftools norm} or \software{vt normalize} to left-align and trim indels before comparison or annotation. This is particularly critical when merging call sets from different tools.
+\end{warningbox}
+
+\subsection{Structural Variants (SVs)}
+
+Structural variants are genomic rearrangements typically defined as $>$50\basepair{}. They affect more total bases per genome than SNVs and indels combined. Major SV classes include:
+
+\begin{description}[style=nextline]
+  \item[Deletions] Loss of a genomic segment. Detected as reduced coverage and discordant read pairs.
+  \item[Duplications] Gain of a genomic segment (tandem or dispersed). Tandem duplications appear as increased coverage and characteristic split-read signatures.
+  \item[Inversions] A genomic segment is reversed in orientation. Detected by discordant read-pair orientation.
+  \item[Translocations] A genomic segment is moved to a different chromosomal location. Can be balanced (no net gain or loss) or unbalanced. Inter-chromosomal translocations are detected by read pairs mapping to different chromosomes.
+  \item[Insertions] Novel sequence is inserted at a position. Includes mobile element insertions (Alu, L1, SVA), nuclear mitochondrial insertions (NUMTs), and viral integrations.
+\end{description}
+
+A typical human genome contains $\sim$20,000--30,000 structural variants, collectively affecting $\sim$10--20\megabase{} of sequence.
+
+\subsection{Copy Number Variants (CNVs)}
+
+CNVs are a subset of structural variants involving gains or losses of genomic segments, ranging from kilobases to megabases. They are detected through:
+\begin{itemize}[nosep]
+  \item \textbf{Read-depth analysis}: Increased or decreased coverage relative to the diploid expectation.
+  \item \textbf{B-allele frequency (BAF)}: Deviations from the expected 0/0.5/1 pattern at heterozygous sites indicate gains or losses.
+  \item \textbf{Split reads and discordant pairs}: Provide breakpoint-level resolution.
+\end{itemize}
+
+\subsection{Repeat Expansions}
+
+Short tandem repeats (STRs, also called microsatellites) are arrays of 1--6\basepair{} repeat units. Pathogenic expansions of these repeats cause over 50 neurological and neuromuscular diseases:
+
+\begin{itemize}[nosep]
+  \item \gene{HTT}: CAG expansion $>$36 repeats causes Huntington's disease.
+  \item \gene{FMR1}: CGG expansion $>$200 repeats causes Fragile X syndrome.
+  \item \gene{C9orf72}: GGGGCC expansion (hundreds to thousands of repeats) is the most common genetic cause of ALS and frontotemporal dementia.
+  \item \gene{ATXN1}/\gene{ATXN2}/\gene{ATXN3}: CAG expansions cause various spinocerebellar ataxias.
+  \item \gene{DMPK}: CTG expansion causes myotonic dystrophy type 1.
+  \item \gene{RFC1}: AAGGG pentanucleotide expansion causes cerebellar ataxia with neuropathy and vestibular areflexia syndrome (CANVAS).
+\end{itemize}
+
+\subsection{Mobile Element Insertions}
+
+Transposable elements are DNA sequences that can ``jump'' to new locations. Active human transposons include Alu elements ($\sim$300\basepair{}), L1 (LINE-1, up to $\sim$6\kilobase{}), and SVA elements. New insertions occur at a rate of approximately one Alu insertion per 20 births and one L1 insertion per 100 births, occasionally causing disease by disrupting genes or regulatory elements.
+
+\subsection{Complex Rearrangements}
+
+\begin{description}[style=nextline]
+  \item[Chromothripsis] A catastrophic shattering of a chromosome (or chromosome arm) followed by random reassembly. Can generate dozens to hundreds of rearrangements in a single event. Common in certain cancers (e.g., medulloblastoma, osteosarcoma).
+  \item[Chromoplexy] Chains of translocations involving multiple chromosomes, often observed in prostate cancer. Unlike chromothripsis, chromoplexy is thought to arise through coordinated rearrangement events.
+  \item[Kataegis] Clusters of hypermutation (typically C$>$T and C$>$G transitions) co-localising with structural variant breakpoints, associated with APOBEC enzyme activity.
+\end{description}
+
+%% ============================================================
+\section{TikZ Diagram: Variant Types and Their Scale}
+\label{sec:variant_tikz}
+%% ============================================================
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  scale=0.78,
+  transform shape,
+  every node/.style={font=\small},
+  varbox/.style={draw, rounded corners=4pt, minimum height=1.2cm, minimum width=3.0cm,
+                 text width=2.8cm, align=center, font=\small},
+  arrow/.style={-{Stealth[length=3mm]}, thick, gray},
+  scalebar/.style={draw, thick, fill=gray!20, rounded corners=2pt, minimum height=0.5cm},
+]
+
+% Title
+\node[font=\Large\bfseries] at (7, 10.5) {Spectrum of Genetic Variation};
+
+% Scale bar at top
+\draw[thick, gray] (0, 9.2) -- (14, 9.2);
+\foreach \x/\lab in {0/1 bp, 3.5/10 bp, 7/100 bp, 10.5/1 kb, 14/1 Mb+} {
+  \draw[thick, gray] (\x, 9.0) -- (\x, 9.4);
+  \node[above, font=\footnotesize\bfseries] at (\x, 9.4) {\lab};
+}
+\node[font=\small\itshape, gray] at (7, 8.5) {Variant size (log scale)};
+
+% SNV
+\node[varbox, fill=MidnightBlue!20] (snv) at (0.8, 7) {SNV/SNP\\[2pt]\footnotesize 1 bp};
+
+% Indel
+\node[varbox, fill=OliveGreen!20] (indel) at (4.2, 7) {Indel\\[2pt]\footnotesize 1--50 bp};
+
+% STR
+\node[varbox, fill=Goldenrod!25] (str) at (7.5, 7) {Repeat\\Expansion\\[2pt]\footnotesize 10 bp--10 kb};
+
+% SV
+\node[varbox, fill=BrickRed!20] (sv) at (11, 7) {Structural\\Variant\\[2pt]\footnotesize 50 bp--Mb};
+
+% Sub-types below SV
+\node[varbox, fill=BrickRed!10, minimum width=2.2cm, text width=2.0cm, minimum height=0.9cm] (del) at (8.5, 4.8) {Deletion};
+\node[varbox, fill=BrickRed!10, minimum width=2.2cm, text width=2.0cm, minimum height=0.9cm] (dup) at (11, 4.8) {Duplication};
+\node[varbox, fill=BrickRed!10, minimum width=2.2cm, text width=2.0cm, minimum height=0.9cm] (inv) at (13.5, 4.8) {Inversion};
+\node[varbox, fill=BrickRed!10, minimum width=2.2cm, text width=2.0cm, minimum height=0.9cm] (tra) at (8.5, 3.2) {Translocation};
+\node[varbox, fill=BrickRed!10, minimum width=2.2cm, text width=2.0cm, minimum height=0.9cm] (mei) at (11, 3.2) {Mobile Element\\Insertion};
+\node[varbox, fill=BrickRed!10, minimum width=2.2cm, text width=2.0cm, minimum height=0.9cm] (cpx) at (13.5, 3.2) {Complex\\Rearrangement};
+
+% Arrows from SV to subtypes
+\draw[arrow] (sv.south) -- (del.north);
+\draw[arrow] (sv.south) -- (dup.north);
+\draw[arrow] (sv.south) -- (inv.north);
+\draw[arrow] (sv.south) -- ++(0, -1.2) -| (tra.north);
+\draw[arrow] (sv.south) -- ++(0, -1.2) -| (mei.north);
+\draw[arrow] (sv.south) -- ++(0, -0.5) -| (cpx.north);
+
+% Detection method annotations
+\node[font=\footnotesize\itshape, text=MidnightBlue, text width=2.5cm, align=center] at (0.8, 5.3) {Short reads:\\excellent};
+\node[font=\footnotesize\itshape, text=OliveGreen!80!black, text width=2.5cm, align=center] at (4.2, 5.3) {Short reads:\\good\\(homopolymers\\challenging)};
+\node[font=\footnotesize\itshape, text=Goldenrod!80!black, text width=2.5cm, align=center] at (7.5, 5.3) {Long reads:\\required for\\large expansions};
+
+% Count annotations
+\node[font=\footnotesize, text=gray] at (0.8, 5.9) {$\sim$4.5M/genome};
+\node[font=\footnotesize, text=gray] at (4.2, 5.9) {$\sim$0.5M/genome};
+\node[font=\footnotesize, text=gray] at (7.5, 5.9) {Variable};
+\node[font=\footnotesize, text=gray] at (11, 5.9) {$\sim$25k/genome};
+
+\end{tikzpicture}
+\caption{The spectrum of genetic variation, from single nucleotide variants (SNVs) to complex structural rearrangements. Each variant class requires different detection strategies and tools. Sizes are shown on a logarithmic scale.}
+\label{fig:variant_types}
+\end{figure}
+
+%% ============================================================
+\section{Variant Calling Approaches}
+\label{sec:variant_calling}
+%% ============================================================
+
+\subsection{Germline Variant Calling}
+
+Germline variants are inherited and present in every cell of the body (or mosaic in a substantial fraction). They are called from a single sample, typically at 30$\times$ WGS or higher.
+
+\subsubsection{GATK HaplotypeCaller}
+
+The GATK HaplotypeCaller is the most widely used germline variant caller. Its approach:
+\begin{enumerate}[nosep]
+  \item \textbf{Active region detection}: Identifies regions with evidence of variation.
+  \item \textbf{Local de novo assembly}: Builds a De Bruijn graph of reads in each active region to determine plausible haplotypes.
+  \item \textbf{Pairwise read-haplotype alignment}: Aligns each read to each candidate haplotype using a pair-HMM algorithm.
+  \item \textbf{Genotype likelihood calculation}: Computes likelihoods for each possible diploid genotype.
+  \item \textbf{Output}: GVCF format (genomic VCF) with confidence scores for both variant and reference positions.
+\end{enumerate}
+
+For cohort analysis, the GATK Best Practices recommend a three-step process: (1) \textbf{HaplotypeCaller} per sample to produce GVCFs, (2) \textbf{GenomicsDBImport} to consolidate GVCFs, and (3) \textbf{GenotypeGVCFs} for joint genotyping across all samples.
+
+\subsubsection{DeepVariant}
+
+Google's DeepVariant reframes variant calling as an image classification problem:
+\begin{enumerate}[nosep]
+  \item Candidate variant sites are identified from pileup data.
+  \item For each candidate, a multi-channel ``pileup image'' is constructed encoding read bases, quality scores, mapping quality, strand, and other features.
+  \item A convolutional neural network (CNN) classifies each site as homozygous reference, heterozygous, or homozygous alternate.
+  \item Specialised models exist for Illumina WGS, Illumina WES, PacBio HiFi, ONT, and hybrid data.
+\end{enumerate}
+
+DeepVariant consistently achieves the highest accuracy in the precisionFDA Truth Challenge and PrecisionFDA v2 benchmarks, particularly for indels.
+
+\subsubsection{Joint Calling and GLnexus}
+
+When analysing cohorts, joint calling improves sensitivity for rare variants and enables accurate genotyping at multi-allelic sites. \software{GLnexus} provides scalable joint genotyping from DeepVariant GVCFs:
+
+\begin{itemize}[nosep]
+  \item Handles hundreds of thousands of samples efficiently.
+  \item Used by the All of Us program and UK Biobank for population-scale joint calling.
+  \item Produces a project-level VCF with unified genotypes across all samples.
+\end{itemize}
+
+\subsection{Somatic Variant Calling}
+
+Somatic variants arise in individual cells during the lifetime of an organism and are central to cancer genomics. They present unique challenges: they may be present at low variant allele frequencies (VAF), the tumor is heterogeneous (mixed clones), and there is no diploid genotype expectation.
+
+\begin{keyconcept}[title={Tumor/Normal Paired Analysis}]
+The gold standard for somatic variant calling uses a \textbf{matched tumor--normal pair}: the tumor sample and a normal sample (e.g., blood, adjacent normal tissue) from the same patient. Variants present in the tumor but absent from the normal are classified as somatic. This design filters out germline variants and sequencing artefacts that appear in both samples.
+\end{keyconcept}
+
+\subsubsection{Key Somatic Callers}
+
+\begin{description}[style=nextline]
+  \item[Mutect2 (GATK)] The most widely used somatic SNV/indel caller. Uses a Bayesian approach with a tumor-normal log-odds model. Supports tumor-only mode (with a panel of normals) and multi-sample calling. Includes \software{FilterMutectCalls} for artefact filtering using orientation bias models, contamination estimates, and a learned error model.
+  \item[Strelka2] Developed by Illumina, Strelka2 is fast and accurate, using a mixture model for tumor--normal somatic variant calling. Also supports germline calling.
+  \item[SomaticSniper] An earlier somatic caller based on a Bayesian genotype comparison between tumor and normal. Less commonly used now but conceptually important.
+  \item[Consensus approach] Best practice in cancer genomics often involves running multiple callers and taking the intersection (high specificity) or union (high sensitivity) of their call sets, depending on the application.
+\end{description}
+
+\subsection{Structural Variant Calling}
+
+SV calling remains more challenging than SNV/indel calling due to the diversity of SV types and the difficulty of resolving breakpoints in repetitive regions.
+
+\begin{table}[htbp]
+\centering
+\caption{Structural variant callers for short-read and long-read data.}
+\label{tab:sv_callers}
+\begin{tabularx}{\textwidth}{@{}llXl@{}}
+\toprule
+\textbf{Tool} & \textbf{Data Type} & \textbf{SV Types} & \textbf{Approach} \\
+\midrule
+Manta & Short reads & DEL, DUP, INS, INV, BND & Discordant pairs + split reads + local assembly \\
+DELLY & Short reads & DEL, DUP, INV, TRA, INS & Paired-end + split-read + read-depth \\
+Smoove & Short reads & DEL, DUP, INV, BND & Wraps LUMPY with better filtering \\
+Sniffles2 & Long reads & All SV types & Split-read alignment signatures \\
+pbsv & PacBio & DEL, INS, DUP, INV, BND & CCS/HiFi signatures + local assembly \\
+cuteSV & Long reads & DEL, INS, DUP, INV, BND & Clustering of SV signatures \\
+SVIM & Long reads & All SV types & Multi-signature clustering \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Copy Number Variant Calling}
+
+\begin{description}[style=nextline]
+  \item[CNVnator] Read-depth--based CNV caller that divides the genome into bins and detects deviations from the expected diploid copy number using a mean-shift algorithm.
+  \item[GATK gCNV (GermlineCNVCaller)] A cohort-based approach that models systematic coverage biases using a panel of normals and detects per-sample CNVs as deviations from the expected copy-number profile.
+  \item[Spectre] Specifically designed for long-read CNV detection using coverage-based approaches.
+  \item[ERDS, XHMM, CODEX2] Additional tools for WES-based CNV calling, which use the non-uniform exome capture data to infer copy number changes.
+\end{description}
+
+\subsection{Short Tandem Repeat Analysis}
+
+\begin{description}[style=nextline]
+  \item[ExpansionHunter] Developed by Illumina, uses paired-end and soft-clipped reads to estimate STR length, even when expansions exceed the read length. Supports a catalogue of $>$30 known pathogenic repeat loci.
+  \item[STRique] Nanopore-specific STR quantification using raw signal data, enabling detection of very large expansions.
+  \item[TRGT] PacBio's tandem repeat genotyping tool for HiFi data, providing allele-resolved repeat length and sequence composition.
+  \item[STRling] Detects novel (uncatalogued) STR expansions from short-read data by identifying reads with excessive tandem repeat content.
+\end{description}
+
+\subsection{Haplotype Phasing}
+
+Phasing determines which alleles at different variant sites reside on the same physical chromosome (haplotype).
+
+\begin{description}[style=nextline]
+  \item[WhatsHap] Read-backed phasing using long reads or linked reads. Formulates phasing as a weighted minimum error correction (wMEC) problem.
+  \item[HiPhase] PacBio's phasing tool optimised for HiFi data, jointly phases SNVs, indels, and structural variants.
+  \item[SHAPEIT5] Population-based statistical phasing using Hidden Markov Models. Leverages linkage disequilibrium patterns from large reference panels (e.g., TOPMed, 1000 Genomes) to phase common and rare variants.
+\end{description}
+
+%% ============================================================
+\section{Variant Filtering and Quality Control}
+\label{sec:variant_filter}
+%% ============================================================
+
+Raw variant calls contain many false positives due to sequencing errors, mapping artefacts, and systematic biases. Rigorous filtering is essential.
+
+\subsection{GATK Variant Quality Score Recalibration (VQSR)}
+
+VQSR is a machine learning--based approach that uses known, validated variant sites as ``truth'' training data to build a Gaussian mixture model in the space of variant quality annotations:
+
+\begin{enumerate}[nosep]
+  \item Training truth sets: HapMap3 sites, Omni 2.5M array sites, 1000 Genomes high-confidence SNPs, Mills gold-standard indels.
+  \item Annotation features used: QualByDepth (QD), FisherStrand (FS), StrandOddsRatio (SOR), RMSMappingQuality (MQ), MappingQualityRankSumTest (MQRankSum), ReadPosRankSumTest (ReadPosRankSum), InbreedingCoeff.
+  \item The model assigns each variant a VQSLOD score (log odds of being a true variant).
+  \item Variants are filtered at a chosen sensitivity tranche (e.g., 99.5\% sensitivity retains 99.5\% of known truth set variants).
+\end{enumerate}
+
+\begin{warningbox}[title={When VQSR Fails}]
+VQSR requires a minimum of $\sim$30 whole-genome samples (for SNPs) or $\sim$1 whole-genome sample (for indels) to build a reliable model. For small sample sizes, targeted panels, or non-human organisms without comprehensive truth sets, fall back to \textbf{hard filtering}.
+\end{warningbox}
+
+\subsection{Hard Filters}
+
+When VQSR cannot be applied, GATK recommends the following hard filter thresholds for SNVs:
+
+\begin{table}[htbp]
+\centering
+\caption{GATK recommended hard filters for SNVs and indels.}
+\label{tab:hard_filters}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Filter} & \textbf{SNV Threshold} & \textbf{Indel Threshold} \\
+\midrule
+QualByDepth (QD) & $<$ 2.0 & $<$ 2.0 \\
+FisherStrand (FS) & $>$ 60.0 & $>$ 200.0 \\
+StrandOddsRatio (SOR) & $>$ 3.0 & $>$ 10.0 \\
+RMSMappingQuality (MQ) & $<$ 40.0 & --- \\
+MQRankSum & $<$ $-$12.5 & --- \\
+ReadPosRankSum & $<$ $-$8.0 & $<$ $-$20.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%% ============================================================
+\section{Statistical Foundations of Variant Calling}
+\label{sec:variant_stats}
+%% ============================================================
+
+The variant calling algorithms described above rely on rigorous probabilistic models. This section formalises the key statistical machinery: the pair-HMM used for read--haplotype alignment, Bayesian genotyping, the VQSR Gaussian mixture model, and connections to population genetics.
+
+\subsection{Pair-HMM for Read--Haplotype Alignment}
+\label{subsec:variants:pairhmm}
+
+At the core of \software{GATK HaplotypeCaller} is a \textbf{pair hidden Markov model (pair-HMM)} that computes the likelihood of observing a read given a candidate haplotype. The pair-HMM defines three emitting states:
+
+\begin{description}[nosep]
+  \item[Match / Mismatch (M)] Both the read and the haplotype advance by one position. The emission probability depends on whether the bases agree (match) or disagree (mismatch), weighted by the base quality score.
+  \item[Insertion (I)] The read advances by one base, but the haplotype does not. Models insertions in the read relative to the haplotype.
+  \item[Deletion (D)] The haplotype advances by one base, but the read does not. Models deletions in the read relative to the haplotype.
+\end{description}
+
+The transition probabilities between states are:
+\begin{align}
+\label{eq:variants:pairhmm_transitions}
+P(M \to M) &= 1 - P(M \to I) - P(M \to D), \nonumber \\
+P(M \to I) &= \delta_{\text{open}}, \qquad P(M \to D) = \delta_{\text{open}}, \nonumber \\
+P(I \to I) &= \epsilon_{\text{extend}}, \qquad P(I \to M) = 1 - \epsilon_{\text{extend}}, \\
+P(D \to D) &= \epsilon_{\text{extend}}, \qquad P(D \to M) = 1 - \epsilon_{\text{extend}}, \nonumber
+\end{align}
+where $\delta_{\text{open}}$ is the gap-opening probability and $\epsilon_{\text{extend}}$ is the gap-extension probability. In \software{GATK}, these probabilities are derived from the base insertion and deletion quality scores encoded in the BAM file (tags \texttt{BI} and \texttt{BD} after BQSR).
+
+The likelihood of read $r$ given haplotype $h$ is computed via dynamic programming over the pair-HMM matrix in $O(|r| \times |h|)$ time:
+\begin{equation}
+\label{eq:variants:read_haplotype_likelihood}
+P(r \mid h) = \sum_{j=1}^{|h|} \bigl[ M(|r|, j) + I(|r|, j) \bigr],
+\end{equation}
+where $M(i,j)$, $I(i,j)$, and $D(i,j)$ are the forward-algorithm probabilities of aligning the first $i$ bases of the read to the first $j$ bases of the haplotype, ending in state $M$, $I$, or $D$, respectively. This computation is the most computationally expensive step in \software{HaplotypeCaller} and is hardware-accelerated on Intel (AVX-512), GPU (NVIDIA), and FPGA platforms.
+
+\begin{keyconcept}[title={Why Pair-HMM Instead of Standard Alignment?}]
+Unlike Smith-Waterman or Needleman-Wunsch alignment, which return a single best alignment (and its score), the pair-HMM \emph{sums over all possible alignments}, yielding the total probability of the read given the haplotype. This marginalisation is critical for accurate genotyping because it avoids committing to a single alignment path when multiple near-optimal alignments exist, particularly in repetitive or low-complexity regions.
+\end{keyconcept}
+
+\subsection{Bayesian Genotyping}
+\label{subsec:variants:bayesian_gt}
+
+Given the pair-HMM likelihoods, genotype calling proceeds via Bayes' theorem. For a diploid site with candidate alleles $\{A_0, A_1, \ldots, A_m\}$, the possible genotypes are all unordered pairs $G = A_i / A_j$ ($i \leq j$). The posterior probability of genotype $G$ given observed data $D$ (the set of reads overlapping the site) is:
+\begin{equation}
+\label{eq:variants:genotype_posterior}
+P(G \mid D) = \frac{P(D \mid G) \cdot P(G)}{\sum_{G'} P(D \mid G') \cdot P(G')},
+\end{equation}
+where $P(G)$ is the genotype prior (often derived from population allele frequencies or a flat prior) and $P(D \mid G)$ is the genotype likelihood.
+
+For a diploid genotype $G = A_i / A_j$, the data likelihood assuming conditionally independent reads $\{r_1, \ldots, r_N\}$ is:
+\begin{equation}
+\label{eq:variants:genotype_likelihood}
+P(D \mid G = A_i/A_j) = \prod_{n=1}^{N} \left[ \frac{1}{2}\, P(r_n \mid A_i) + \frac{1}{2}\, P(r_n \mid A_j) \right],
+\end{equation}
+where $P(r_n \mid A_i)$ is the pair-HMM probability of read $r_n$ given allele (haplotype) $A_i$.
+
+\paragraph{VCF encoding of likelihoods.}
+The VCF format encodes genotype likelihoods in two key fields:
+
+\begin{description}[nosep]
+  \item[PL (Phred-scaled Likelihood)] Defined as $\mathrm{PL}(G) = -10 \log_{10} P(D \mid G)$, normalised so that the most likely genotype has $\mathrm{PL} = 0$. Lower PL indicates a more likely genotype.
+  \item[GQ (Genotype Quality)] The Phred-scaled confidence that the called genotype is correct, defined as the difference between the two lowest PL values:
+    \begin{equation}
+    \label{eq:variants:gq}
+    \mathrm{GQ} = \mathrm{PL}_{\text{second-best}} - \mathrm{PL}_{\text{best}} = \mathrm{PL}_{\text{second-best}},
+    \end{equation}
+    since $\mathrm{PL}_{\text{best}} = 0$ by convention. A GQ of 30 means the probability of the called genotype being wrong is $\leq 10^{-3}$.
+\end{description}
+
+\begin{tipbox}[title={Minimum GQ Thresholds for Different Applications}]
+Clinical germline analysis typically requires $\mathrm{GQ} \geq 20$ (99\% confidence). For population genetics studies where genotype accuracy is critical (e.g., identity-by-descent analysis, kinship estimation), a threshold of $\mathrm{GQ} \geq 30$ is common. For GWAS, imputation quality metrics ($R^2$ or INFO score) complement per-sample GQ.
+\end{tipbox}
+
+\subsection{VQSR: The Gaussian Mixture Model in Detail}
+\label{subsec:variants:vqsr_detail}
+
+Variant Quality Score Recalibration (introduced in \Cref{sec:variant_filter}) trains a \textbf{Gaussian mixture model (GMM)} to separate true variants from artefacts in a multi-dimensional annotation space. The procedure is as follows:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Feature extraction}: Each variant site is described by a vector of quality annotations:
+    \begin{itemize}[nosep]
+      \item QualByDepth (QD): variant quality normalised by depth.
+      \item MappingQuality (MQ): root-mean-square mapping quality of reads.
+      \item FisherStrand (FS): Phred-scaled $p$-value of Fisher's exact test for strand bias.
+      \item StrandOddsRatio (SOR): a more robust measure of strand bias using a symmetric odds ratio.
+      \item MQRankSum: rank-sum test comparing mapping qualities of reference vs.\ alternate reads.
+      \item ReadPosRankSum: rank-sum test comparing read positions of reference vs.\ alternate alleles (filters variants concentrated at read ends).
+    \end{itemize}
+  \item \textbf{GMM training}: The model fits $K$ Gaussian components to the annotation vectors of known true-positive sites (training resources: HapMap\,3, Omni\,2.5M, 1000 Genomes high-confidence sites for SNPs; Mills and 1000 Genomes gold-standard indels). The probability density for variant $\mathbf{x}$ under the GMM is:
+    \begin{equation}
+    \label{eq:variants:gmm}
+    p(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \, \mathcal{N}\!\left(\mathbf{x} \;\middle|\; \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k\right),
+    \end{equation}
+    where $\pi_k$ are mixing weights, $\boldsymbol{\mu}_k$ are component means, and $\boldsymbol{\Sigma}_k$ are covariance matrices. Parameters are estimated via Expectation-Maximisation (EM).
+  \item \textbf{VQSLOD scoring}: Each variant receives a log-odds score comparing its probability under the ``true'' GMM vs.\ the ``false'' (background) distribution:
+    \begin{equation}
+    \label{eq:variants:vqslod}
+    \mathrm{VQSLOD} = \log_{10} \frac{p(\mathbf{x} \mid \text{true})}{p(\mathbf{x} \mid \text{false})}.
+    \end{equation}
+  \item \textbf{Sensitivity tranches}: Rather than applying a fixed VQSLOD threshold, GATK defines tranches by the fraction of known truth-set variants retained. A tranche of 99.5\% means the VQSLOD cutoff is set to retain 99.5\% of HapMap\,3 sites. Lower tranches (e.g., 99.0\%) are more stringent; higher tranches (e.g., 99.9\%) retain more variants but include more false positives.
+\end{enumerate}
+
+\begin{warningbox}[title={VQSR Annotation Interactions}]
+VQSR annotations are not independent. For example, variants in low-mappability regions tend to have low MQ, elevated FS, and extreme MQRankSum simultaneously. The multivariate Gaussian model captures these correlations through the full covariance matrix $\boldsymbol{\Sigma}_k$, which is why VQSR substantially outperforms univariate hard filters when sufficient training data are available.
+\end{warningbox}
+
+\subsection{Population Genetics Connections}
+\label{subsec:variants:popgen}
+
+Variant calling and quality control are deeply connected to population genetics theory. Several population-level statistics serve as powerful QC and analytical tools.
+
+\subsubsection{Hardy-Weinberg Equilibrium as a QC Filter}
+
+Under random mating, the genotype frequencies at a biallelic locus with allele frequencies $p$ (reference) and $q = 1 - p$ (alternate) are expected to follow Hardy-Weinberg Equilibrium (HWE):
+\begin{equation}
+\label{eq:variants:hwe}
+f(AA) = p^2, \qquad f(Aa) = 2pq, \qquad f(aa) = q^2,
+\end{equation}
+where $p^2 + 2pq + q^2 = 1$. Departures from HWE---tested using a $\chi^2$ or exact test---can indicate:
+
+\begin{itemize}[nosep]
+  \item \textbf{Genotyping errors}: Excess homozygotes suggest allelic dropout; excess heterozygotes suggest systematic sequencing artefacts or paralogous mapping.
+  \item \textbf{Population stratification}: Mixing individuals from different populations inflates heterozygosity (Wahlund effect).
+  \item \textbf{Selection}: Strong selection against homozygotes (e.g., sickle-cell trait in malaria-endemic regions) creates genuine HWE departure.
+\end{itemize}
+
+\begin{protocolbox}[title={Applying HWE Filters in Practice}]
+For QC of germline call sets:
+\begin{enumerate}[nosep]
+  \item Compute HWE $p$-values per site using \software{PLINK2} (\texttt{--hardy}) or \software{bcftools +fill-tags -- -t HWE}.
+  \item Remove sites with extreme HWE deviation ($p < 10^{-6}$ is a common threshold for GWAS QC).
+  \item Apply HWE filters \emph{within} each population stratum, not across the entire cohort, to avoid confounding with population structure.
+\end{enumerate}
+\end{protocolbox}
+
+\subsubsection{Site Frequency Spectrum}
+
+The \textbf{site frequency spectrum (SFS)}, also called the allele frequency spectrum, is the distribution of allele counts across polymorphic sites in a sample. For $n$ diploid individuals ($2n$ chromosomes), the SFS is a vector $\boldsymbol{\xi} = (\xi_1, \xi_2, \ldots, \xi_{2n-1})$, where $\xi_i$ is the number of sites at which the derived (or alternate) allele appears exactly $i$ times.
+
+The SFS is a fundamental summary statistic because:
+\begin{itemize}[nosep]
+  \item Under the standard neutral model, the expected unfolded SFS follows $E[\xi_i] = \theta / i$, where $\theta = 4 N_e \mu$ is the population-scaled mutation rate. This predicts an excess of rare variants (singletons, doubletons).
+  \item Departures from the neutral expectation reveal demographic history (bottlenecks, expansions) and selection (purifying selection depletes rare variants; balancing selection creates excess intermediate-frequency variants).
+  \item The SFS is also a sensitive diagnostic for data quality: an excess of singletons can indicate sequencing errors rather than rare biological variants.
+\end{itemize}
+
+\subsubsection{$F_{\text{ST}}$ for Population Differentiation}
+
+Fixation index $F_{\text{ST}}$ quantifies the degree of genetic differentiation between populations. Using Weir and Cockerham's estimator:
+\begin{equation}
+\label{eq:variants:fst}
+F_{\text{ST}} = \frac{\sigma_a^2}{\sigma_a^2 + \sigma_b^2 + \sigma_w^2},
+\end{equation}
+where $\sigma_a^2$ is the variance component due to differences among populations, $\sigma_b^2$ is due to differences among individuals within populations, and $\sigma_w^2$ is within-individual variance. In the simpler Hudson estimator for two populations:
+\begin{equation}
+\label{eq:variants:fst_hudson}
+F_{\text{ST}} = 1 - \frac{\bar{\pi}_w}{\pi_b},
+\end{equation}
+where $\bar{\pi}_w$ is the average within-population nucleotide diversity and $\pi_b$ is the between-population diversity.
+
+\begin{description}[nosep]
+  \item[$F_{\text{ST}} \approx 0$] No differentiation; allele frequencies are similar across populations.
+  \item[$F_{\text{ST}} \approx 1$] Complete fixation of different alleles in different populations.
+  \item[Genome-wide average in humans] $F_{\text{ST}} \approx 0.10$--$0.15$ between continental populations.
+  \item[Outlier loci] Regions with $F_{\text{ST}}$ significantly above the genome-wide background are candidates for local adaptation (e.g., \gene{SLC24A5} for skin pigmentation, \gene{LCT} for lactase persistence).
+\end{description}
+
+Tools for computing $F_{\text{ST}}$ include \software{PLINK2}, \software{VCFtools}, \software{pixy} (which correctly handles missing data), and \software{scikit-allel}.
+
+%% ============================================================
+\section{Variant Annotation}
+\label{sec:annotation}
+%% ============================================================
+
+After calling and filtering, variants must be annotated with functional, population, and clinical information to enable interpretation.
+
+\subsection{Functional Annotation}
+
+Functional annotation tools predict the consequence of each variant on genes, transcripts, and proteins:
+
+\begin{description}[style=nextline]
+  \item[VEP (Ensembl Variant Effect Predictor)] The most comprehensive annotation tool. Annotates variants with consequences (missense, frameshift, splice donor, etc.), affected transcripts, protein positions, and integrates plugins for pathogenicity scores, population frequencies, regulatory annotations, and more. Outputs in VCF, tab-delimited, or JSON format.
+  \item[SnpEff] Fast Java-based annotator that classifies variants by impact (HIGH, MODERATE, LOW, MODIFIER). Useful for rapid annotation of large variant sets.
+  \item[ANNOVAR] Perl-based tool supporting extensive database annotations. Widely used in clinical and research pipelines.
+\end{description}
+
+\subsection{Population Frequency Databases}
+
+Population frequency is one of the most powerful filters for identifying pathogenic variants: truly deleterious variants are rare.
+
+\begin{table}[htbp]
+\centering
+\caption{Major population frequency databases.}
+\label{tab:pop_freq}
+\begin{tabularx}{\textwidth}{@{}lXcc@{}}
+\toprule
+\textbf{Database} & \textbf{Description} & \textbf{Samples} & \textbf{Coverage} \\
+\midrule
+gnomAD v4 & Genome Aggregation Database. The largest publicly available collection of exome and genome variant frequencies. & $>$807,000 & WES + WGS \\
+1000 Genomes Phase 3 & Foundational population genetics resource with 26 populations. & 2,504 & WGS (low-pass) \\
+TOPMed & Trans-Omics for Precision Medicine. Deep WGS from diverse US populations. & $>$180,000 & WGS (30$\times$+) \\
+UK Biobank & Exome sequencing of the UK Biobank cohort. & 500,000 & WES \\
+ClinVar & Not a frequency database per se, but aggregates clinical significance classifications for variants. & --- & --- \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Population Frequency Filtering}]
+For rare Mendelian disease, filter out variants with a gnomAD population maximum allele frequency $>$0.01 (1\%) for dominant disorders or $>$0.03 (3\%) for recessive disorders. For ultra-rare conditions, use even stricter thresholds ($<$0.001). Always check population-specific frequencies, not just the global frequency, to avoid filtering out variants that are common in underrepresented populations.
+\end{tipbox}
+
+\subsection{Pathogenicity Prediction}
+
+\begin{description}[style=nextline]
+  \item[CADD (Combined Annotation Dependent Depletion)] Integrates 63+ annotations into a single deleteriousness score (Phred-scaled). CADD $\geq$20 indicates the top 1\% most deleterious variants; $\geq$30 the top 0.1\%.
+  \item[REVEL (Rare Exome Variant Ensemble Learner)] An ensemble method combining 13 individual pathogenicity predictors (SIFT, PolyPhen-2, MutationTaster, etc.). Optimised for rare missense variants. Score range: 0 (benign) to 1 (pathogenic); threshold $\geq$0.5 is commonly used.
+  \item[AlphaMissense] A deep learning model from DeepMind that predicts pathogenicity of all possible human missense variants using protein structure and evolutionary information from AlphaFold. Achieves state-of-the-art performance.
+  \item[SpliceAI] Predicts the impact of variants on splicing by modelling the pre-mRNA sequence context using a deep residual neural network. Delta scores $\geq$0.5 indicate high splicing impact.
+  \item[ClinVar] An NCBI database aggregating variant--disease associations and clinical significance classifications submitted by clinical laboratories and research groups.
+  \item[OMIM] Online Mendelian Inheritance in Man. A curated catalogue of human genes and genetic disorders.
+\end{description}
+
+\subsection{Clinical Variant Classification: ACMG/AMP Guidelines}
+
+The American College of Medical Genetics and Genomics (ACMG) and the Association for Molecular Pathology (AMP) jointly published a framework for classifying germline sequence variants into five tiers:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Pathogenic}: Strong evidence that the variant causes disease.
+  \item \textbf{Likely pathogenic}: Greater than 90\% probability of being disease-causing.
+  \item \textbf{Variant of uncertain significance (VUS)}: Insufficient evidence to classify.
+  \item \textbf{Likely benign}: Greater than 90\% probability of being benign.
+  \item \textbf{Benign}: Strong evidence that the variant does not cause disease.
+\end{enumerate}
+
+Classification uses a set of criteria (evidence codes) such as:
+\begin{itemize}[nosep]
+  \item \textbf{PVS1}: Null variant (nonsense, frameshift, splice site $\pm$1,2) in a gene where loss-of-function is a known mechanism of disease.
+  \item \textbf{PS1}: Same amino acid change as a previously established pathogenic variant.
+  \item \textbf{PM2}: Absent from population databases (or at extremely low frequency).
+  \item \textbf{PP3}: Computational evidence supports a deleterious effect (multiple in-silico tools agree).
+  \item \textbf{BA1}: Allele frequency $>$5\% in gnomAD (standalone benign).
+  \item \textbf{BS1}: Allele frequency greater than expected for the disorder.
+\end{itemize}
+
+Tools such as \software{InterVar} and \software{Franklin} automate ACMG classification, but expert clinical review remains essential for final interpretation.
+
+%% ============================================================
+\section{Cancer Genomics}
+\label{sec:cancer_genomics}
+%% ============================================================
+
+Cancer genomics applies WGS, WES, and targeted panel sequencing to understand tumor biology and guide therapy.
+
+\subsection{Tumor Mutational Burden (TMB)}
+
+TMB is the total number of somatic non-synonymous mutations per megabase of coding sequence. It serves as a biomarker for response to immune checkpoint inhibitors (ICIs):
+
+\begin{itemize}[nosep]
+  \item \textbf{High TMB} ($\geq$10 mutations/Mb): Associated with better response to ICIs (pembrolizumab, nivolumab) across multiple cancer types. FDA-approved as a pan-cancer biomarker.
+  \item TMB is typically measured from WES or large gene panels ($\geq$300 genes, $\geq$1\megabase{} target region).
+  \item Cancers with highest TMB: melanoma (UV-induced), lung cancer (tobacco-induced), microsatellite-unstable cancers (MMR-deficient).
+\end{itemize}
+
+\subsection{Microsatellite Instability (MSI)}
+
+MSI is caused by deficiency in DNA mismatch repair (MMR) genes (\gene{MLH1}, \gene{MSH2}, \gene{MSH6}, \gene{PMS2}). MSI-high (MSI-H) tumors accumulate thousands of somatic mutations, predominantly in microsatellite regions:
+
+\begin{itemize}[nosep]
+  \item Tools: \software{MSIsensor2}, \software{mSINGS}, \software{MANTIS}.
+  \item MSI-H is an FDA-approved biomarker for pembrolizumab (Keytruda) across all solid tumors---the first tissue-agnostic cancer drug approval.
+  \item Common in colorectal cancer ($\sim$15\%), endometrial cancer ($\sim$30\%), and gastric cancer.
+\end{itemize}
+
+\subsection{Mutational Signatures}
+
+Mutational processes leave characteristic ``fingerprints'' in the genome---patterns of base substitutions, indels, and rearrangements. The COSMIC mutational signatures catalogue (v3.4) includes $>$100 signatures:
+
+\begin{itemize}[nosep]
+  \item \textbf{SBS1}: Clock-like, associated with 5mC deamination (C$>$T at CpG). Accumulates with age.
+  \item \textbf{SBS4}: Tobacco smoking (C$>$A mutations).
+  \item \textbf{SBS7a/b}: UV light (C$>$T at CC dinucleotides).
+  \item \textbf{SBS6/15/20/26}: Mismatch repair deficiency.
+  \item \textbf{SBS3}: Homologous recombination deficiency (BRCA1/2 deficiency)---clinically actionable for PARP inhibitor therapy.
+  \item \textbf{SBS13/2}: APOBEC activity (C$>$T and C$>$G at TCA/TCT motifs).
+  \item Tools: \software{SigProfiler}, \software{MutationalPatterns}, \software{deconstructSigs}.
+\end{itemize}
+
+\subsection{Tumor Heterogeneity and Clonal Evolution}
+
+Tumors are not monolithic: they consist of genetically distinct subpopulations (clones) that evolve over time:
+
+\begin{description}[style=nextline]
+  \item[Clonal mutations] Present in all (or nearly all) cancer cells. These arose early in tumor development or represent the ancestral clone.
+  \item[Subclonal mutations] Present in a fraction of cancer cells, representing branching evolution.
+  \item[Variant allele frequency (VAF)] The fraction of reads supporting the alternate allele. In a diploid tumor, a clonal heterozygous mutation has VAF $\approx$ 0.5 $\times$ tumor purity. Subclonal mutations have lower VAF.
+  \item[Tools] \software{PyClone-VI}, \software{SciClone}, \software{PhyloWGS}, \software{MOBSTER} reconstruct clonal architecture from VAF distributions.
+\end{description}
+
+\subsection{Liquid Biopsy and Cell-Free DNA (cfDNA)}
+
+Liquid biopsy analyses cell-free DNA (cfDNA) circulating in blood, avoiding the need for invasive tissue biopsies:
+
+\begin{itemize}[nosep]
+  \item \textbf{Circulating tumor DNA (ctDNA)}: Tumor-derived cfDNA fragments, typically 0.01--10\% of total cfDNA in cancer patients.
+  \item \textbf{Applications}: Non-invasive genotyping, monitoring treatment response, detecting minimal residual disease (MRD), early cancer detection (e.g., Galleri multi-cancer early detection test).
+  \item \textbf{Technical requirements}: Ultra-deep sequencing (10,000--100,000$\times$ with UMIs), error-suppressed variant calling, tumour-informed or tumour-naive approaches.
+  \item \textbf{Tools}: \software{ctDNAtools}, \software{ichorCNA} (estimates tumor fraction from cfDNA WGS), \software{MRDetect}.
+  \item \textbf{Fragmentomics}: Analysis of cfDNA fragment size distributions, nucleosome positioning, and end motifs to infer tissue of origin and detect cancer.
+\end{itemize}
+
+%% ============================================================
+\section{Pharmacogenomics}
+\label{sec:pharmacogenomics}
+%% ============================================================
+
+Pharmacogenomics uses genetic information to predict individual drug response and guide medication selection and dosing.
+
+\begin{keyconcept}[title={Key Pharmacogenes}]
+\begin{description}[nosep]
+  \item[\gene{CYP2D6}] Metabolises $\sim$25\% of all prescribed drugs. Highly polymorphic with $>$100 known alleles, gene deletions, and whole-gene duplications. Metaboliser phenotypes: poor, intermediate, normal (extensive), ultra-rapid.
+  \item[\gene{CYP2C19}] Affects metabolism of clopidogrel (antiplatelet), proton pump inhibitors, and antidepressants. Loss-of-function alleles (CYP2C19*2, *3) reduce clopidogrel activation.
+  \item[\gene{DPYD}] Dihydropyrimidine dehydrogenase---metabolises fluoropyrimidine chemotherapy (5-FU, capecitabine). DPD deficiency causes life-threatening toxicity.
+  \item[\gene{TPMT}/\gene{NUDT15}] Affect metabolism of thiopurine drugs (azathioprine, 6-mercaptopurine). Deficiency causes severe myelosuppression.
+  \item[\gene{VKORC1}] Affects sensitivity to warfarin (anticoagulant dosing).
+  \item[\gene{HLA-B}] HLA-B*57:01 predicts abacavir hypersensitivity (HIV therapy); HLA-B*15:02 predicts carbamazepine-induced Stevens-Johnson syndrome.
+\end{description}
+Resources: PharmGKB database, CPIC (Clinical Pharmacogenetics Implementation Consortium) guidelines, DPWG (Dutch Pharmacogenetics Working Group) recommendations.
+\end{keyconcept}
+
+%% ============================================================
+\section{Decision Flowchart: Variant Calling Pipeline Selection}
+\label{sec:pipeline_decision}
+%% ============================================================
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  scale=0.72,
+  transform shape,
+  every node/.style={font=\small},
+  decision/.style={diamond, draw, fill=Goldenrod!15, text width=3cm, align=center,
+                   inner sep=2pt, aspect=2.2},
+  process/.style={rectangle, draw, rounded corners=4pt, fill=MidnightBlue!12,
+                  text width=3.5cm, align=center, minimum height=1cm},
+  result/.style={rectangle, draw, rounded corners=4pt, fill=OliveGreen!15,
+                 text width=3.5cm, align=center, minimum height=1cm, font=\small\bfseries},
+  arrow/.style={-{Stealth[length=3mm]}, thick},
+]
+
+% Start
+\node[process, fill=BrickRed!15, font=\small\bfseries] (start) at (0, 0) {Sequencing Data};
+
+% Decision 1: Germline or Somatic?
+\node[decision] (d1) at (0, -2.5) {Germline or\\Somatic?};
+\draw[arrow] (start) -- (d1);
+
+% Germline branch
+\node[decision] (d2) at (-6, -5.5) {Short reads\\or Long reads?};
+\draw[arrow] (d1) -- node[above, font=\footnotesize] {Germline} (d2);
+
+% Germline short
+\node[decision] (d3) at (-9, -8.5) {Cohort or\\single sample?};
+\draw[arrow] (d2) -- node[left, font=\footnotesize] {Short} (d3);
+
+\node[result] (r1) at (-11.5, -11.5) {GATK HC + VQSR\\or\\DeepVariant + GLnexus};
+\draw[arrow] (d3) -- node[left, font=\footnotesize] {Cohort} (r1);
+
+\node[result] (r2) at (-6.5, -11.5) {GATK HC\\or\\DeepVariant};
+\draw[arrow] (d3) -- node[right, font=\footnotesize] {Single} (r2);
+
+% Germline long
+\node[result] (r3) at (-3, -8.5) {DeepVariant\\(HiFi/ONT model)\\+ Sniffles2/pbsv\\+ WhatsHap};
+\draw[arrow] (d2) -- node[right, font=\footnotesize] {Long} (r3);
+
+% Somatic branch
+\node[decision] (d4) at (6, -5.5) {Matched\\normal\\available?};
+\draw[arrow] (d1) -- node[above, font=\footnotesize] {Somatic} (d4);
+
+\node[result] (r4) at (3, -8.5) {Mutect2\\(tumor/normal)\\+ Strelka2};
+\draw[arrow] (d4) -- node[left, font=\footnotesize] {Yes} (r4);
+
+\node[result] (r5) at (9, -8.5) {Mutect2\\(tumor-only\\+ panel of normals)};
+\draw[arrow] (d4) -- node[right, font=\footnotesize] {No} (r5);
+
+% SV branch from somatic
+\node[decision] (d5) at (6, -11.5) {SV/CNV\\needed?};
+\draw[arrow] (r4) -- (d5);
+
+\node[result] (r6) at (3, -14.5) {Manta + DELLY\\(short reads)\\Sniffles2 (long reads)};
+\draw[arrow] (d5) -- node[left, font=\footnotesize] {Yes} (r6);
+
+\node[result] (r7) at (9, -14.5) {Proceed to\\annotation\\(VEP/SnpEff)};
+\draw[arrow] (d5) -- node[right, font=\footnotesize] {No} (r7);
+
+\end{tikzpicture}
+\caption{Decision flowchart for selecting appropriate variant calling tools based on the experimental design, data type, and variant classes of interest.}
+\label{fig:variant_pipeline_decision}
+\end{figure}
+
+%% ============================================================
+\section{Practical Workflow: Variant Discovery Pipeline}
+\label{sec:variant_pipeline}
+%% ============================================================
+
+The following Snakemake and Nextflow pipelines demonstrate a complete germline variant discovery workflow including calling, filtering, and annotation.
+
+\subsection{Snakemake Variant Discovery Pipeline}
+
+\begin{lstlisting}[language=Python, caption={Snakemake pipeline for germline variant calling, filtering, and annotation.}, label={lst:snakemake_variants}]
+# Snakefile for Variant Discovery and Annotation
+# Assumes aligned, deduplicated BAM files as input
+
+configfile: "config.yaml"
+
+SAMPLES = config["samples"]
+REF = config["reference"]
+KNOWN_SITES = config["known_sites"]
+VEP_CACHE = config["vep_cache"]
+VEP_SPECIES = "homo_sapiens"
+
+rule all:
+    input:
+        expand("results/annotated/{sample}.annotated.vcf.gz",
+               sample=SAMPLES),
+        expand("results/sv/{sample}.manta.vcf.gz", sample=SAMPLES),
+        expand("results/str/{sample}.eh.vcf.gz", sample=SAMPLES)
+
+# --- GATK HaplotypeCaller (GVCF mode) ---
+rule haplotypecaller:
+    input:
+        bam="data/bam/{sample}.dedup.bam",
+        ref=REF
+    output:
+        gvcf="results/gvcf/{sample}.g.vcf.gz"
+    threads: 4
+    shell:
+        """
+        gatk HaplotypeCaller \
+            -R {input.ref} -I {input.bam} \
+            -O {output.gvcf} -ERC GVCF \
+            --native-pair-hmm-threads {threads}
+        """
+
+# --- GenotypeGVCFs ---
+rule genotype_gvcfs:
+    input:
+        gvcf="results/gvcf/{sample}.g.vcf.gz",
+        ref=REF
+    output:
+        vcf="results/vcf/{sample}.raw.vcf.gz"
+    shell:
+        """
+        gatk GenotypeGVCFs \
+            -R {input.ref} -V {input.gvcf} \
+            -O {output.vcf}
+        """
+
+# --- Hard Filtering (SNVs) ---
+rule filter_snps:
+    input:
+        vcf="results/vcf/{sample}.raw.vcf.gz",
+        ref=REF
+    output:
+        vcf="results/filtered/{sample}.snps.filtered.vcf.gz"
+    shell:
+        """
+        gatk SelectVariants -R {input.ref} -V {input.vcf} \
+            --select-type-to-include SNP \
+            -O results/filtered/{wildcards.sample}.snps.raw.vcf.gz
+
+        gatk VariantFiltration \
+            -R {input.ref} \
+            -V results/filtered/{wildcards.sample}.snps.raw.vcf.gz \
+            --filter-expression "QD < 2.0" --filter-name "LowQD" \
+            --filter-expression "FS > 60.0" --filter-name "HighFS" \
+            --filter-expression "MQ < 40.0" --filter-name "LowMQ" \
+            --filter-expression "SOR > 3.0" --filter-name "HighSOR" \
+            --filter-expression "MQRankSum < -12.5" \
+                --filter-name "LowMQRS" \
+            --filter-expression "ReadPosRankSum < -8.0" \
+                --filter-name "LowRPRS" \
+            -O {output.vcf}
+        """
+
+# --- Hard Filtering (Indels) ---
+rule filter_indels:
+    input:
+        vcf="results/vcf/{sample}.raw.vcf.gz",
+        ref=REF
+    output:
+        vcf="results/filtered/{sample}.indels.filtered.vcf.gz"
+    shell:
+        """
+        gatk SelectVariants -R {input.ref} -V {input.vcf} \
+            --select-type-to-include INDEL \
+            -O results/filtered/{wildcards.sample}.indels.raw.vcf.gz
+
+        gatk VariantFiltration \
+            -R {input.ref} \
+            -V results/filtered/{wildcards.sample}.indels.raw.vcf.gz \
+            --filter-expression "QD < 2.0" --filter-name "LowQD" \
+            --filter-expression "FS > 200.0" --filter-name "HighFS" \
+            --filter-expression "ReadPosRankSum < -20.0" \
+                --filter-name "LowRPRS" \
+            --filter-expression "SOR > 10.0" --filter-name "HighSOR" \
+            -O {output.vcf}
+        """
+
+# --- Merge filtered SNPs and indels ---
+rule merge_filtered:
+    input:
+        snps="results/filtered/{sample}.snps.filtered.vcf.gz",
+        indels="results/filtered/{sample}.indels.filtered.vcf.gz"
+    output:
+        vcf="results/filtered/{sample}.merged.filtered.vcf.gz"
+    shell:
+        """
+        gatk MergeVcfs \
+            -I {input.snps} -I {input.indels} \
+            -O {output.vcf}
+        """
+
+# --- VEP Annotation ---
+rule vep_annotate:
+    input:
+        vcf="results/filtered/{sample}.merged.filtered.vcf.gz"
+    output:
+        vcf="results/annotated/{sample}.annotated.vcf.gz"
+    params:
+        cache=VEP_CACHE,
+        species=VEP_SPECIES
+    threads: 4
+    shell:
+        """
+        vep --input_file {input.vcf} \
+            --output_file {output.vcf} \
+            --format vcf --vcf --compress_output bgzip \
+            --cache --dir_cache {params.cache} \
+            --species {params.species} --assembly GRCh38 \
+            --everything --fork {threads} \
+            --offline --force_overwrite
+        """
+
+# --- Structural Variant Calling (Manta) ---
+rule manta_sv:
+    input:
+        bam="data/bam/{sample}.dedup.bam",
+        ref=REF
+    output:
+        vcf="results/sv/{sample}.manta.vcf.gz"
+    threads: 8
+    shell:
+        """
+        configManta.py \
+            --bam {input.bam} \
+            --referenceFasta {input.ref} \
+            --runDir results/sv/{wildcards.sample}_manta
+
+        results/sv/{wildcards.sample}_manta/runWorkflow.py \
+            -j {threads}
+
+        cp results/sv/{wildcards.sample}_manta/results/variants/\
+diploidSV.vcf.gz {output.vcf}
+        """
+
+# --- STR Expansion Analysis ---
+rule expansion_hunter:
+    input:
+        bam="data/bam/{sample}.dedup.bam",
+        ref=REF,
+        catalog="resources/variant_catalog.json"
+    output:
+        vcf="results/str/{sample}.eh.vcf.gz"
+    shell:
+        """
+        ExpansionHunter \
+            --reads {input.bam} \
+            --reference {input.ref} \
+            --variant-catalog {input.catalog} \
+            --output-prefix results/str/{wildcards.sample}.eh
+
+        bgzip -c results/str/{wildcards.sample}.eh.vcf \
+            > {output.vcf}
+        tabix -p vcf {output.vcf}
+        """
+\end{lstlisting}
+
+\subsection{Nextflow Variant Discovery Pipeline}
+
+\begin{lstlisting}[language=Java, caption={Nextflow DSL2 pipeline for variant calling, filtering, and annotation.}, label={lst:nextflow_variants}]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl=2
+
+// Variant Discovery and Annotation Pipeline
+
+params.bams      = "data/bam/*.dedup.bam"
+params.ref       = "reference/hg38.fa"
+params.vep_cache = "resources/vep_cache"
+params.str_cat   = "resources/variant_catalog.json"
+params.outdir    = "results"
+
+process HAPLOTYPECALLER {
+    tag "$sample_id"
+    publishDir "${params.outdir}/gvcf", mode: 'copy'
+    cpus 4
+
+    input:
+    tuple val(sample_id), path(bam), path(bai)
+    path ref
+    path ref_fai
+    path ref_dict
+
+    output:
+    tuple val(sample_id), path("${sample_id}.g.vcf.gz"),
+          path("${sample_id}.g.vcf.gz.tbi"),
+          emit: gvcf
+
+    script:
+    """
+    gatk HaplotypeCaller \
+        -R ${ref} -I ${bam} \
+        -O ${sample_id}.g.vcf.gz -ERC GVCF \
+        --native-pair-hmm-threads ${task.cpus}
+    """
+}
+
+process GENOTYPE_GVCFS {
+    tag "$sample_id"
+    publishDir "${params.outdir}/vcf", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(gvcf), path(gvcf_tbi)
+    path ref
+    path ref_fai
+    path ref_dict
+
+    output:
+    tuple val(sample_id), path("${sample_id}.raw.vcf.gz"),
+          path("${sample_id}.raw.vcf.gz.tbi"),
+          emit: raw_vcf
+
+    script:
+    """
+    gatk GenotypeGVCFs \
+        -R ${ref} -V ${gvcf} \
+        -O ${sample_id}.raw.vcf.gz
+    """
+}
+
+process HARD_FILTER {
+    tag "$sample_id"
+    publishDir "${params.outdir}/filtered", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(vcf), path(vcf_tbi)
+    path ref
+    path ref_fai
+    path ref_dict
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.filtered.vcf.gz"),
+          path("${sample_id}.filtered.vcf.gz.tbi"),
+          emit: filtered_vcf
+
+    script:
+    """
+    # Filter SNPs
+    gatk SelectVariants -R ${ref} -V ${vcf} \
+        --select-type-to-include SNP \
+        -O ${sample_id}.snps.vcf.gz
+    gatk VariantFiltration -R ${ref} \
+        -V ${sample_id}.snps.vcf.gz \
+        --filter-expression "QD < 2.0" --filter-name "LowQD" \
+        --filter-expression "FS > 60.0" --filter-name "HighFS" \
+        --filter-expression "MQ < 40.0" --filter-name "LowMQ" \
+        --filter-expression "SOR > 3.0" --filter-name "HighSOR" \
+        -O ${sample_id}.snps.filt.vcf.gz
+
+    # Filter Indels
+    gatk SelectVariants -R ${ref} -V ${vcf} \
+        --select-type-to-include INDEL \
+        -O ${sample_id}.indels.vcf.gz
+    gatk VariantFiltration -R ${ref} \
+        -V ${sample_id}.indels.vcf.gz \
+        --filter-expression "QD < 2.0" --filter-name "LowQD" \
+        --filter-expression "FS > 200.0" --filter-name "HighFS" \
+        --filter-expression "SOR > 10.0" --filter-name "HighSOR" \
+        -O ${sample_id}.indels.filt.vcf.gz
+
+    # Merge
+    gatk MergeVcfs \
+        -I ${sample_id}.snps.filt.vcf.gz \
+        -I ${sample_id}.indels.filt.vcf.gz \
+        -O ${sample_id}.filtered.vcf.gz
+    """
+}
+
+process VEP_ANNOTATE {
+    tag "$sample_id"
+    publishDir "${params.outdir}/annotated", mode: 'copy'
+    cpus 4
+
+    input:
+    tuple val(sample_id), path(vcf), path(vcf_tbi)
+    path vep_cache
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.annotated.vcf.gz"),
+          emit: annotated_vcf
+
+    script:
+    """
+    vep --input_file ${vcf} \
+        --output_file ${sample_id}.annotated.vcf.gz \
+        --format vcf --vcf --compress_output bgzip \
+        --cache --dir_cache ${vep_cache} \
+        --species homo_sapiens --assembly GRCh38 \
+        --everything --fork ${task.cpus} \
+        --offline --force_overwrite
+    """
+}
+
+process MANTA_SV {
+    tag "$sample_id"
+    publishDir "${params.outdir}/sv", mode: 'copy'
+    cpus 8
+
+    input:
+    tuple val(sample_id), path(bam), path(bai)
+    path ref
+    path ref_fai
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.manta.sv.vcf.gz"),
+          emit: sv_vcf
+
+    script:
+    """
+    configManta.py \
+        --bam ${bam} \
+        --referenceFasta ${ref} \
+        --runDir manta_run
+    manta_run/runWorkflow.py -j ${task.cpus}
+    cp manta_run/results/variants/diploidSV.vcf.gz \
+        ${sample_id}.manta.sv.vcf.gz
+    """
+}
+
+process EXPANSION_HUNTER {
+    tag "$sample_id"
+    publishDir "${params.outdir}/str", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bam), path(bai)
+    path ref
+    path str_catalog
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.eh.vcf.gz"),
+          emit: str_vcf
+
+    script:
+    """
+    ExpansionHunter \
+        --reads ${bam} --reference ${ref} \
+        --variant-catalog ${str_catalog} \
+        --output-prefix ${sample_id}.eh
+    bgzip -c ${sample_id}.eh.vcf > ${sample_id}.eh.vcf.gz
+    tabix -p vcf ${sample_id}.eh.vcf.gz
+    """
+}
+
+// ---- Workflow ----
+workflow {
+    // Input channels
+    bam_ch = Channel
+        .fromFilePairs(params.bams, size: 1) { file ->
+            file.name.replaceAll('.dedup.bam', '')
+        }
+        .map { id, files -> tuple(id, files[0],
+                file("${files[0]}.bai")) }
+
+    ref       = file(params.ref)
+    ref_fai   = file("${params.ref}.fai")
+    ref_dict  = file(params.ref.replaceAll('.fa$', '.dict'))
+    vep_cache = file(params.vep_cache)
+    str_cat   = file(params.str_cat)
+
+    // Variant calling
+    HAPLOTYPECALLER(bam_ch, ref, ref_fai, ref_dict)
+    GENOTYPE_GVCFS(HAPLOTYPECALLER.out.gvcf,
+                   ref, ref_fai, ref_dict)
+
+    // Filtering and annotation
+    HARD_FILTER(GENOTYPE_GVCFS.out.raw_vcf,
+                ref, ref_fai, ref_dict)
+    VEP_ANNOTATE(HARD_FILTER.out.filtered_vcf, vep_cache)
+
+    // SV calling and STR analysis (parallel)
+    MANTA_SV(bam_ch, ref, ref_fai)
+    EXPANSION_HUNTER(bam_ch, ref, str_cat)
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Variant Calling Tool Comparison}
+\label{sec:tool_comparison}
+%% ============================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of variant calling tools for different variant classes and use cases.}
+\label{tab:variant_tool_comparison}
+\small
+\begin{tabularx}{\textwidth}{@{}l*{4}{>{\raggedright\arraybackslash}X}@{}}
+\toprule
+\textbf{Variant Class} & \textbf{Tool} & \textbf{Approach} & \textbf{Data Type} & \textbf{Key Strengths} \\
+\midrule
+\multirow{2}{*}{Germline SNV/indel} & GATK HC & Local assembly + pair-HMM & Short reads & Gold standard, cohort support \\
+ & DeepVariant & CNN image classification & Short/long reads & Highest accuracy, multi-platform \\
+\addlinespace
+\multirow{2}{*}{Somatic SNV/indel} & Mutect2 & Bayesian somatic model & Short reads & T/N and tumor-only modes \\
+ & Strelka2 & Mixture model & Short reads & Fast, accurate \\
+\addlinespace
+\multirow{3}{*}{Structural variants} & Manta & Assembly + PE/SR & Short reads & Fast, comprehensive \\
+ & Sniffles2 & Split-read signatures & Long reads & Gold standard for LR SVs \\
+ & DELLY & PE + SR + RD & Short reads & Multi-algorithm, genotyping \\
+\addlinespace
+\multirow{2}{*}{CNVs} & GATK gCNV & Cohort denoising & WES/WGS & Handles capture bias \\
+ & CNVnator & Read depth binning & WGS & Simple, effective \\
+\addlinespace
+\multirow{2}{*}{STR expansions} & ExpansionHunter & Spanning/flanking reads & Short reads & Known locus catalogue \\
+ & TRGT & HiFi repeat analysis & PacBio HiFi & Allele-resolved, accurate \\
+\addlinespace
+\multirow{2}{*}{Phasing} & WhatsHap & Read-backed wMEC & Long reads & Physical phasing \\
+ & SHAPEIT5 & Statistical HMM & Any (population) & Population-scale \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ============================================================
+\section{Summary}
+\label{sec:ch08_summary}
+%% ============================================================
+
+\begin{keyconcept}[title={Chapter Summary}]
+\begin{itemize}[nosep]
+  \item Genetic variants range from single nucleotide changes (SNVs) to chromosome-scale structural rearrangements, each requiring specialised detection methods.
+  \item \textbf{Germline variant calling} (GATK HaplotypeCaller, DeepVariant) identifies inherited variants; \textbf{somatic calling} (Mutect2, Strelka2) identifies cancer-specific mutations using tumor--normal pairs.
+  \item \textbf{Structural variants and repeat expansions} require long reads or specialised short-read algorithms (Manta, ExpansionHunter) for reliable detection.
+  \item Variant \textbf{filtering} (VQSR or hard filters) is essential to remove artefacts, and \textbf{annotation} (VEP, gnomAD, CADD, ClinVar) is required for biological and clinical interpretation.
+  \item The \textbf{ACMG/AMP 5-tier classification} system provides a standardised framework for clinical variant interpretation.
+  \item Cancer genomics applications include \textbf{TMB}, \textbf{MSI}, \textbf{mutational signatures}, \textbf{clonal analysis}, and \textbf{liquid biopsy} for non-invasive monitoring.
+  \item \textbf{Pharmacogenomics} translates genetic variants in drug-metabolising enzymes and drug targets into actionable prescribing guidance.
+\end{itemize}
+\end{keyconcept}

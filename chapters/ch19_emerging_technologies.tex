@@ -1,0 +1,992 @@
+\chapter{Emerging Technologies and Future Directions}
+\label{ch:emerging}
+
+\begin{keyconcept}
+The sequencing field is evolving at an extraordinary pace, with new technologies, computational paradigms, and applications emerging each year. This chapter surveys the frontier: protein sequencing technologies that extend beyond nucleic acids, in situ sequencing that reads genomes within intact tissues, artificial intelligence that is transforming every stage of the sequencing pipeline, portable sequencing that brings genomics to the point of care, pangenomics that moves beyond a single reference genome, and the ethical considerations that accompany these powerful capabilities. Understanding these emerging directions is essential for anyone planning research that will unfold over the coming years.
+\end{keyconcept}
+
+\section{Protein Sequencing by Sequencing-Adjacent Technologies}
+\label{sec:emerging:protein-seq}
+
+While this book focuses on nucleic acid sequencing, several emerging platforms aim to bring sequencing-like approaches to the proteome. These technologies are relevant because they share conceptual and sometimes physical infrastructure with NGS and because proteomics is increasingly integrated with genomics and transcriptomics.
+
+\subsection{Quantum-Si: Single-Molecule Protein Sequencing}
+\label{subsec:emerging:quantum-si}
+
+Quantum-Si is developing a semiconductor-based platform that detects individual amino acids as they are cleaved from a protein molecule. The principle uses time-domain fluorescence detection: fluorescently labelled amino acid recognizers bind to the N-terminal amino acid, and the identity is determined by the fluorescence lifetime (not just wavelength or intensity). After identification, an aminopeptidase cleaves the terminal residue, exposing the next amino acid for the cycle to repeat.
+
+Key characteristics:
+\begin{itemize}[itemsep=2pt]
+  \item Single-molecule sensitivity---no amplification required.
+  \item Semiconductor chip fabrication enables scaling and cost reduction analogous to DNA sequencing chips.
+  \item Currently limited in the number of amino acids that can be distinguished per cycle, but active development is expanding coverage.
+\end{itemize}
+
+\subsection{Nautilus Biotechnology: Proteome Analysis Platform}
+\label{subsec:emerging:nautilus}
+
+Nautilus takes a different approach: rather than sequencing amino acids sequentially, it uses a large panel of affinity reagents (engineered protein binders) that each recognize short amino acid motifs. By iteratively probing single protein molecules on a surface with different affinity reagents, Nautilus builds up a combinatorial fingerprint that identifies each protein. This approach does not provide a complete amino acid sequence but can identify and quantify thousands of proteins in a sample.
+
+\subsection{Nanopore-Based Protein Sequencing: Signal Models and Challenges}
+\label{subsec:emerging:nanopore-protein}
+
+Beyond fluorescence-based approaches, an emerging frontier is the use of \textbf{nanopore technology for direct protein sequencing}. The fundamental principle mirrors nanopore DNA sequencing: a protein molecule is threaded through a nanoscale pore, and the ionic current modulation caused by amino acid residues transiting the pore sensing region is recorded and decoded. However, protein sequencing by nanopore presents formidable challenges that do not arise in nucleic acid sequencing.
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Alphabet complexity] DNA has 4 canonical bases; proteins have 20 standard amino acids (plus post-translational modifications), creating a vastly larger signal alphabet. The current signal for each amino acid depends on its size, charge, hydrophobicity, and interactions with neighbouring residues in the pore. With a sensing region spanning $\sim$4--5 residues, the effective $k$-mer space is $20^5 = 3.2$ million possible combinations, compared to $4^5 = 1{,}024$ for DNA.
+
+  \item[Variable charge and translocation control] DNA is uniformly negatively charged, enabling electrophoretic driving through the pore at a controllable rate. Proteins carry variable charge (positive, negative, and neutral residues), making voltage-driven translocation unreliable. Current approaches use \textbf{unfoldases} (e.g., ClpXP) or molecular motors to ratchet the polypeptide through the pore at a controlled rate, analogous to the helicase motor used in nanopore DNA sequencing.
+
+  \item[Protein unfolding] Unlike the linear polymer DNA, proteins fold into complex three-dimensional structures that must be unfolded before they can transit the pore. Denaturation (chemical or thermal) or enzymatic unfolding adds a required preprocessing step that can introduce bias (some proteins are more resistant to unfolding than others).
+
+  \item[Signal modelling] The current signal $I(t)$ at time $t$ as a residue $k$-mer transits the pore is modelled as:
+  \begin{equation}
+    I(t) = g\bigl(a_{i}, a_{i+1}, \ldots, a_{i+k-1}\bigr) + \epsilon(t),
+    \label{eq:emerging:nanopore-protein-signal}
+  \end{equation}
+  where $a_i$ through $a_{i+k-1}$ are the amino acids in the sensing region, $g(\cdot)$ is the signal function that maps a $k$-mer to an expected current level, and $\epsilon(t)$ is noise. Learning $g(\cdot)$ requires extensive training data from proteins of known sequence---a challenge being addressed by sequencing synthetic peptide libraries of defined composition.
+\end{description}
+
+\begin{warningbox}
+Nanopore protein sequencing remains in the early research phase, with proof-of-concept demonstrations limited to short peptides or individual amino acid discrimination. Achieving the throughput, accuracy, and generality needed for proteome-scale applications will require substantial advances in pore engineering, motor protein development, and signal processing algorithms. Nevertheless, the potential to perform single-molecule, modification-aware protein sequencing without the need for mass spectrometry makes this an area of intense research interest.
+\end{warningbox}
+
+\begin{tipbox}
+Protein sequencing technologies are not yet at the maturity level of DNA/RNA sequencing, but they represent a convergent trajectory. As these platforms mature, they will increasingly complement nucleic acid sequencing for integrated multi-omics studies, potentially enabling direct measurement of the proteome alongside the genome and transcriptome from the same sample.
+\end{tipbox}
+
+
+\section{In Situ Sequencing in Tissues}
+\label{sec:emerging:in-situ}
+
+In situ sequencing reads nucleic acid sequences directly within intact tissue sections, preserving spatial context while providing sequence-level information. Unlike spatial transcriptomics methods that capture or probe known sequences, in situ sequencing can discover sequence variants and gene expression patterns simultaneously within their tissue architecture.
+
+\subsection{Key In Situ Sequencing Technologies}
+\label{subsec:emerging:in-situ-methods}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[STARmap (Spatially-resolved Transcript Amplicon Readout Mapping)] Performs in situ reverse transcription, rolling circle amplification, and sequencing by ligation within thin tissue sections. Can simultaneously detect hundreds to thousands of genes at subcellular resolution in intact brain tissue.
+
+  \item[ExSeq (Expansion Sequencing)] Combines tissue expansion microscopy (physically swelling the tissue to increase effective resolution) with in situ sequencing. By expanding the tissue $\sim$4$\times$, ExSeq achieves nanoscale resolution of RNA molecules within cells, enabling subcellular localization of transcripts within organelles and cellular compartments.
+
+  \item[BaristaSeq] A padlock-probe-based in situ sequencing method optimized for profiling barcoded neurons in connectomics studies. BaristaSeq reads barcode sequences in neurons that have been virally labelled, enabling mapping of neural connectivity alongside gene expression.
+
+  \item[In situ genome sequencing (IGS)] Extends in situ sequencing beyond the transcriptome to read genomic DNA within intact cells. IGS can detect copy number alterations, structural variants, and point mutations in their spatial context within tissues, which is particularly valuable for understanding tumour heterogeneity.
+\end{description}
+
+\begin{keyconcept}[title={In Situ vs.\ Capture-Based Spatial Methods}]
+In situ sequencing methods (STARmap, ExSeq) perform the sequencing reaction within the tissue, preserving subcellular localization but requiring specialized microscopy and enzymatic chemistry. Capture-based spatial methods (10x Visium, Slide-seq) capture RNA on a barcoded surface for external sequencing, which is simpler to implement but loses subcellular resolution. Imaging-based methods (MERFISH, seqFISH+) use combinatorial FISH probes to identify transcripts in situ, achieving subcellular resolution for predefined gene panels. Each approach occupies a distinct niche in the resolution--throughput--discovery space.
+\end{keyconcept}
+
+
+\section{Single-Cell Proteomics by Mass Spectrometry}
+\label{sec:emerging:sc-proteomics}
+
+While CITE-seq and similar methods (see \cref{ch:multiomics}) measure a predefined panel of surface proteins via antibody tags, mass spectrometry-based single-cell proteomics aims to measure the intracellular proteome without relying on antibodies.
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[SCoPE2 (Single Cell ProtEomics by Mass Spectrometry, version 2)] Uses isobaric tandem mass tags (TMT) to multiplex single cells, with a carrier channel of $\sim$200 cells providing signal for peptide identification. SCoPE2 can quantify $>$1,000 proteins per cell across hundreds of cells.
+
+  \item[plexDIA (Multiplexed Data-Independent Acquisition)] Combines DIA mass spectrometry with multiplexing via non-isobaric labels, achieving higher throughput than SCoPE2 while maintaining quantitative accuracy.
+\end{description}
+
+These technologies provide context for understanding the broader single-cell landscape: while sequencing-based methods provide the deepest transcriptomic and epigenomic profiling, mass spectrometry-based proteomics offers direct protein measurement without the translation-rate assumptions inherent in RNA-based protein inference.
+
+
+\section{Programmable Biology and Synthetic Long Reads}
+\label{sec:emerging:synthetic-long-reads}
+
+\subsection{Linked-Read Technologies}
+\label{subsec:emerging:linked-reads}
+
+Linked-read technologies partition long DNA molecules into droplets or wells, add a shared barcode to all short-read fragments derived from the same long molecule, and then generate standard short reads. The shared barcode ``links'' the short reads back to their molecule of origin, enabling long-range information from short-read data.
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[10x Genomics Chromium Genome (deprecated)] The original linked-read platform, which partitioned $\sim$50\kilobase{} DNA molecules into GEM droplets for barcoded library construction. 10x discontinued this product in 2020, but the conceptual approach remains influential.
+
+  \item[TELL-seq (Transposase Enzyme Linked Long-read Sequencing)] Uses transposase-loaded microbeads to tag long DNA molecules with shared barcodes in a single tube reaction, without microfluidics. Achieves linked-read libraries from nanogram-level DNA input.
+
+  \item[stLFR (Single-Tube Long Fragment Read)] Developed by BGI/MGI, stLFR captures long DNA molecules on barcoded beads in a single tube, generating linked reads compatible with BGI sequencing platforms. stLFR has been used for diploid genome assembly and structural variant detection.
+\end{description}
+
+\subsection{Universal Sequencing Technology}
+\label{subsec:emerging:ust}
+
+Universal Sequencing Technology (UST) is developing a pore-based electronic sequencing approach that uses synthetic polymer tags attached to each nucleotide. Rather than reading the nucleotide directly, the instrument detects the electronic signature of the polymer tag as it passes through a solid-state nanopore. This approach potentially combines the long-read capabilities of nanopore sequencing with higher accuracy and the scalability of semiconductor fabrication.
+
+
+\section{Ultra-Long Nanopore Sequencing Advances}
+\label{sec:emerging:ultra-long}
+
+Oxford Nanopore sequencing has achieved some of the longest individual reads in sequencing history, with multiple reports of reads exceeding 4\megabase{} (4 million bases) in length. These ultra-long reads are transformative for genome assembly, particularly in regions that are intractable for shorter reads.
+
+\subsection{Ultra-High Molecular Weight DNA Extraction}
+\label{subsec:emerging:uhmw-extraction}
+
+Achieving ultra-long reads requires ultra-high molecular weight (UHMW) DNA, which in turn requires specialized extraction protocols:
+
+\begin{protocolbox}[title={Ultra-Long DNA Extraction Key Principles}]
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Minimal shearing:} Avoid vortexing, pipetting through narrow tips, or any mechanical force that fragments DNA. Use wide-bore pipette tips or cut tips.
+  \item \textbf{Agarose plug lysis:} Embed cells in low-melting-point agarose plugs before lysis. The agarose matrix protects DNA from mechanical damage during enzymatic digestion.
+  \item \textbf{Phenol-chloroform extraction with phase-lock tubes:} Gentle organic extraction preserves molecular weight better than column-based methods.
+  \item \textbf{Needle-based shearing avoidance:} Use gravity-based or slow rotation mixing instead of pipetting.
+  \item \textbf{Quality assessment:} Use pulsed-field gel electrophoresis (PFGE) or the Femto Pulse system (Agilent) to verify that extracted DNA exceeds 100--200\kilobase{}.
+\end{itemize}
+\end{protocolbox}
+
+\subsection{Applications of Ultra-Long Reads}
+\label{subsec:emerging:ultra-long-apps}
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Centromere assembly:} Human centromeres consist of megabases of highly repetitive alpha-satellite DNA. Only reads that span entire higher-order repeat units ($>$100\kilobase{}) can resolve centromeric structure, as demonstrated by the T2T Consortium.
+  \item \textbf{Complex repeat resolution:} Segmental duplications, satellite arrays, and tandem repeat expansions that confound short reads and even standard long reads can be resolved with ultra-long reads.
+  \item \textbf{Structural variant phasing:} Ultra-long reads can phase structural variants with nearby SNPs across hundreds of kilobases, enabling allele-specific SV analysis.
+  \item \textbf{Complete bacterial genomes:} Many bacterial genomes ($<$5\megabase{}) can be assembled into a single contig from ultra-long reads alone, with no gaps.
+\end{itemize}
+
+
+\section{AI and Machine Learning in Sequencing}
+\label{sec:emerging:ai}
+
+Artificial intelligence and machine learning have permeated every stage of the sequencing pipeline, from signal processing to biological interpretation.
+
+\subsection{Neural Network Basecallers}
+\label{subsec:emerging:basecallers}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[ONT Dorado] Oxford Nanopore's current basecaller uses transformer-based neural networks to convert raw electrical signal (``squiggle'') into nucleotide sequence. Successive model generations have dramatically improved accuracy: from $\sim$85\% in early MinION runs to $>$99\% with the latest ``super-accurate'' models on R10.4.1 flow cells. Dorado also performs modified base detection (5mC, 6mA) as part of basecalling.
+
+  \item[PacBio DeepConsensus] Uses a transformer neural network to generate consensus sequences from the multiple passes of a circular consensus sequencing (CCS/HiFi) read. DeepConsensus improves yield at Q30+ accuracy by 1--9\% over the standard CCS algorithm, effectively converting borderline reads into usable HiFi reads.
+\end{description}
+
+\subsection{AI-Powered Variant Calling}
+\label{subsec:emerging:ai-variant-calling}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[DeepVariant (Google)] A convolutional neural network (CNN) that treats variant calling as an image classification problem. Pileup images (visualizations of reads aligned at a candidate variant position) are classified as homozygous reference, heterozygous, or homozygous variant. DeepVariant consistently achieves the highest accuracy in PrecisionFDA truth challenges and works across Illumina, PacBio, and ONT data (with platform-specific models).
+
+  \item[PEPPER-Margin-DeepVariant] An extension of DeepVariant optimized for long-read data, using the PEPPER neural network for candidate variant identification and Margin for haplotype-aware read phasing before final variant calling with DeepVariant.
+
+  \item[Clair3] A neural network variant caller specifically designed for long-read data (ONT and PacBio), achieving competitive accuracy with DeepVariant while being significantly faster.
+\end{description}
+
+\subsection{Genomic Language Models and Foundation Models}
+\label{subsec:emerging:foundation-models}
+
+A new paradigm in computational genomics is the application of large language model architectures to biological sequences:
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Evo] A genomic foundation model trained on 2.7 million prokaryotic and phage genomes. Evo uses a StripedHyena architecture (a hybrid of attention and state-space models) with a context window of up to 131 kilobases. It can predict gene essentiality, generate functional DNA sequences, and model multi-element genetic interactions across long genomic distances.
+
+  \item[Nucleotide Transformers] A family of transformer models (from the Instadeep/BioNTech collaboration) trained on reference genomes and whole-genome sequencing data. These models generate contextual embeddings for DNA sequences that capture functional information, enabling zero-shot prediction of variant effects, regulatory element activity, and splicing outcomes.
+
+  \item[scGPT] A generative pre-trained transformer for single-cell biology, trained on over 33 million single-cell transcriptomic profiles. scGPT learns a universal representation of cell states and can be fine-tuned for cell-type annotation, perturbation response prediction, gene network inference, and multi-batch integration.
+
+  \item[Geneformer] A transformer model pre-trained on $\sim$30 million single-cell transcriptomic profiles from Genecorpus-30M. Geneformer treats each cell's expression profile as a ``sentence'' of gene ``tokens'' ranked by expression, learning contextual gene representations. It can predict disease-related gene regulatory network dynamics and identify therapeutic targets.
+
+  \item[scBERT] A BERT-based model for single-cell transcriptomics that generates cell embeddings useful for cell-type annotation, particularly in atlas-scale datasets where traditional methods become computationally prohibitive.
+\end{description}
+
+\begin{keyconcept}[title={Foundation Models in Genomics}]
+Foundation models are large neural networks pre-trained on vast amounts of unlabelled data, which can then be fine-tuned for specific downstream tasks with relatively little labelled data. In genomics, foundation models pre-trained on millions of genomes or single-cell profiles learn general-purpose representations of biological sequences and cell states. These representations encode functional information (regulatory grammar, cell-type identity, variant effects) that emerges from the training data without explicit supervision. The analogy to large language models in natural language processing is direct: just as GPT learns language structure from text, genomic foundation models learn biological grammar from sequences.
+\end{keyconcept}
+
+\subsection{Transformer Architecture for Genomic Sequences}
+\label{subsec:emerging:transformer-architecture}
+
+The core computational mechanism underlying most genomic foundation models is the \textbf{transformer} architecture, specifically the self-attention mechanism that enables the model to capture long-range dependencies in sequence data.
+
+Given an input sequence of tokens (nucleotides, $k$-mers, or gene identifiers), the self-attention mechanism computes a weighted representation of each token based on its relationships to all other tokens in the sequence. For each attention head, the input embeddings are projected into three matrices---queries ($Q$), keys ($K$), and values ($V$)---and the attention output is:
+\begin{equation}
+  \text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^T}{\sqrt{d_k}}\right) V,
+  \label{eq:emerging:self-attention}
+\end{equation}
+where $d_k$ is the dimensionality of the key vectors and the scaling factor $1/\sqrt{d_k}$ prevents the dot products from becoming too large. The softmax function converts the raw attention scores into a probability distribution, so each position attends to a weighted combination of all other positions. Multi-head attention runs $h$ parallel attention computations with independent learned projections, allowing the model to attend to different types of relationships simultaneously.
+
+For DNA foundation models, this architecture is adapted in several ways:
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[DNABERT-2] Tokenizes DNA sequences using byte pair encoding (BPE) rather than fixed $k$-mers, producing a vocabulary of variable-length tokens learned from genome data. DNABERT-2 is pre-trained with masked language modelling (predicting masked tokens from context) on multi-species genome data. The BPE tokenization substantially reduces sequence length compared to single-nucleotide tokenization, enabling longer genomic context windows within the same computational budget.
+
+  \item[Nucleotide Transformer] A family of models ranging from 50 million to 2.5 billion parameters, trained on 3,202 reference genomes plus 850 diverse human genomes. Uses 6-mer tokenization and is pre-trained with masked language modelling. The resulting embeddings capture regulatory element activity, splicing signals, and variant effects, enabling zero-shot or few-shot prediction on these tasks.
+
+  \item[Evo] Uses a hybrid \textbf{StripedHyena} architecture combining attention layers with state-space model (SSM) layers, achieving a context window of 131 kilobases---far longer than standard transformer models. The SSM layers provide efficient processing of long sequences with sub-quadratic computational complexity (standard self-attention scales as $O(n^2)$ in sequence length $n$), while the interspersed attention layers capture specific long-range interactions. Evo is trained on 2.7 million prokaryotic and phage genomes using next-token prediction.
+\end{description}
+
+These models are applied to downstream tasks through either \textbf{fine-tuning} (adjusting model weights on a labelled dataset) or \textbf{zero-shot prediction} (using the pre-trained model directly). Key applications include:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Variant effect prediction:} Compute the log-likelihood ratio of the reference vs.\ alternate allele in the model's learned distribution to score variant deleteriousness.
+  \item \textbf{Regulatory element annotation:} Classify genomic sequences as promoters, enhancers, or silencers based on learned sequence representations.
+  \item \textbf{Functional sequence design:} Use the generative capabilities of the model to design novel regulatory sequences or gene constructs with desired properties.
+\end{itemize}
+
+\subsection{AlphaFold and the Sequence-to-Structure Connection}
+\label{subsec:emerging:alphafold}
+
+While not a sequencing technology, \textbf{AlphaFold} (DeepMind) represents the most dramatic demonstration of AI's impact on biology. AlphaFold2 (2020) and AlphaFold3 (2024) predict three-dimensional protein structures from amino acid sequences with near-experimental accuracy. The connection to sequencing is fundamental: the amino acid sequence predicted by AlphaFold is ultimately derived from the DNA/RNA sequence produced by sequencing. The combination of genome sequencing $\rightarrow$ gene prediction $\rightarrow$ protein structure prediction $\rightarrow$ functional annotation creates a complete pipeline from sequence to molecular function.
+
+
+\section{Cloud and On-Premise Computing}
+\label{sec:emerging:cloud}
+
+The computational demands of modern sequencing analysis---from petabyte-scale storage to GPU-intensive deep learning---have driven the development of specialized cloud platforms and high-performance computing solutions.
+
+\subsection{Major Cloud Platforms for Genomics}
+\label{subsec:emerging:cloud-platforms}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Terra / AnVIL (Broad Institute)] Terra is a cloud-based platform built on Google Cloud that provides a workspace for running genomic analyses at scale. The NHGRI AnVIL (Analysis, Visualization, and Informatics Lab-space) project provides controlled access to large genomic datasets (e.g., gnomAD, GTEx, CCDG) alongside analytical tools within Terra. Workflows are typically written in WDL (Workflow Description Language) and executed by the Cromwell engine.
+
+  \item[DNAnexus] A commercial cloud platform that provides secure, compliant (HIPAA, FedRAMP) genomic data analysis. Supports multiple workflow languages and provides a curated app library. Used by the UK Biobank for analysis of 500,000 whole-genome sequences.
+
+  \item[Illumina Connected Analytics (ICA)] Illumina's cloud platform for analysis of data from Illumina sequencing instruments. Provides DRAGEN-based secondary analysis pipelines and integrates with Illumina's BaseSpace Sequence Hub for data management.
+
+  \item[Illumina DRAGEN] A hardware-accelerated (FPGA-based) bioinformatics pipeline that performs alignment, variant calling, and other analyses at dramatically faster speeds than software-only tools. DRAGEN can process a 30$\times$ whole-genome in $\sim$25 minutes, compared to hours for standard BWA-MEM + GATK pipelines. Available both on-premise (DRAGEN server) and in the cloud.
+
+  \item[Seven Bridges] A cloud genomics platform that supports CWL and WDL workflows, with integration to multiple cloud providers (AWS, Google Cloud, Azure). Used by the NCI Cancer Genomics Cloud.
+
+  \item[Nextflow Tower / Seqera Platform] A management and monitoring platform for Nextflow workflows that provides a web interface for launching, monitoring, and managing pipeline executions across cloud and HPC environments. Supports AWS Batch, Google Cloud Life Sciences, Azure Batch, and traditional HPC schedulers (SLURM, PBS, LSF).
+\end{description}
+
+\subsection{GPU Acceleration}
+\label{subsec:emerging:gpu}
+
+\begin{description}[style=nextline, itemsep=2pt]
+  \item[NVIDIA Clara Parabricks] A suite of GPU-accelerated genomics tools that reimplements standard bioinformatics algorithms (BWA-MEM, GATK HaplotypeCaller, DeepVariant, STAR) on GPUs. A 30$\times$ whole-genome analysis that takes 24+ hours on a 16-core CPU can be completed in under 30 minutes on a single GPU node. Parabricks is available on-premise and in all major cloud environments.
+\end{description}
+
+\begin{tipbox}[title={Choosing Between Cloud and On-Premise}]
+The choice between cloud and on-premise computing depends on several factors:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Data volume:} For occasional, burst-intensive analyses, cloud is cost-effective. For continuous high-volume sequencing (e.g., a production genome center), on-premise HPC clusters may be more economical.
+  \item \textbf{Data sensitivity:} Clinical and human genetic data may have regulatory requirements (HIPAA, GDPR) that constrain where data can be stored and processed. Many cloud platforms now offer compliant environments.
+  \item \textbf{Egress costs:} Downloading data from the cloud (``egress'') incurs fees that can be substantial for petabyte-scale datasets. ``Bring compute to the data'' strategies (analyzing data where it is stored) mitigate this.
+  \item \textbf{Reproducibility:} Cloud platforms with containerized workflows (Docker/Singularity) and workflow managers (Nextflow, Snakemake, WDL/Cromwell) provide excellent computational reproducibility.
+\end{itemize}
+\end{tipbox}
+
+
+\section{Portable and Point-of-Care Sequencing}
+\label{sec:emerging:portable}
+
+The Oxford Nanopore MinION---a USB-powered sequencer that weighs 87 grams and costs approximately \$1,000---has enabled sequencing in environments that were previously unimaginable.
+
+\subsection{Field Sequencing Deployments}
+\label{subsec:emerging:field}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Ebola outbreak (2015--2016)] Josh Quick and Nicholas Loman deployed MinION sequencers to Guinea during the West African Ebola epidemic, performing real-time viral genome sequencing in field laboratories with minimal infrastructure. Results were available within 24 hours of sample collection, enabling tracking of viral transmission chains.
+
+  \item[International Space Station] NASA astronaut Kate Rubins performed the first DNA sequencing in space using a MinION aboard the ISS in 2016, demonstrating that sequencing works in microgravity. Subsequent experiments have sequenced microbial communities from ISS surfaces.
+
+  \item[Antarctic and Arctic research] MinION sequencers have been deployed to Antarctic research stations and Arctic field camps for environmental DNA surveys of marine and terrestrial ecosystems, where samples cannot be easily shipped to sequencing facilities.
+
+  \item[Rainforest biodiversity] Researchers have performed real-time species identification in tropical rainforests using MinION sequencing of environmental DNA and barcoding amplicons, enabling immediate feedback for biodiversity surveys.
+\end{description}
+
+\subsection{Clinical Rapid Sequencing}
+\label{subsec:emerging:clinical-rapid}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Pathogen identification] Metagenomic nanopore sequencing can identify bacterial, viral, and fungal pathogens from clinical samples (blood, cerebrospinal fluid, respiratory secretions) in 4--8 hours, compared to days for culture-based methods. This is particularly valuable for critically ill patients with infections of unknown etiology.
+
+  \item[Rapid whole-genome sequencing for neonates] Stanford University's rapid \acrshort{WGS} program demonstrated diagnosis of genetic diseases in critically ill newborns within 8--14 hours from blood draw to diagnosis, using ultra-rapid library preparation and accelerated Illumina sequencing combined with DRAGEN analysis.
+
+  \item[Antimicrobial resistance profiling] Nanopore sequencing of bacterial isolates can identify resistance genes and predict antibiotic susceptibility within hours, guiding antibiotic therapy decisions far faster than phenotypic susceptibility testing.
+\end{description}
+
+\subsection{Veterinary and Agricultural Diagnostics}
+\label{subsec:emerging:vet-ag}
+
+Portable sequencing is increasingly used outside of human medicine:
+\begin{itemize}[itemsep=2pt]
+  \item Detection of plant pathogens in the field, enabling rapid quarantine decisions.
+  \item Identification of animal diseases at the farm level without shipping samples to central laboratories.
+  \item Food safety testing: rapid identification of contaminating organisms in food production facilities.
+  \item Aquaculture: monitoring for fish pathogens in farmed fish populations.
+\end{itemize}
+
+
+\section{Democratising Genomics and Healthcare}
+\label{sec:emerging:democratisation}
+
+For most of the history of genome sequencing, access to genomic information was restricted to well-funded academic institutions and specialist clinical centres. That is changing rapidly. Falling sequencing costs, the rise of direct-to-consumer (DTC) genomics, open-source bioinformatics, and cloud computing are converging to make it plausible for individuals to obtain, process, and interpret their own genome sequences---a shift with profound implications for preventive medicine, personalised drug prescribing, and health equity.
+
+\subsection{The Falling Cost of Personal Genome Sequencing}
+\label{subsec:demo:cost}
+
+The cost of sequencing a human genome has fallen from approximately \$3 billion in 2003 (the Human Genome Project) to below \$200 for 30$\times$ short-read WGS in 2024. Several commercial providers now offer clinical-grade (ISO 15189) whole-genome sequencing directly to consumers or via physicians at a price accessible to middle-income individuals in high-income countries. Continued cost reductions driven by new sequencing chemistry (Illumina NovaSeq X, Complete Genomics DNBSEQ-T20x2, Ultima UG 100) and increasing competition are expected to push the price of a complete genome below \$100 within the coming years.
+
+\begin{keyconcept}[title={Why Your Genome Is Worth Sequencing Once}]
+Unlike most laboratory tests, a genome sequence is a permanent record: once sequenced, it can be reanalysed repeatedly as knowledge grows. Variants of uncertain significance today may be reclassified as pathogenic or benign in future database updates. A genome sequenced at age 30 can yield new clinically actionable insights at age 50 without any additional sequencing cost.
+\end{keyconcept}
+
+\subsection{Options for Obtaining Your Genome Sequence}
+\label{subsec:demo:options}
+
+Individuals seeking to obtain genome-scale data have several pathways at different cost and resolution points:
+
+\begin{description}[style=nextline]
+  \item[DTC genotyping arrays (\$50--150)] Companies such as 23andMe and AncestryDNA genotype $\sim$600,000--900,000 SNPs using microarrays. Array data is inexpensive and can be used for ancestry estimation, disease-risk polygenic scores, and carrier status for many Mendelian conditions. Limitations: only interrogates known variant positions, cannot detect novel mutations, structural variants, or indels outside the array design. Raw data files (PLINK format) can be downloaded and analysed independently.
+
+  \item[Low-pass WGS (0.5--1$\times$; \$50--100)] Companies such as Nebula Genomics offer low-coverage whole-genome sequencing followed by statistical imputation to infer genotypes at millions of SNP positions. Imputation accuracy is high for common variants (MAF $>$5\%) and diminishes for rare variants. Suitable for polygenic risk scores but not for rare Mendelian diagnosis.
+
+  \item[30$\times$ short-read WGS (\$200--400)] Full 30$\times$ Illumina WGS through providers such as Nebula Genomics (research tier), Dante Labs, or Sequencing.com provides a complete FASTQ/BAM file for personal download. This is equivalent to a clinical-grade WGS and enables detection of SNPs, indels, structural variants, and copy number variants genome-wide. A physician's prescription or clinical intermediary may be required in some jurisdictions.
+
+  \item[HiFi long-read WGS (\$600--1,200)] PacBio HiFi or Oxford Nanopore sequencing now enables phased diploid assemblies and direct methylation profiling. Services from providers such as Phase Genomics or specialty clinical labs offer long-read WGS for individuals seeking full haplotype resolution, characterisation of complex structural variants, or repeat expansions (e.g., in trinucleotide repeat diseases).
+
+  \item[Clinical WGS via healthcare system] In an increasing number of countries (UK NHS, Australia, parts of Europe), whole-genome or whole-exome sequencing is reimbursed for specific indications (rare disease, oncology, neonatal intensive care). For individuals with a clinical indication, this is the highest-quality route, with interpretation by accredited clinical geneticists.
+\end{description}
+
+\begin{warningbox}[title={Data Privacy and Ownership}]
+Before uploading genomic data to any third-party service, understand the company's data-sharing policies. Several DTC companies have shared or sold anonymised genetic data to pharmaceutical companies. Your genome contains identifying information not only about you but about your relatives. Opt-out from research-sharing programmes if privacy is a concern, and prefer services that allow you to download raw data and delete stored copies.
+\end{warningbox}
+
+\subsection{Processing Your Own Genome: A Practical Guide}
+\label{subsec:demo:processing}
+
+If you have obtained raw FASTQ files from a WGS service, the following open-source pipeline produces a fully annotated variant call set using commodity cloud computing at minimal cost.
+
+\subsubsection{Step 1: Infrastructure}
+
+The analysis can be run on a personal laptop (feasible but slow), a university HPC cluster (free for students/staff), or cloud computing. For individuals without HPC access, cloud options include:
+
+\begin{itemize}[nosep]
+  \item \textbf{Google Colab Pro} (\$10/month): 52\,GB RAM, A100 GPU access; sufficient for small analyses.
+  \item \textbf{AWS / Google Cloud / Azure spot/preemptible instances}: A 30$\times$ WGS analysis (BWA-MEM2 + GATK) costs approximately \$2--5 in cloud compute on a 32-core spot instance. Tools such as \software{Terra} (Broad Institute) or \software{DNAnexus} provide managed platforms that handle cloud resource provisioning automatically.
+  \item \textbf{Seven Bridges / Galaxy}: Browser-based platforms offering pre-built pipelines (GATK Best Practices, nf-core/sarek) that require no command-line expertise.
+\end{itemize}
+
+\subsubsection{Step 2: Short-Read WGS Analysis Pipeline}
+
+\begin{lstlisting}[language=bash, caption={Personal genome analysis using nf-core/sarek (Nextflow).}]
+# Install Nextflow and pull the sarek pipeline
+curl -s https://get.nextflow.io | bash
+nextflow pull nf-core/sarek
+
+# Create a minimal samplesheet (CSV)
+cat > samplesheet.csv <<'EOF'
+patient,sample,lane,fastq_1,fastq_2
+individual1,genome_seq,1,reads_R1.fastq.gz,reads_R2.fastq.gz
+EOF
+
+# Run the full germline variant calling pipeline
+nextflow run nf-core/sarek \
+  --input samplesheet.csv \
+  --genome GRCh38 \
+  --tools haplotypecaller,vep,snpeff \
+  --outdir results/ \
+  -profile docker
+
+# Key outputs:
+#   results/variant_calling/haplotypecaller/*.vcf.gz  -- raw SNP/indel calls
+#   results/annotation/vep/*.ann.vcf.gz               -- annotated variants
+#   results/multiqc/multiqc_report.html               -- QC summary
+\end{lstlisting}
+
+The \software{nf-core/sarek} pipeline implements the GATK Best Practices workflow and handles all steps automatically: adapter trimming (\software{fastp}), alignment (\software{BWA-MEM2}), duplicate marking (\software{GATK MarkDuplicates}), base quality score recalibration (BQSR), HaplotypeCaller genotyping, variant filtration (VQSR or hard filters), and annotation with \software{VEP} or \software{snpEff}.
+
+\subsubsection{Step 3: Interpreting Your Variants}
+
+After generating a variant call file (VCF), interpretation requires cross-referencing against established databases:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{ClinVar} (\url{ncbi.nlm.nih.gov/clinvar}): Aggregates variant--disease associations curated by clinical laboratories worldwide. Filter your VCF for ClinVar \texttt{CLNSIG=Pathogenic} or \texttt{Likely\_pathogenic} variants.
+  \item \textbf{OMIM} (Online Mendelian Inheritance in Man): Comprehensive catalogue of Mendelian disease genes and allelic variants.
+  \item \textbf{gnomAD}: Population allele frequencies from $>$150,000 individuals. Variants absent from gnomAD or with allele frequency $<$0.001 in relevant populations are candidates for rare disease investigation.
+  \item \textbf{PharmGKB / CPIC}: Pharmacogenomic variant--drug interaction databases that identify variants affecting drug metabolism (e.g., \gene{CYP2C19} variants affecting clopidogrel response, \gene{TPMT} variants affecting thiopurine toxicity).
+  \item \textbf{PGS Catalog}: Repository of validated polygenic score models. Tools such as \software{pgsc\_calc} compute polygenic risk scores for dozens of common conditions (type 2 diabetes, coronary artery disease, breast cancer) from your VCF.
+\end{itemize}
+
+\begin{tipbox}[title={Using Phenopackets and Matchmaker Exchange}]
+If you suspect a rare Mendelian condition, encoding your phenotype as a \textbf{Phenopacket} (using Human Phenotype Ontology, HPO, terms) and submitting to \textbf{Matchmaker Exchange} (matchmakerexchange.org) can connect you with researchers and clinicians studying the same gene or phenotype globally---a powerful tool for ultra-rare disease diagnosis.
+\end{tipbox}
+
+\subsubsection{Step 4: Methylation and Long-Read Analysis}
+
+If you have obtained ONT or PacBio HiFi data, additional analysis layers are available:
+
+\begin{lstlisting}[language=bash, caption={Personal methylome analysis with Oxford Nanopore data.}]
+# Basecall with Dorado (includes 5mC methylation calling)
+dorado basecaller dna_r10.4.1_e8.2_400bps_sup@v4.3.0 \
+  --modified-bases 5mC_CpG \
+  pod5_dir/ > calls.bam
+
+# Align to reference
+samtools fastq calls.bam | \
+  minimap2 -ax map-ont GRCh38.fa - | \
+  samtools sort -o aligned.bam && samtools index aligned.bam
+
+# Extract per-CpG methylation
+modkit pileup aligned.bam methylation.bedmethyl \
+  --ref GRCh38.fa --preset traditional
+
+# Compute global CpG methylation statistics
+awk 'NR>1 {sum+=$11; count++} END {print "Mean CpG methylation:", sum/count "%"}' \
+  methylation.bedmethyl
+\end{lstlisting}
+
+\subsection{Equity and the Digital Divide in Genomic Medicine}
+\label{subsec:demo:equity}
+
+While falling costs are democratising access to genomic data, significant barriers remain:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Underrepresentation of non-European populations} in reference databases (ClinVar, gnomAD) means that variants common in African, Asian, and Indigenous populations may be misclassified as rare or of uncertain significance. The H3Africa initiative, GenomeAsia100K, and the NHLBI TOPMed programme are working to rectify this imbalance.
+  \item \textbf{Interpretation expertise:} A VCF file is not a medical report. Without access to a clinical geneticist or genetic counsellor, most individuals cannot safely act on variant findings. Expanding training and telehealth provision of genetic counselling is essential.
+  \item \textbf{Infrastructure:} High-throughput sequencing requires reliable electricity, high-bandwidth internet, and computing resources---prerequisites not universally available in low- and middle-income countries (LMICs). Portable sequencers (Oxford Nanopore MinION) and offline analysis tools (\software{EPI2ME}, \software{minimap2} on laptops) are beginning to address this.
+  \item \textbf{Regulatory environments:} In several countries, DTC genomics is restricted or prohibited to protect consumers from direct access to clinically sensitive information without medical supervision.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{Pathways for obtaining personal genome sequencing at different price points (2024 prices, approximate).}
+\label{tab:personal-genomics}
+\small
+\begin{tabularx}{\textwidth}{@{}l l l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Approach} & \textbf{Cost} & \textbf{Coverage} & \textbf{Variants detected} & \textbf{Best use case} \\
+\midrule
+DTC SNP array & \$50--150 & 0.03\% & Common SNPs only & Ancestry, polygenic scores \\
+Low-pass WGS (0.5$\times$) & \$50--100 & 100\% (imputed) & Common SNPs (imputed) & Polygenic scores \\
+30$\times$ short-read WGS & \$200--400 & 100\% & SNPs, indels, SVs, CNVs & Complete variant profiling \\
+HiFi long-read WGS & \$600--1,200 & 100\% (phased) & All + repeat expansions & Phasing, structural variants \\
+Clinical WGS (NHS/insured) & Covered & 100\% & All + clinical reporting & Rare disease, oncology \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{The Personal Genome as a Longitudinal Health Tool}
+\label{subsec:demo:longitudinal}
+
+A DNA sequence is fixed from birth; the transcriptome, methylome, and proteome change throughout life in response to ageing, environment, and disease. Combining periodic \textbf{multi-omic snapshots} (RNA-seq from blood, cell-free DNA, proteomics) with a fixed whole-genome reference is emerging as a framework for proactive, personalised health monitoring. Studies such as the \textbf{Stanford Wellness Study} (Michael Snyder's group) demonstrated that longitudinal multi-omic profiling can detect pre-symptomatic disease states---including nascent type 2 diabetes---before clinical symptoms appear. As the cost of these measurements continues to fall, periodic multi-omic health checks are likely to transition from research tools to mainstream preventive medicine.
+
+\section{Integration of Multi-Omics with Electronic Health Records}
+\label{sec:emerging:ehr-integration}
+
+As genomic sequencing becomes routine in clinical care, integrating sequencing results with electronic health records (EHRs) presents both opportunities and challenges:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Pharmacogenomic decision support:} Embedding pharmacogenomic variant information in the EHR and triggering clinical decision support alerts when a drug--gene interaction is relevant. Programs at Vanderbilt (PREDICT), St.\ Jude (PG4KDS), and the University of Chicago have demonstrated feasibility.
+  \item \textbf{Variant reanalysis:} As knowledge of variant pathogenicity evolves, genomic data stored in EHRs can be periodically reanalysed, potentially yielding new diagnoses years after initial sequencing.
+  \item \textbf{Data standards:} HL7 FHIR Genomics provides a standard framework for representing genomic data in EHR systems, enabling interoperability across institutions.
+  \item \textbf{Challenges:} Variant interpretation updates, data storage costs, patient consent for long-term data retention, and computational infrastructure for reanalysis all remain active areas of development.
+\end{itemize}
+
+
+\section{Pangenomics: Moving Beyond Single Reference Genomes}
+\label{sec:emerging:pangenomics}
+
+\subsection{The Limitations of a Single Reference}
+\label{subsec:emerging:reference-bias}
+
+Since the completion of the Human Genome Project, nearly all genomic analyses have relied on a single linear reference genome (currently GRCh38/hg38, or the T2T-CHM13 assembly). This approach introduces \textbf{reference bias}: sequence reads containing variants not present in the reference may fail to align or align with lower quality, systematically underdetecting variation in individuals whose genomes diverge most from the reference. Because the reference genome is predominantly derived from a small number of donors of European ancestry, this bias disproportionately affects underrepresented populations.
+
+\subsection{The Human Pangenome Reference Consortium}
+\label{subsec:emerging:hprc}
+
+The \textbf{Human Pangenome Reference Consortium (HPRC)} aims to create a reference that represents the full spectrum of human genomic diversity. The initial release includes high-quality phased diploid assemblies from 47 genetically diverse individuals, with a goal of 350 individuals representing global genetic diversity. These assemblies are being integrated into a unified pangenome reference.
+
+\subsection{Graph-Based References}
+\label{subsec:emerging:graph-references}
+
+Pangenome references are represented as \textbf{sequence graphs} rather than linear sequences. In a graph-based reference, common variants are represented as alternative paths through the graph, allowing reads from any individual to find their correct alignment regardless of which alleles they carry.
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[\software{vg} (variation graph)] The most established graph-based genome toolkit. \software{vg} constructs a variation graph from a reference genome plus known variants (or from multiple assemblies), indexes the graph for fast read mapping, and calls variants against the graph. Graph-based mapping with \software{vg giraffe} has been shown to reduce reference bias and improve variant calling accuracy, particularly for structural variants and in regions of high diversity (e.g., the MHC/HLA region).
+
+  \item[\software{minigraph}] Developed by Heng Li (author of BWA and minimap2), \software{minigraph} constructs a pangenome graph from multiple genome assemblies, with a focus on structural variants. It represents SVs as alternative paths in the graph, enabling SV genotyping by mapping reads to the graph.
+
+  \item[\software{minigraph-cactus}] Combines \software{minigraph} with the Cactus whole-genome aligner to produce a comprehensive pangenome graph that captures both small variants and structural variants from multiple assemblies.
+\end{description}
+
+\subsection{Pangenome Graph Formalism and the GFA Format}
+\label{subsec:emerging:graph-formalism}
+
+The mathematical representation of a pangenome as a graph provides a rigorous framework for encoding, indexing, and querying genomic variation. A \textbf{variation graph} (or sequence graph) is defined as a directed graph $G = (V, E)$ where:
+
+\begin{itemize}[itemsep=2pt]
+  \item Each node $v \in V$ represents a \textbf{sequence segment}---a string of nucleotides corresponding to a stretch of DNA shared by one or more haplotypes.
+  \item Each directed edge $(u, v) \in E$ represents \textbf{adjacency}: the sequence of node $u$ is immediately followed by the sequence of node $v$ in at least one haplotype.
+  \item A \textbf{path} through the graph corresponds to a complete haplotype sequence, traversing a series of nodes connected by edges. The reference genome is one such path; each alternative haplotype defines another.
+\end{itemize}
+
+At a variant site (e.g., a SNP or indel), the graph branches into alternative nodes representing the reference and alternate alleles, then merges back at the downstream shared sequence. For a simple biallelic SNP, the graph contains a ``bubble'' structure: one node for the reference allele and one for the alternate allele, both sharing the same predecessor and successor nodes. Structural variants (insertions, deletions, inversions) produce more complex graph topologies, including nested bubbles and non-trivial edge structures.
+
+The standard interchange format for pangenome graphs is the \textbf{Graphical Fragment Assembly (GFA)} format. GFA version 1 uses three record types:
+\begin{description}[style=nextline, itemsep=2pt]
+  \item[S (Segment)] Defines a node: \texttt{S <name> <sequence>}. Each segment has a unique name and an associated nucleotide sequence.
+  \item[L (Link)] Defines an edge: \texttt{S <from> <from\_orient> <to> <to\_orient> <overlap>}. Links connect the end of one segment to the beginning of another, with orientation ($+$ or $-$ strand) and optional overlap specification.
+  \item[P (Path)] Defines a haplotype path: \texttt{P <name> <segment\_names> <overlaps>}. Paths trace named sequences through the graph, recording which segments are traversed and in which orientation.
+\end{description}
+
+The \software{vg} toolkit operates on variation graphs in GFA or its own internal formats (XG, GBWT, GBZ). The key operations supported by \software{vg} include:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Graph construction} (\texttt{vg construct}, \texttt{vg autoindex}): Build a variation graph from a linear reference plus VCF of known variants, or from multiple genome assemblies via \software{minigraph-cactus}.
+  \item \textbf{Read mapping} (\texttt{vg giraffe}): Map short reads to the graph using minimizer-based seeding and graph-aware extension. \software{vg giraffe} achieves speed comparable to linear aligners (BWA-MEM2) while reducing reference bias by considering all paths through variant sites.
+  \item \textbf{Variant calling} (\texttt{vg call}, \texttt{vg pack}): Genotype variants by examining read support for alternative paths through graph bubbles.
+  \item \textbf{Surjection} (\texttt{vg surject}): Project graph alignments back onto a linear reference coordinate system, producing standard BAM files compatible with existing tools.
+\end{enumerate}
+
+Graph-based mapping with \software{vg giraffe} has been benchmarked to reduce reference bias by 5--15\% in highly polymorphic regions (such as the MHC/HLA locus) and to improve structural variant genotyping accuracy by providing explicit graph representation of known SVs. As the HPRC pangenome reference matures and is adopted by major variant calling pipelines, graph-based analysis is expected to become the standard approach for human genome analysis.
+
+\subsection{Population-Specific References}
+\label{subsec:emerging:pop-references}
+
+Some projects have created population-specific reference genomes or pangenomes tailored to specific ancestral groups (e.g., African, East Asian, South Asian). These references can improve variant calling accuracy in the target population by reducing reference bias for population-specific structural variants and common polymorphisms.
+
+\begin{warningbox}
+While population-specific references can improve technical accuracy for a given population, they risk reinforcing the problematic concept of discrete biological ``races.'' The pangenome approach---representing the full continuum of human diversity in a single graph-based reference---is conceptually and practically preferable to a collection of population-specific linear references.
+\end{warningbox}
+
+
+\section{Ethical Considerations}
+\label{sec:emerging:ethics}
+
+The increasing power, accessibility, and scope of sequencing technologies raise profound ethical questions that the genomics community must actively address.
+
+\subsection{Genetic Privacy and Insurance Discrimination}
+\label{subsec:emerging:privacy}
+
+In the United States, the \textbf{Genetic Information Nondiscrimination Act (GINA)} of 2008 prohibits health insurers and employers from using genetic information to make coverage or employment decisions. However, GINA has important gaps: it does not cover life insurance, disability insurance, or long-term care insurance. Similar legislation exists in other countries but with varying scope and enforcement.
+
+As sequencing becomes routine in clinical care and direct-to-consumer testing, the volume of genetic data in existence is expanding rapidly, increasing the potential for misuse.
+
+\subsection{Direct-to-Consumer Genetic Testing}
+\label{subsec:emerging:dtc}
+
+Companies such as 23andMe, AncestryDNA, and others offer genotyping (and increasingly sequencing) services directly to consumers. These services raise concerns about:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Informed consent:} Do consumers understand the implications of learning about disease risk, carrier status, or pharmacogenomic variants?
+  \item \textbf{Data security:} Consumer genomic databases have been targeted by hackers and used by law enforcement (via genetic genealogy).
+  \item \textbf{Clinical validity:} Some DTC health reports lack the clinical validation and contextual interpretation provided by certified genetic counsellors and clinical geneticists.
+\end{itemize}
+
+\subsection{Incidental Findings in Clinical Sequencing}
+\label{subsec:emerging:incidental}
+
+When a patient undergoes clinical whole-genome or whole-exome sequencing for one condition, the data may reveal \textbf{incidental (or secondary) findings}---pathogenic variants unrelated to the primary indication. The American College of Medical Genetics and Genomics (ACMG) maintains a list of $\sim$80 genes for which incidental findings should be reported to patients because they are medically actionable. Deciding which findings to disclose, and how to counsel patients about unexpected results, remains an area of active ethical debate.
+
+\subsection{Data Sovereignty for Indigenous Populations}
+\label{subsec:emerging:data-sovereignty}
+
+Genomic research involving Indigenous communities raises unique ethical considerations. Historically, some studies collected samples from Indigenous populations without adequate consent, shared data without community oversight, or published findings that conflicted with community values. Increasingly, Indigenous communities are asserting \textbf{data sovereignty}---the principle that genomic data from a community belongs to and should be governed by that community. Frameworks such as the CARE Principles for Indigenous Data Governance (Collective benefit, Authority to control, Responsibility, Ethics) complement the FAIR data principles (Findable, Accessible, Interoperable, Reusable) to ensure that genomic research benefits the communities from which data are derived.
+
+\subsection{Equitable Access to Sequencing Technologies}
+\label{subsec:emerging:equity}
+
+Despite dramatic cost reductions, access to sequencing technologies remains unevenly distributed globally:
+
+\begin{itemize}[itemsep=2pt]
+  \item Many low- and middle-income countries lack the sequencing infrastructure, trained personnel, and computational resources to implement clinical genomics.
+  \item Genomic databases and reference panels are heavily biased toward individuals of European ancestry, reducing the clinical utility of sequencing in underrepresented populations.
+  \item The cost of interpretation (genetic counselling, bioinformatics expertise) remains high even as the cost of sequencing itself decreases.
+\end{itemize}
+
+Addressing these disparities requires investment in local sequencing capacity, training programs, diverse reference panels (such as the HPRC), and open-source computational tools.
+
+
+\section{Future Outlook: Where Is the Field Heading?}
+\label{sec:emerging:future}
+
+Several trends are likely to shape the sequencing field over the coming decade:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Sequencing as a clinical default:} Whole-genome sequencing will increasingly replace targeted panels as the first-line clinical test for genetic diseases, cancer profiling, and prenatal screening, enabled by sub-\$100 sequencing costs and faster turnaround times.
+  \item \textbf{Multiomics as standard practice:} Single-cell and spatial multiomics will become routine rather than specialized, as commercial platforms reduce costs and simplify workflows.
+  \item \textbf{AI-native analysis:} Foundation models will become the backbone of genomic analysis, enabling zero-shot variant interpretation, cell-type annotation, and treatment prediction without task-specific training data.
+  \item \textbf{Real-time clinical genomics:} The combination of rapid sequencing (ONT, ultrafast Illumina protocols), hardware acceleration (DRAGEN, Parabricks), and cloud computing will enable same-day genomic diagnosis in critical care settings.
+  \item \textbf{Pangenome adoption:} Graph-based pangenome references will gradually replace linear references as the default for variant calling and genome analysis, reducing reference bias and improving accuracy for all populations.
+  \item \textbf{Direct protein and metabolite sequencing:} As protein sequencing technologies (Quantum-Si, Nautilus) mature, integrated nucleic acid + protein + metabolite profiling from the same sample will become feasible.
+  \item \textbf{Decentralized sequencing:} Portable and point-of-care sequencing will expand beyond research into routine clinical, agricultural, and environmental monitoring applications, making sequencing as commonplace as PCR testing.
+\end{itemize}
+
+
+\section{Practical Workflow: Pangenome Alignment}
+\label{sec:emerging:pangenome-workflow}
+
+The following workflow examples illustrate alignment of short reads to a pangenome graph reference, representing the shift from linear reference-based analysis to graph-based approaches.
+
+\subsection{Snakemake Workflow}
+\label{subsec:emerging:pangenome-snakemake}
+
+\begin{lstlisting}[language=Python, caption={Snakemake workflow for pangenome-based variant calling using vg giraffe.}, label={lst:emerging:snakemake}]
+# Snakefile for Pangenome Variant Calling with vg
+configfile: "config/pangenome_config.yaml"
+
+SAMPLES = config["samples"]
+GRAPH = config["pangenome_gbz"]   # .gbz graph index
+DIST = config["pangenome_dist"]   # .dist distance index
+MINIM = config["pangenome_min"]   # .min minimizer index
+REF_FASTA = config["linear_ref"]  # for surjection
+
+rule all:
+    input:
+        expand("results/{sample}/deepvariant/"
+               "{sample}.vcf.gz", sample=SAMPLES),
+        "results/combined/multisample.vcf.gz"
+
+rule vg_giraffe_map:
+    """Map reads to pangenome graph with vg giraffe."""
+    input:
+        r1="data/{sample}_R1.fastq.gz",
+        r2="data/{sample}_R2.fastq.gz"
+    output:
+        gam="results/{sample}/mapped/{sample}.gam"
+    params:
+        gbz=GRAPH,
+        dist=DIST,
+        minim=MINIM
+    threads: 16
+    resources:
+        mem_mb=32000
+    shell:
+        """
+        vg giraffe \
+            -Z {params.gbz} \
+            -m {params.minim} \
+            -d {params.dist} \
+            -f {input.r1} -f {input.r2} \
+            -t {threads} \
+            --output-format gam \
+            > {output.gam}
+        """
+
+rule surject_to_bam:
+    """Project graph alignments to linear reference."""
+    input:
+        gam="results/{sample}/mapped/{sample}.gam"
+    output:
+        bam="results/{sample}/mapped/{sample}.sorted.bam",
+        bai="results/{sample}/mapped/{sample}.sorted.bam.bai"
+    params:
+        gbz=GRAPH
+    threads: 8
+    resources:
+        mem_mb=16000
+    shell:
+        """
+        vg surject -x {params.gbz} \
+            -t {threads} -b \
+            {input.gam} \
+        | samtools sort -@ 4 -o {output.bam}
+        samtools index {output.bam}
+        """
+
+rule deepvariant:
+    """Call variants with DeepVariant."""
+    input:
+        bam="results/{sample}/mapped/{sample}.sorted.bam",
+        bai="results/{sample}/mapped/{sample}.sorted.bam.bai",
+        ref=REF_FASTA
+    output:
+        vcf="results/{sample}/deepvariant/"
+            "{sample}.vcf.gz"
+    threads: 16
+    resources:
+        mem_mb=64000
+    singularity:
+        "docker://google/deepvariant:latest"
+    shell:
+        """
+        /opt/deepvariant/bin/run_deepvariant \
+            --model_type=WGS \
+            --ref={input.ref} \
+            --reads={input.bam} \
+            --output_vcf={output.vcf} \
+            --num_shards={threads}
+        """
+
+rule merge_vcfs:
+    """Merge per-sample VCFs into a multi-sample VCF."""
+    input:
+        vcfs=expand("results/{sample}/deepvariant/"
+                    "{sample}.vcf.gz", sample=SAMPLES)
+    output:
+        merged="results/combined/multisample.vcf.gz"
+    threads: 4
+    shell:
+        """
+        bcftools merge {input.vcfs} \
+            --threads {threads} \
+            -Oz -o {output.merged}
+        tabix -p vcf {output.merged}
+        """
+\end{lstlisting}
+
+\subsection{Nextflow Workflow}
+\label{subsec:emerging:pangenome-nextflow}
+
+\begin{lstlisting}[language=Java, caption={Nextflow workflow for pangenome-based variant calling.}, label={lst:emerging:nextflow}]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl=2
+
+params.samples      = "data/samples.csv"
+params.pangenome_gbz = "/ref/hprc-v1.1-mc-grch38.gbz"
+params.pangenome_dist = "/ref/hprc-v1.1-mc-grch38.dist"
+params.pangenome_min  = "/ref/hprc-v1.1-mc-grch38.min"
+params.linear_ref   = "/ref/GRCh38.fa"
+params.outdir       = "results"
+
+// Read sample sheet: sample_id, r1, r2
+Channel
+    .fromPath(params.samples)
+    .splitCsv(header: true)
+    .map { row -> tuple(row.sample_id,
+                        file(row.r1),
+                        file(row.r2)) }
+    .set { sample_ch }
+
+process VG_GIRAFFE {
+    tag "$sample_id"
+    cpus 16
+    memory '32 GB'
+    container 'quay.io/vgteam/vg:latest'
+    publishDir "${params.outdir}/${sample_id}/mapped",
+               mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(r1), path(r2)
+
+    output:
+    tuple val(sample_id), path("${sample_id}.gam"),
+          emit: gam
+
+    script:
+    """
+    vg giraffe \
+        -Z ${params.pangenome_gbz} \
+        -m ${params.pangenome_min} \
+        -d ${params.pangenome_dist} \
+        -f ${r1} -f ${r2} \
+        -t ${task.cpus} \
+        --output-format gam \
+        > ${sample_id}.gam
+    """
+}
+
+process SURJECT_TO_BAM {
+    tag "$sample_id"
+    cpus 8
+    memory '16 GB'
+    container 'quay.io/vgteam/vg:latest'
+
+    input:
+    tuple val(sample_id), path(gam)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.sorted.bam"),
+          path("${sample_id}.sorted.bam.bai"),
+          emit: bam
+
+    script:
+    """
+    vg surject -x ${params.pangenome_gbz} \
+        -t ${task.cpus} -b ${gam} \
+    | samtools sort -@ 4 \
+        -o ${sample_id}.sorted.bam
+    samtools index ${sample_id}.sorted.bam
+    """
+}
+
+process DEEPVARIANT {
+    tag "$sample_id"
+    cpus 16
+    memory '64 GB'
+    container 'google/deepvariant:latest'
+    publishDir "${params.outdir}/${sample_id}/variants",
+               mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bam), path(bai)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.vcf.gz"),
+          emit: vcf
+
+    script:
+    """
+    /opt/deepvariant/bin/run_deepvariant \
+        --model_type=WGS \
+        --ref=${params.linear_ref} \
+        --reads=${bam} \
+        --output_vcf=${sample_id}.vcf.gz \
+        --num_shards=${task.cpus}
+    """
+}
+
+process MERGE_VCFS {
+    cpus 4
+    memory '8 GB'
+    publishDir "${params.outdir}/combined", mode: 'copy'
+
+    input:
+    path(vcfs)
+
+    output:
+    path("multisample.vcf.gz"), emit: merged
+    path("multisample.vcf.gz.tbi"), emit: index
+
+    script:
+    """
+    bcftools merge ${vcfs} \
+        --threads ${task.cpus} \
+        -Oz -o multisample.vcf.gz
+    tabix -p vcf multisample.vcf.gz
+    """
+}
+
+workflow {
+    VG_GIRAFFE(sample_ch)
+    SURJECT_TO_BAM(VG_GIRAFFE.out.gam)
+    DEEPVARIANT(SURJECT_TO_BAM.out.bam)
+
+    DEEPVARIANT.out.vcf
+        .map { sample_id, vcf -> vcf }
+        .collect()
+        .set { all_vcfs }
+
+    MERGE_VCFS(all_vcfs)
+}
+\end{lstlisting}
+
+
+\section{Visualising the Evolving Technology Landscape}
+\label{sec:emerging:tikz-landscape}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  era/.style={draw=none, fill=#1, rounded corners=4pt,
+    minimum width=3.2cm, minimum height=1cm,
+    font=\small\bfseries, text=white, align=center},
+  tech/.style={draw=gray!50, fill=white, rounded corners=2pt,
+    font=\scriptsize, inner sep=3pt, align=center, text width=2.8cm},
+  timeline/.style={ultra thick, gray!60},
+  connector/.style={thick, gray!40, dashed}
+]
+
+% Timeline
+\draw[timeline] (0,0) -- (16,0);
+\foreach \x/\yr in {0.5/2005, 3/2010, 5.5/2015, 8/2020, 10.5/2025, 13/2030} {
+  \draw[gray!60, thick] (\x,-0.2) -- (\x,0.2);
+  \node[below, font=\footnotesize\bfseries] at (\x,-0.3) {\yr};
+}
+
+% Era labels
+\node[era=MidnightBlue!80] at (1.75,1.2) {NGS\\Revolution};
+\node[era=OliveGreen!80] at (4.25,1.2) {Long-Read\\Era};
+\node[era=BrickRed!80] at (6.75,1.2) {Single-Cell\\\& Spatial};
+\node[era=Goldenrod!90!black] at (9.25,1.2) {Multiomics\\\& AI};
+\node[era=violet!80] at (11.75,1.2) {Pangenomics\\\& Clinical};
+
+% Technologies - above timeline
+\node[tech] at (1,-1.5) {454, Solexa/\\Illumina GA};
+\node[tech] at (3.5,-1.5) {PacBio RS,\\ONT MinION};
+\node[tech] at (6,-1.5) {10x Chromium,\\Visium, MERFISH};
+\node[tech] at (8.5,-1.5) {Multiome, CITE-seq,\\DeepVariant, scGPT};
+\node[tech] at (11,-1.5) {Pangenome ref,\\graph mapping};
+\node[tech] at (13.5,-1.5) {Protein seq,\\clinical WGS\\as default};
+
+% Connecting lines
+\foreach \x in {1, 3.5, 6, 8.5, 11, 13.5} {
+  \draw[connector] (\x,-0.1) -- (\x,-0.9);
+}
+
+% Cost trajectory overlay
+\draw[BrickRed, ultra thick, ->]
+  (0.5,2.8) node[above, font=\scriptsize, BrickRed] {\$100M}
+  -- (3,2.4) -- (5.5,2.0) -- (8,1.8) -- (10.5,1.75) -- (13,1.72)
+  node[above, font=\scriptsize, BrickRed] {$<$\$100};
+\node[BrickRed, font=\scriptsize\itshape, above] at (6.75,2.6) {Cost per genome};
+
+\end{tikzpicture}
+\caption[The evolving sequencing technology landscape.]{Timeline of the sequencing technology landscape, showing major eras, representative technologies, and the continuing decline in per-genome cost. Each era builds upon the previous ones; earlier technologies do not disappear but are augmented by newer capabilities.}
+\label{fig:emerging:landscape}
+\end{figure}
+
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=0.65cm, y=0.85cm]
+  % Axes
+  \draw[thick, -{Stealth}] (0,0) -- (21,0) node[right] {Year};
+  \draw[thick, -{Stealth}] (0,0) -- (0,9) node[above, align=center] {Cost per\\Genome (USD)};
+
+  % Y-axis labels (log scale)
+  \foreach \y/\lab in {0/\$100, 1.5/\$1{,}000, 3/\$10{,}000, 4.5/\$100K, 6/\$1M, 7.5/\$100M} {
+    \draw (-0.15,\y) -- (0.15,\y);
+    \node[left, font=\scriptsize] at (-0.2,\y) {\lab};
+  }
+
+  % X-axis labels
+  \foreach \x/\yr in {0/2001, 2/2003, 4/2005, 6/2007, 8/2009, 10/2011, 12/2014, 14/2017, 16/2020, 18/2023, 20/2026} {
+    \draw (\x,-0.15) -- (\x,0.15);
+    \node[below, rotate=45, anchor=north east, font=\scriptsize] at (\x,-0.2) {\yr};
+  }
+
+  % Data points
+  \filldraw[MidnightBlue] (0,7.5) circle (2.5pt);    % 2001: $95M
+  \filldraw[MidnightBlue] (4,6.5) circle (2.5pt);    % 2005: $30M
+  \filldraw[MidnightBlue] (6,4.5) circle (2.5pt);    % 2007: $100K (NGS)
+  \filldraw[MidnightBlue] (8,3.3) circle (2.5pt);    % 2009: $20K
+  \filldraw[MidnightBlue] (10,2.7) circle (2.5pt);   % 2011: $7K
+  \filldraw[MidnightBlue] (12,1.5) circle (2.5pt);   % 2014: $1K
+  \filldraw[MidnightBlue] (14,1.0) circle (2.5pt);   % 2017: $600
+  \filldraw[MidnightBlue] (16,0.6) circle (2.5pt);   % 2020: $300
+  \filldraw[MidnightBlue] (18,0.25) circle (2.5pt);  % 2023: $200
+  \filldraw[BrickRed] (20,0.0) circle (2.5pt);        % 2026: ~$100
+
+  % Line
+  \draw[MidnightBlue, thick]
+    (0,7.5) -- (4,6.5) -- (6,4.5) -- (8,3.3) --
+    (10,2.7) -- (12,1.5) -- (14,1.0) -- (16,0.6) --
+    (18,0.25);
+  \draw[BrickRed, thick, dashed] (18,0.25) -- (20,0.0);
+
+  % Moore's Law reference
+  \draw[gray, dashed, thick] (0,7.5) -- (20,4.2);
+  \node[gray, rotate=-10, font=\scriptsize\itshape] at (10,6.5) {Moore's Law trajectory};
+
+  % Annotations
+  \draw[->, BrickRed, thick] (6,5.5) -- (6,4.7);
+  \node[BrickRed, above, align=center, font=\scriptsize] at (6,5.6) {NGS era\\begins};
+
+  \draw[->, OliveGreen, thick] (12,2.5) -- (12,1.7);
+  \node[OliveGreen, above, align=center, font=\scriptsize] at (12,2.6) {\$1{,}000\\genome};
+
+  \draw[->, violet, thick] (18,1.2) -- (18,0.45);
+  \node[violet, above, align=center, font=\scriptsize] at (18,1.3) {\$200\\genome};
+
+  \node[BrickRed, font=\scriptsize\bfseries] at (20,0.7) {Projected};
+
+\end{tikzpicture}
+\caption[Sequencing cost trajectory: 2001--2026.]{The cost of sequencing a human genome from 2001 to 2026 (projected), shown on a logarithmic scale. The precipitous drop beginning around 2007 coincides with the introduction of NGS technologies. The decline has consistently outpaced Moore's Law. The dashed segment indicates projected costs. Data based on NHGRI estimates.}
+\label{fig:emerging:cost-trajectory}
+\end{figure}
+
+
+\section{Summary}
+\label{sec:emerging:summary}
+
+This chapter has surveyed the frontiers of sequencing technology and the broader genomics landscape. Key takeaways include:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Protein sequencing} technologies (Quantum-Si, Nautilus) are bringing sequencing-like approaches to the proteome, promising integrated multi-molecular profiling.
+  \item \textbf{In situ sequencing} (STARmap, ExSeq) reads sequences directly within intact tissues at subcellular resolution, merging the spatial and molecular information domains.
+  \item \textbf{Synthetic long reads} and linked-read technologies (TELL-seq, stLFR) extract long-range information from short-read platforms, providing a cost-effective alternative to true long-read sequencing for some applications.
+  \item \textbf{Ultra-long nanopore reads} ($>$4\megabase{}) enable assembly of the most complex genomic regions, including centromeres and large structural variants.
+  \item \textbf{AI and machine learning} have transformed basecalling (Dorado, DeepConsensus), variant calling (DeepVariant), and biological interpretation (genomic language models, single-cell foundation models such as scGPT and Geneformer).
+  \item \textbf{Cloud computing and GPU acceleration} (Terra, DRAGEN, Parabricks) are making large-scale genomic analysis accessible and fast, while workflow managers (Nextflow Tower/Seqera) provide the orchestration layer.
+  \item \textbf{Portable sequencing} has taken genomics to the field---from Ebola outbreak zones to the International Space Station---and is enabling rapid clinical diagnosis in hours rather than days.
+  \item \textbf{Pangenomics} and graph-based references (vg, minigraph) are replacing the single linear reference genome paradigm, reducing reference bias and improving accuracy for all populations.
+  \item \textbf{Ethical considerations}---genetic privacy, equitable access, data sovereignty, and responsible use of genomic information---are as important as the technologies themselves and must be actively addressed by the genomics community.
+\end{itemize}
+
+The sequencing revolution that began with Sanger's dideoxy method in 1977 shows no signs of slowing. If anything, the pace of innovation is accelerating, driven by the convergence of molecular biology, engineering, and artificial intelligence. The researchers and clinicians who will shape the next decade of genomics are those who combine deep understanding of the biological questions with fluency in the rapidly evolving technological landscape described throughout this book.

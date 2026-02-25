@@ -1,0 +1,1103 @@
+\chapter{Practical Protocols: From Sample to Sequencer}
+\label{ch:protocols}
+
+\begin{keyconcept}
+This chapter provides detailed, step-by-step laboratory protocols for the complete nanopore sequencing workflow---from sample collection and DNA extraction through library preparation, flow cell loading, and sequencing. Each protocol has been optimised for reliability and is presented in a format that can be printed and brought directly to the bench. Where previous chapters discussed the \emph{theory} behind library preparation (\cref{ch:libprep}) and experimental design (\cref{ch:expdesign}), this chapter provides the \emph{practice}: precise volumes, incubation times, decision trees, and troubleshooting tables to ensure success on the first attempt.
+\end{keyconcept}
+
+%% ============================================================
+\section{Safety First: Laboratory Hazards and Precautions}
+\label{sec:protocols:safety}
+%% ============================================================
+
+Before beginning any sequencing workflow, it is essential to understand the safety requirements of your laboratory environment. Sequencing protocols involve biological samples, chemical reagents, and electrical equipment---each with specific hazard profiles.
+
+\subsection{Biosafety Levels}
+\label{subsec:protocols:bsl}
+
+The Centres for Disease Control and Prevention (CDC) and the World Health Organisation (WHO) classify laboratories into four \textbf{Biosafety Levels} (BSL) based on the risk posed by the organisms handled:
+
+\begin{description}[style=nextline]
+  \item[BSL-1] Work with well-characterised agents not known to cause disease in healthy adults. Standard microbiological practices; no special containment equipment required. \emph{Examples:} non-pathogenic \species{Escherichia coli} strains, environmental DNA from water samples, human saliva for self-experimentation.
+  \item[BSL-2] Work with agents that pose moderate hazards to personnel and the environment. Requires restricted access, biohazard warning signs, biosafety cabinets for aerosol-generating procedures, and autoclaving of waste before disposal. \emph{Examples:} human blood, clinical samples (stool, sputum), pathogenic bacteria such as \species{Staphylococcus aureus} or \species{Salmonella} spp.
+  \item[BSL-3] Work with agents that can cause serious or potentially lethal disease through inhalation. Requires respiratory protection, double-door entry, directional airflow, and HEPA filtration of exhaust air. \emph{Examples:} \species{Mycobacterium tuberculosis}, SARS-CoV-2 viral cultures, \species{Coxiella burnetii}.
+  \item[BSL-4] Work with agents that pose a high risk of life-threatening disease, aerosol transmission, and for which no vaccine or therapy is available. Requires positive-pressure protective suits or Class III biological safety cabinets. \emph{Examples:} Ebola virus, Marburg virus, Nipah virus.
+\end{description}
+
+\begin{tipbox}[title={Most Sequencing Labs Operate at BSL-1 or BSL-2}]
+The vast majority of \acrshort{NGS} sequencing laboratories operate at BSL-1 (environmental samples, cell lines, purified DNA) or BSL-2 (human clinical samples, pathogen surveillance). If your samples are purified DNA or RNA---already extracted and inactivated---they are generally considered BSL-1 regardless of the original source. Always consult your institutional biosafety committee (IBC) before beginning work with new sample types.
+\end{tipbox}
+
+\subsection{Personal Protective Equipment (PPE)}
+\label{subsec:protocols:ppe}
+
+Required \acrshort{PPE} varies by biosafety level and reagent exposure:
+
+\begin{itemize}[nosep]
+  \item \textbf{BSL-1 minimum:} Laboratory coat, closed-toe shoes, nitrile gloves. Safety glasses when handling chemicals.
+  \item \textbf{BSL-2 additions:} Face protection (safety glasses or face shield) when risk of splash exists. Lab coat must be removed before leaving the laboratory.
+  \item \textbf{Chemical handling:} Phenol-chloroform work requires a chemical fume hood, double gloving (nitrile outer, latex inner), chemical splash goggles, and a lab coat with long sleeves.
+  \item \textbf{UV exposure:} When using UV transilluminators for gel imaging, wear UV-blocking face shields and ensure exposed skin is covered.
+\end{itemize}
+
+\subsection{Chemical Hazards in Sequencing Workflows}
+\label{subsec:protocols:chemhaz}
+
+\begin{table}[htbp]
+\centering
+\caption{Common chemical hazards encountered in \acrshort{NGS} sample preparation workflows.}
+\label{tab:protocols:chemical_hazards}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l l X l@{}}
+\toprule
+\textbf{Chemical} & \textbf{Hazard Class} & \textbf{Risk} & \textbf{Handling} \\
+\midrule
+Phenol-chloroform & Acute toxicity, corrosive & Burns, liver/kidney damage, CNS depression & Fume hood only \\
+\addlinespace
+Guanidinium thiocyanate & Acute toxicity & Harmful if swallowed or inhaled; reacts violently with bleach to produce toxic gas & Avoid bleach contact \\
+\addlinespace
+Ethanol (100\%) & Flammable & Flash point 13\textdegree C; ignition risk near open flames & No open flames \\
+\addlinespace
+Isopropanol & Flammable, irritant & Flash point 12\textdegree C; eye and respiratory irritant & Ventilated area \\
+\addlinespace
+$\beta$-Mercaptoethanol & Acute toxicity, stench & Highly toxic if inhaled; penetrates nitrile gloves & Fume hood; double glove \\
+\addlinespace
+SYBR Green/EtBr & Mutagen (EtBr) & Potential carcinogenicity (ethidium bromide) & Designated staining area \\
+\addlinespace
+Sodium hypochlorite & Corrosive, oxidiser & Skin burns; toxic chlorine gas if mixed with acids & Separate from acids \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{warningbox}[title={Never Mix Guanidinium Salts with Bleach}]
+Chaotropic lysis buffers contain guanidinium salts. Mixed with bleach, these produce highly toxic cyanide and chlorine gases. \textbf{Never} add bleach to extraction kit waste. Neutralise with 10$\times$ volume 1\,M NaOH before disposal, or dispose as hazardous chemical waste per your institution's EHS protocols.
+\end{warningbox}
+
+\subsection{Waste Disposal}
+\label{subsec:protocols:waste}
+
+Segregate waste into four streams: (1) \textbf{biological waste} (contaminated tips, tubes, swabs---autoclave at BSL-2 or biohazard bag for incineration); (2) \textbf{chemical waste} (phenol-chloroform, guanidinium lysis buffers, ethidium bromide---labelled containers via EHS); (3) \textbf{sharps} (scalpel blades, broken glass---puncture-resistant containers); (4) \textbf{general waste} (clean consumables, packaging).
+
+\begin{protocolbox}[title={Pre-Experiment Safety Checklist}]
+Before beginning any protocol in this chapter, verify:
+\begin{enumerate}[nosep]
+  \item[$\square$] You have read and understand the Safety Data Sheets (SDS) for all reagents in the protocol.
+  \item[$\square$] Appropriate PPE is available and donned: lab coat, nitrile gloves, safety glasses.
+  \item[$\square$] Chemical fume hood is operational (if phenol-chloroform or guanidinium reagents are used).
+  \item[$\square$] Biological waste, chemical waste, and sharps containers are accessible and not full.
+  \item[$\square$] First aid kit location is known; eyewash station is functional.
+  \item[$\square$] Emergency contact numbers (EHS, campus emergency) are posted.
+  \item[$\square$] You have institutional biosafety approval (IBC protocol) for the sample types you will handle.
+  \item[$\square$] A lab partner or colleague knows you are performing the experiment (do not work alone with hazardous chemicals).
+\end{enumerate}
+\end{protocolbox}
+
+%% ============================================================
+\section{DNA Extraction Protocols}
+\label{sec:protocols:extraction}
+%% ============================================================
+
+High-quality DNA is the foundation of every successful sequencing experiment. This section provides three complete extraction protocols optimised for different sample types commonly encountered in teaching and research laboratories.
+
+\begin{keyconcept}[title={What Makes DNA ``High Quality'' for Nanopore Sequencing?}]
+For \acrshort{ONT} nanopore sequencing, the ideal DNA has:
+\begin{itemize}[nosep]
+  \item \textbf{Purity:} A260/A280 ratio of 1.8--2.0 (free of protein contamination). A260/A230 ratio of 2.0--2.2 (free of organic solvent and salt contamination).
+  \item \textbf{Integrity:} High molecular weight (HMW), ideally $>$10\kilobase{} fragments. For ultra-long read applications, $>$50\kilobase{} is desirable.
+  \item \textbf{Concentration:} Sufficient mass input for the library preparation kit (typically 200--1,000\,ng for rapid kits, 1,000\,ng for ligation kits).
+  \item \textbf{No inhibitors:} Free of \acrshort{PCR} inhibitors (humic acids, polysaccharides, haemoglobin, melanin) that can interfere with enzymatic steps.
+\end{itemize}
+\end{keyconcept}
+
+%% ============================================================
+\subsection{Protocol A: DNA from Human Saliva}
+\label{subsec:protocols:saliva}
+%% ============================================================
+
+Saliva is one of the easiest and least invasive sources of human genomic DNA, making it ideal for teaching laboratories and citizen science projects. Commercial saliva collection kits stabilise DNA at room temperature for weeks to months.
+
+\subsubsection{Materials}
+
+\begin{table}[htbp]
+\centering
+\caption{Materials list for saliva DNA extraction.}
+\label{tab:protocols:saliva_materials}
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{@{}l l l X@{}}
+\toprule
+\textbf{Item} & \textbf{Supplier} & \textbf{Approx.\ Cost} & \textbf{Notes} \\
+\midrule
+DNA Genotek OG-500 kit & DNA Genotek & \$25--30/unit & Includes collection tube with stabiliser \\
+QIAGEN DNeasy Blood \& Tissue Kit & QIAGEN & \$5--7/prep & Cat.\ No.\ 69504 (50 preps) \\
+Proteinase K (20\,mg/mL) & Included in kit & --- & Also available separately \\
+Ethanol (96--100\%) & General supplier & \$0.10/prep & Molecular biology grade \\
+Phosphate-buffered saline (PBS) & General supplier & \$0.05/prep & Sterile, 1$\times$ \\
+Microcentrifuge (up to 20,000\,$\times$\,$g$) & --- & --- & Benchtop model \\
+Heat block or water bath (56\textdegree C) & --- & --- & Temperature-controlled \\
+NanoDrop spectrophotometer & Thermo Fisher & --- & For A260/280 and A260/230 \\
+Qubit fluorometer + dsDNA BR kit & Thermo Fisher & \$2--3/assay & Accurate dsDNA quantification \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{protocolbox}[title={Protocol: DNA Extraction from Human Saliva}]
+\textbf{Estimated time:} 2--3 hours (including incubation). \textbf{Expected yield:} 1--5\,$\mu$g gDNA.
+
+\textbf{Sample collection} (the day before or same day):
+\begin{enumerate}[nosep]
+  \item Instruct the donor not to eat, drink, smoke, or chew gum for 30 minutes before collection.
+  \item Have the donor provide 2\,mL of saliva into the OG-500 collection tube. Close the cap to release the stabilising buffer and mix by inverting 5--10 times.
+  \item If not extracting immediately, store at room temperature for up to 12 months (DNA is stabilised in the buffer).
+\end{enumerate}
+
+\textbf{DNA extraction} (DNeasy Blood \& Tissue kit protocol, adapted):
+\begin{enumerate}[nosep]
+  \item Transfer 500\,$\mu$L of stabilised saliva to a 1.5\,mL microcentrifuge tube.
+  \item Add 20\,$\mu$L Proteinase K and 500\,$\mu$L Buffer AL. Vortex thoroughly for 15\,s.
+  \item Incubate at 56\textdegree C for 30 minutes (or up to 1 hour for maximum yield).
+  \item Briefly centrifuge to collect condensation from the lid.
+  \item Add 500\,$\mu$L ethanol (96--100\%). Mix by pulse-vortexing for 15\,s.
+  \item Transfer 600\,$\mu$L of the mixture to a DNeasy Mini spin column in a collection tube. Centrifuge at 6,000\,$\times$\,$g$ for 1 minute. Discard flow-through and collection tube.
+  \item Repeat step 6 with remaining mixture using a new collection tube.
+  \item Add 500\,$\mu$L Buffer AW1 to the column. Centrifuge at 6,000\,$\times$\,$g$ for 1 minute. Discard flow-through and collection tube.
+  \item Add 500\,$\mu$L Buffer AW2 to the column. Centrifuge at 20,000\,$\times$\,$g$ for 3 minutes to dry the membrane.
+  \item Transfer the column to a clean, labelled 1.5\,mL microcentrifuge tube.
+  \item Add 100\,$\mu$L Buffer AE (prewarmed to 56\textdegree C) directly onto the membrane. Incubate at room temperature for 5 minutes.
+  \item Centrifuge at 6,000\,$\times$\,$g$ for 1 minute to elute DNA.
+  \item \textbf{Optional second elution:} Repeat steps 11--12 with a second 100\,$\mu$L Buffer AE into a separate tube to recover additional DNA (typically 15--30\% extra yield but at lower concentration).
+\end{enumerate}
+
+\textbf{Quality control:}
+\begin{enumerate}[nosep]
+  \item Measure A260/A280 and A260/A230 on NanoDrop (use 1.5\,$\mu$L).
+  \item Quantify with Qubit dsDNA BR assay (use 1\,$\mu$L of sample in 199\,$\mu$L working solution).
+  \item If yield $>$200\,ng and ratios are acceptable, proceed to library preparation.
+\end{enumerate}
+\end{protocolbox}
+\begin{tipbox}[title={Increasing Saliva DNA Yield}]
+If yield is below 1\,$\mu$g: (1) increase saliva input to 750\,$\mu$L (scale reagents 1.5$\times$); (2) extend Proteinase K to 1\,h at 56\textdegree C; (3) perform the second elution and pool with the first. Gently scraping the inner cheek with a cytology brush before collection substantially increases yield.
+\end{tipbox}
+
+\subsubsection{Troubleshooting: Saliva DNA Extraction}
+
+\begin{table}[htbp]
+\centering
+\caption{Troubleshooting guide for saliva DNA extraction.}
+\label{tab:protocols:saliva_troubleshooting}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+\textbf{Problem} & \textbf{Likely Cause} & \textbf{Solution} \\
+\midrule
+Very low yield ($<$0.5\,$\mu$g) & Insufficient buccal cells & Have donor scrape inner cheeks gently before collection; increase saliva volume to 1\,mL \\
+\addlinespace
+A260/A280 $<$ 1.7 & Protein contamination & Extend Proteinase K incubation to 1\,h; add additional 10\,$\mu$L Proteinase K \\
+\addlinespace
+A260/A230 $<$ 1.5 & Guanidinium salt carry-over & Perform an additional AW2 wash; ensure 3-min spin at 20,000\,$\times$\,$g$ \\
+\addlinespace
+Viscous lysate, hard to pipette & Mucus in saliva & Add 5\,$\mu$L RNase A before AL buffer; vortex more vigorously; pass through 20G needle \\
+\addlinespace
+Clogged spin column & Cellular debris & Pre-clear lysate by centrifuging at 10,000\,$\times$\,$g$ for 2\,min and transfer supernatant \\
+\addlinespace
+Degraded DNA on gel & Old saliva without stabiliser & Use collection kit with stabiliser; do not freeze unstabilised saliva \\
+\addlinespace
+High Qubit but low NanoDrop & RNA co-purification & Add RNase A treatment step; Qubit is correct for dsDNA \\
+\addlinespace
+Low Qubit but high NanoDrop & Free nucleotides / contaminants & Trust Qubit value; NanoDrop overestimates in presence of contaminants \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ============================================================
+\subsection{Protocol B: Environmental DNA (eDNA) from Water Samples}
+\label{subsec:protocols:edna}
+%% ============================================================
+
+Environmental DNA (eDNA) analysis detects organisms from DNA shed into their environment---skin cells, mucus, faeces, gametes---without capturing or observing the organisms. Water is the most common eDNA matrix.
+
+\subsubsection{Filtration Setup and Equipment}
+
+The critical first step is \textbf{filtration}: concentrating trace DNA from large volumes of water onto a filter membrane.
+
+\begin{itemize}[nosep]
+  \item \textbf{Filter type:} Enclosed filter capsules (e.g., Sterivex 0.45\,$\mu$m) or open filter cups with polycarbonate, polyethersulfone (PES), or cellulose nitrate membranes (47\,mm diameter).
+  \item \textbf{Pore size:} 0.22\,$\mu$m (captures bacteria and free DNA) or 0.45\,$\mu$m (faster flow rate, captures most cellular material). For metabarcoding of eukaryotes, 0.45\,$\mu$m is standard.
+  \item \textbf{Volume:} Filter 0.5--2\,L per sample for freshwater; 1--4\,L for marine water (lower eDNA concentration). Stop if the filter clogs before reaching target volume and record actual volume filtered.
+  \item \textbf{Filtration method:} Peristaltic pump (field-portable) or vacuum manifold (laboratory). Syringe filtration is acceptable for small volumes ($<$500\,mL) using Sterivex capsules.
+\end{itemize}
+
+\begin{warningbox}[title={eDNA Degrades Rapidly}]
+eDNA in water degrades continuously (UV, nucleases, pH, temperature); half-life is 1--14 days. \textbf{Filter within 6 hours of collection} or store on ice and filter within 24 hours. Add preservation buffer (Longmire's, ATL, or ethanol) to the filter immediately and store at $-20$\textdegree C.
+\end{warningbox}
+
+\begin{protocolbox}[title={Protocol: eDNA Extraction from Water (DNeasy PowerWater Kit)}]
+\textbf{Estimated time:} 1.5--2 hours (after filtration). \textbf{Kit:} QIAGEN DNeasy PowerWater Kit (Cat.\ No.\ 14900-50-NF).
+
+\textbf{Filtration} (field or laboratory):
+\begin{enumerate}[nosep]
+  \item Set up vacuum manifold or peristaltic pump with a 47\,mm polycarbonate filter (0.45\,$\mu$m pore size) in a sterile filter funnel.
+  \item Filter 1\,L of water sample. Record exact volume filtered if the filter clogs before 1\,L.
+  \item Using sterile forceps, fold the filter in half (sample side inward) and place in a provided PowerWater bead tube. Alternatively, for Sterivex capsules, remove the inlet, add 750\,$\mu$L ATL buffer, cap, and store.
+  \item If not extracting immediately, add 1\,mL PW1 buffer and store at $-20$\textdegree C.
+\end{enumerate}
+
+\textbf{Extraction:}
+\begin{enumerate}[nosep]
+  \item Ensure the filter membrane is in the PowerWater bead tube with solution PW1 (1\,mL).
+  \item Secure tubes horizontally on a vortex adapter. Vortex at maximum speed for 5 minutes.
+  \item Centrifuge at 4,000\,$\times$\,$g$ for 1 minute. Transfer supernatant ($\sim$900\,$\mu$L) to a clean 2\,mL tube.
+  \item Add 200\,$\mu$L solution IRS (inhibitor removal solution). Vortex briefly. Incubate at 4\textdegree C for 5 minutes.
+  \item Centrifuge at 13,000\,$\times$\,$g$ for 1 minute. Avoiding the pellet, transfer supernatant to a clean 2\,mL tube.
+  \item Add 650\,$\mu$L solution PW3. Vortex briefly.
+  \item Load 650\,$\mu$L onto a spin filter. Centrifuge at 13,000\,$\times$\,$g$ for 1 minute. Discard flow-through. Repeat until all lysate has been passed through the filter.
+  \item Add 650\,$\mu$L solution PW4 (ethanol wash). Centrifuge at 13,000\,$\times$\,$g$ for 1 minute. Discard flow-through.
+  \item Add 650\,$\mu$L solution PW5 (second ethanol wash). Centrifuge at 13,000\,$\times$\,$g$ for 1 minute. Discard flow-through.
+  \item Centrifuge empty column at 13,000\,$\times$\,$g$ for 2 minutes to dry the membrane.
+  \item Transfer column to a clean 1.5\,mL tube. Add 50\,$\mu$L solution EB (10\,mM Tris, pH 8.0, prewarmed to 50\textdegree C) to the centre of the membrane. Incubate 5 minutes.
+  \item Centrifuge at 13,000\,$\times$\,$g$ for 1 minute. The eluate is your purified eDNA.
+\end{enumerate}
+
+\textbf{Quality control:}
+\begin{enumerate}[nosep]
+  \item Measure concentration by Qubit dsDNA HS (high sensitivity) assay---eDNA concentrations are often very low (0.1--10\,ng/$\mu$L).
+  \item NanoDrop is unreliable at low concentrations; use only for A260/280 ratio if concentration is $>$5\,ng/$\mu$L.
+  \item If concentration is below the library prep input requirement, consider whole-genome amplification or concentration by vacuum centrifugation.
+\end{enumerate}
+\end{protocolbox}
+
+\subsubsection{Expected eDNA Yields by Water Type}
+
+\begin{table}[htbp]
+\centering
+\caption{Typical eDNA yields from 1\,L water samples using DNeasy PowerWater kit.}
+\label{tab:protocols:edna_yields}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l c c X@{}}
+\toprule
+\textbf{Water Type} & \textbf{Typical Yield} & \textbf{DNA Quality} & \textbf{Notes} \\
+\midrule
+Freshwater pond/lake & 0.5--5\,ng/$\mu$L & Variable & High microbial DNA; may need inhibitor removal \\
+\addlinespace
+River/stream & 0.2--3\,ng/$\mu$L & Moderate & Turbidity affects filtration; pre-filter if needed \\
+\addlinespace
+Marine (coastal) & 0.1--2\,ng/$\mu$L & Good & Salts may carry over; extra wash recommended \\
+\addlinespace
+Marine (open ocean) & 0.01--0.5\,ng/$\mu$L & Good & Very low biomass; filter 2--4\,L \\
+\addlinespace
+Aquarium/tank & 2--20\,ng/$\mu$L & Good & High organism density; dilution may be needed \\
+\addlinespace
+Wastewater & 5--50\,ng/$\mu$L & Poor & Heavy PCR inhibitor load; PowerSoil Pro kit may be better \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Field Controls for eDNA}]
+Always collect \textbf{field negative controls}: filter 1\,L of distilled water through your equipment at each site. Process identically through extraction and sequencing. Without field negatives, true detections cannot be distinguished from contamination.
+\end{tipbox}
+
+%% ============================================================
+\subsection{Protocol C: DNA from Food and Plant Samples}
+\label{subsec:protocols:food}
+%% ============================================================
+
+Food authenticity testing and plant genomics present unique challenges: high polysaccharide and polyphenol content, \acrshort{PCR} inhibitors from processing, and degraded DNA in processed products.
+
+\subsubsection{CTAB Extraction for Fresh Plant Tissue}
+
+The cetyltrimethylammonium bromide (CTAB) method is the gold standard for plant tissues rich in polysaccharides and secondary metabolites.
+
+\begin{protocolbox}[title={Protocol: CTAB DNA Extraction from Plant Tissue}]
+\textbf{Estimated time:} 3--4 hours. \textbf{Expected yield:} 5--50\,$\mu$g from 100\,mg tissue.
+
+\textbf{Reagent preparation} (make fresh or use within 1 month):
+\begin{itemize}[nosep]
+  \item 2$\times$ CTAB buffer: 2\% CTAB, 100\,mM Tris-HCl (pH 8.0), 20\,mM EDTA, 1.4\,M NaCl, 1\% PVP-40. Autoclave. Add 0.2\% $\beta$-mercaptoethanol fresh before use.
+  \item Chloroform:isoamyl alcohol (24:1 v/v).
+  \item Isopropanol (molecular biology grade, at $-20$\textdegree C).
+  \item 70\% ethanol.
+  \item TE buffer (10\,mM Tris-HCl, 1\,mM EDTA, pH 8.0).
+  \item RNase A (10\,mg/mL).
+\end{itemize}
+
+\textbf{Protocol:}
+\begin{enumerate}[nosep]
+  \item Preheat 2$\times$ CTAB buffer (with $\beta$-mercaptoethanol) to 65\textdegree C in a water bath.
+  \item Weigh 100\,mg of fresh leaf tissue (young, actively growing tissue gives highest quality DNA). Flash-freeze in liquid nitrogen.
+  \item Grind frozen tissue to a fine powder in a pre-chilled mortar and pestle with liquid nitrogen. Transfer powder to a 2\,mL tube before it thaws.
+  \item Add 800\,$\mu$L of preheated 2$\times$ CTAB buffer. Mix by gentle inversion 10 times.
+  \item Incubate at 65\textdegree C for 30--60 minutes, inverting every 10 minutes.
+  \item Cool to room temperature. Add 800\,$\mu$L chloroform:isoamyl alcohol (24:1). Invert gently 50 times.
+  \item Centrifuge at 12,000\,$\times$\,$g$ for 10 minutes at room temperature.
+  \item Carefully transfer the upper aqueous phase ($\sim$600\,$\mu$L) to a new 1.5\,mL tube. \textbf{Do not} disturb the interface.
+  \item Add 5\,$\mu$L RNase A (10\,mg/mL). Incubate at 37\textdegree C for 30 minutes.
+  \item Add 0.7$\times$ volume ($\sim$420\,$\mu$L) ice-cold isopropanol. Invert gently 20 times. Incubate at $-20$\textdegree C for 30 minutes (or overnight for maximum recovery).
+  \item Centrifuge at 12,000\,$\times$\,$g$ for 15 minutes at 4\textdegree C. A white DNA pellet should be visible.
+  \item Carefully decant the supernatant. Wash pellet with 500\,$\mu$L ice-cold 70\% ethanol.
+  \item Centrifuge at 12,000\,$\times$\,$g$ for 5 minutes at 4\textdegree C. Remove all ethanol with a pipette.
+  \item Air-dry the pellet for 5--10 minutes (do not over-dry; the pellet becomes difficult to resuspend).
+  \item Resuspend in 50--100\,$\mu$L TE buffer. Allow to dissolve at 4\textdegree C for 1--2 hours (or overnight) with occasional gentle flicking.
+\end{enumerate}
+\end{protocolbox}
+
+\begin{warningbox}[title={Chloroform Safety}]
+Chloroform is a suspected carcinogen. Always work in a fume hood. Dispose of organic waste in halogenated solvent containers---never down the drain.
+\end{warningbox}
+
+\subsubsection{Commercial Kits for Processed Food}
+
+For processed foods, use the QIAGEN DNeasy Mericon Food Kit (Cat.\ No.\ 69514): 200\,mg homogenised input, overnight Proteinase K lysis at 60\textdegree C for heavily processed samples, expected yield 0.1--10\,$\mu$g.
+
+\subsubsection{PCR Inhibitor Mitigation Strategies}
+
+\acrshort{PCR} inhibitors are the primary challenge with plant and food DNA extracts. Common strategies include:
+
+\begin{table}[htbp]
+\centering
+\caption{PCR inhibitor mitigation strategies for challenging samples.}
+\label{tab:protocols:inhibitors}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+\textbf{Inhibitor} & \textbf{Source} & \textbf{Mitigation} \\
+\midrule
+Humic acids & Soil, water, leaf litter & PowerClean Pro cleanup kit; PVP-40 in CTAB buffer \\
+\addlinespace
+Polysaccharides & Plant tissue, algae & Increase NaCl to 1.4\,M in CTAB; add high-salt wash step \\
+\addlinespace
+Polyphenols & Tea, wine, berries, wood & PVP-40 or PVPP in lysis buffer; activated charcoal \\
+\addlinespace
+Melanin & Squid ink, sepia, dark soils & Dilution; BSA addition (400\,ng/$\mu$L) to PCR reaction \\
+\addlinespace
+Haemoglobin & Blood in meat/tissue & DNeasy Blood \& Tissue optimised protocol; dilution \\
+\addlinespace
+Maillard products & Cooked/processed foods & OneStep PCR Inhibitor Removal Kit (Zymo D6030) \\
+\addlinespace
+Fat/lipids & Dairy, adipose tissue & Pre-wash with hexane; skim fat layer after lysis \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={The ``Dilution Solution''}]
+A simple 1:10 dilution often reduces inhibitor concentrations below the threshold affecting enzymatic reactions. Always include an internal positive control (IPC) to detect inhibition---if the IPC fails, inhibitors are present.
+\end{tipbox}
+
+%% ============================================================
+\subsection{QC Decision Tree}
+\label{subsec:protocols:qc_tree}
+%% ============================================================
+
+After extraction, every DNA sample must pass through a quality control decision tree before proceeding to library preparation. The following figure provides a visual guide.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >={Stealth[length=3mm]},
+  node distance=1.4cm and 2.0cm,
+  decision/.style={diamond, draw=MidnightBlue!70, fill=MidnightBlue!5, text width=2.8cm,
+    align=center, inner sep=1pt, font=\small\sffamily, aspect=2},
+  process/.style={rectangle, draw=OliveGreen!70, fill=OliveGreen!5, rounded corners=3pt,
+    minimum width=3cm, minimum height=0.7cm, align=center, font=\small\sffamily},
+  fail/.style={rectangle, draw=BrickRed!70, fill=BrickRed!10, rounded corners=3pt,
+    minimum width=2.5cm, minimum height=0.7cm, align=center, font=\small\sffamily},
+  pass/.style={rectangle, draw=OliveGreen!70, fill=OliveGreen!15, rounded corners=3pt,
+    minimum width=2.5cm, minimum height=0.7cm, align=center, font=\small\sffamily\bfseries},
+  arr/.style={->, thick, MidnightBlue!60},
+  yeslbl/.style={font=\tiny\sffamily, OliveGreen!70!black},
+  nolbl/.style={font=\tiny\sffamily, BrickRed!70!black},
+]
+
+% NanoDrop 260/280
+\node[decision] (nd280) {NanoDrop\\A260/A280\\1.7--2.0?};
+\node[fail, right=2.5cm of nd280] (clean1) {Clean-up:\\re-precipitate\\or column purify};
+
+% NanoDrop 260/230
+\node[decision, below=1.6cm of nd280] (nd230) {NanoDrop\\A260/A230\\$\geq$ 1.8?};
+\node[fail, right=2.5cm of nd230] (clean2) {Ethanol wash\\or AMPure\\bead cleanup};
+
+% Qubit
+\node[decision, below=1.6cm of nd230] (qubit) {Qubit conc.\\$\geq$ input\\requirement?};
+\node[fail, right=2.5cm of qubit] (conc) {Concentrate:\\SpeedVac or\\ethanol precip.};
+
+% Gel
+\node[decision, below=1.6cm of qubit] (gel) {Gel: HMW\\band $>$10\,kb,\\no smear?};
+\node[fail, right=2.5cm of gel] (reext) {Re-extract\\from fresh\\sample};
+
+% Pass
+\node[pass, below=1.6cm of gel] (proceed) {PASS: Proceed\\to library prep};
+
+% Arrows
+\draw[arr] (nd280) -- node[yeslbl, left] {Yes} (nd230);
+\draw[arr] (nd280) -- node[nolbl, above] {No} (clean1);
+\draw[arr] (clean1.south) -- ++(0,-0.4) -| node[yeslbl, near start, above] {Re-check} (nd280.east);
+
+\draw[arr] (nd230) -- node[yeslbl, left] {Yes} (qubit);
+\draw[arr] (nd230) -- node[nolbl, above] {No} (clean2);
+\draw[arr] (clean2.south) -- ++(0,-0.4) -| node[yeslbl, near start, above] {Re-check} (nd230.east);
+
+\draw[arr] (qubit) -- node[yeslbl, left] {Yes} (gel);
+\draw[arr] (qubit) -- node[nolbl, above] {No} (conc);
+\draw[arr] (conc.south) -- ++(0,-0.4) -| node[yeslbl, near start, above] {Re-check} (qubit.east);
+
+\draw[arr] (gel) -- node[yeslbl, left] {Yes} (proceed);
+\draw[arr] (gel) -- node[nolbl, above] {No} (reext);
+
+\end{tikzpicture}
+\caption[DNA QC decision tree]{Quality control decision tree for extracted DNA. Each sample must pass four sequential checkpoints---NanoDrop purity (A260/A280 and A260/A230), Qubit concentration, and gel electrophoresis---before proceeding to library preparation. Failed samples are routed to cleanup or re-extraction steps.}
+\label{fig:protocols:qc_tree}
+\end{figure}
+
+\begin{tipbox}[title={NanoDrop vs.\ Qubit: When They Disagree}]
+NanoDrop measures absorbance of \emph{everything} at 260\,nm, while Qubit uses a dye specific to dsDNA. When NanoDrop reads much higher than Qubit, non-DNA contaminants are present. \textbf{Always trust Qubit for concentration, NanoDrop for purity ratios only.}
+\end{tipbox}
+
+%% ============================================================
+\section{Nanopore Rapid Barcoding Kit (SQK-RBK114.96)}
+\label{sec:protocols:rbk}
+%% ============================================================
+
+The Rapid Barcoding Kit SQK-RBK114.96 is designed for high-throughput multiplexing with minimal hands-on time, using a transposase to simultaneously fragment DNA and attach barcoded adapters.
+
+\begin{keyconcept}[title={Rapid Barcoding: Speed vs.\ Read Length}]
+The transposase simultaneously cleaves DNA and attaches barcode adapters, achieving $\sim$15 minutes hands-on time but limiting N50 read length to 5--10\kilobase{}. If long reads ($>$20\kilobase{}) are critical (structural variants, phasing, assembly), use the Ligation Kit SQK-LSK114 instead (\cref{sec:protocols:lsk}).
+\end{keyconcept}
+
+\begin{table}[htbp]
+\centering
+\caption{SQK-RBK114.96 kit specifications and input requirements.}
+\label{tab:protocols:rbk_specs}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Parameter} & \textbf{Specification} \\
+\midrule
+Kit name & Rapid Barcoding Kit 96 V14 \\
+Kit code & SQK-RBK114.96 \\
+Chemistry & V14 (Kit 14) with 5\,kHz sampling \\
+Number of barcodes & 96 unique barcodes \\
+Input DNA requirement & 50--200\,ng per sample (100\,ng recommended) \\
+Input DNA quality & A260/A280 $\geq$ 1.8; HMW preferred but not required \\
+Hands-on time & $\sim$15 minutes \\
+Compatible flow cells & R10.4.1 (FLO-MIN114, FLO-PRO114M) \\
+Output read N50 & 5--10\kilobase{} (input-dependent) \\
+Recommended applications & Amplicon sequencing, surveillance, species ID, low-complexity samples \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{protocolbox}[title={Protocol: Nanopore Rapid Barcoding (SQK-RBK114.96)}]
+\textbf{Estimated time:} 15 minutes hands-on + 30 minutes barcoding incubation. \textbf{Perform at room temperature unless stated otherwise.}
+
+\textbf{Before you start:}
+\begin{itemize}[nosep]
+  \item Thaw Rapid Adapter F (RAP~F) on ice and mix by flicking. Spin down briefly.
+  \item Thaw barcodes (RB01--RB96) at room temperature. Spin down briefly.
+  \item Ensure all DNA samples are quantified by Qubit and normalised to 50\,ng in 5\,$\mu$L with nuclease-free water.
+\end{itemize}
+
+\textbf{Barcoding:}
+\begin{enumerate}[nosep]
+  \item In a 96-well PCR plate or individual PCR strip tubes, combine per sample:
+    \begin{itemize}[nosep]
+      \item 5\,$\mu$L DNA (50\,ng)
+      \item 5\,$\mu$L barcoded rapid adapter (e.g., RB01 for sample 1, RB02 for sample 2, etc.)
+    \end{itemize}
+  \item Mix by pipetting up and down 5 times. Do not vortex.
+  \item Incubate at 30\textdegree C for 2 minutes in a thermal cycler.
+  \item Incubate at 80\textdegree C for 2 minutes to heat-inactivate the transposase.
+  \item Briefly spin down the plate/tubes. Place on ice.
+\end{enumerate}
+
+\textbf{Pooling and adapter attachment:}
+\begin{enumerate}[nosep, start=6]
+  \item Pool all barcoded samples into a single 1.5\,mL DNA LoBind tube (total volume = $n$ samples $\times$ 10\,$\mu$L).
+  \item If pooling $>$24 samples, use only 5\,$\mu$L from each reaction to keep total volume manageable.
+  \item Add 1$\times$ volume of AMPure XP beads (e.g., 240\,$\mu$L beads if total pool is 240\,$\mu$L). Mix by gentle flicking.
+  \item Incubate at room temperature for 5 minutes.
+  \item Place on a magnetic rack for 2 minutes until solution is clear.
+  \item Remove and discard the supernatant.
+  \item With the tube still on the magnet, wash twice with 200\,$\mu$L freshly prepared 80\% ethanol. Wait 30\,s per wash before removing ethanol.
+  \item Remove all residual ethanol with a fine pipette tip. Air-dry for 30 seconds (\textbf{do not over-dry}---nanopore adapters are sensitive to bead over-drying).
+  \item Remove tube from magnet. Resuspend beads in 15\,$\mu$L Elution Buffer (EB).
+  \item Incubate at room temperature for 2 minutes. Return to magnet for 2 minutes.
+  \item Transfer 15\,$\mu$L eluate to a new 1.5\,mL DNA LoBind tube.
+  \item Add 1\,$\mu$L Rapid Adapter F (RAP~F). Mix by gentle flicking 10 times.
+  \item Incubate at room temperature for 5 minutes.
+\end{enumerate}
+
+\textbf{The library is now ready for loading.} Proceed to flow cell priming and loading (\cref{sec:protocols:flowcell}).
+\end{protocolbox}
+
+\begin{tipbox}[title={When to Use Rapid Barcoding vs.\ Ligation}]
+\textbf{Choose Rapid Barcoding} when speed is paramount, you need $>$24-plex multiplexing, for amplicon sequencing, when input DNA is limited ($<$200\,ng), or for surveillance applications.
+\textbf{Choose Ligation} when long reads ($>$10\kilobase{}) are essential (assembly, SVs, phasing), for maximum data yield (1.5--2$\times$ more), or when native DNA modifications must be preserved.
+\end{tipbox}
+
+%% ============================================================
+\section{Nanopore Ligation Sequencing Kit (SQK-LSK114)}
+\label{sec:protocols:lsk}
+%% ============================================================
+
+The Ligation Sequencing Kit SQK-LSK114 is the workhorse kit for nanopore sequencing when read length and data yield must be maximised. It uses a multi-step enzymatic preparation (end repair, dA-tailing, adapter ligation) that preserves the full length of input DNA.
+
+\begin{keyconcept}[title={Ligation Libraries Preserve Read Length}]
+Without transposase fragmentation, read length directly reflects the input DNA fragment length. With HMW DNA ($>$50\kilobase{}) and gentle handling (wide-bore tips, no vortexing), reads exceeding 100\kilobase{} are achievable. The trade-off: 60--90 minutes hands-on and 1,000\,ng input recommended.
+\end{keyconcept}
+
+\begin{protocolbox}[title={Protocol: Nanopore Ligation Sequencing (SQK-LSK114)}]
+\textbf{Estimated time:} 60--90 minutes hands-on. \textbf{Input:} 1,000\,ng gDNA in 47\,$\mu$L nuclease-free water.
+
+\textbf{Before you start:}
+\begin{itemize}[nosep]
+  \item Thaw NEBNext Companion Module reagents: FFPE Repair Buffer, FFPE Repair Mix, Ultra II End Prep Reaction Buffer, Ultra II End Prep Enzyme Mix. Keep on ice.
+  \item Thaw Ligation Adapter (LA), Ligation Buffer (LNB), and Quick T4 DNA Ligase. Keep LNB and LA on ice; T4 ligase at $-20$\textdegree C until needed.
+  \item Thaw Elution Buffer (EB) and Short Fragment Buffer (SFB). Keep at room temperature.
+  \item Prepare fresh 80\% ethanol ($\geq$500\,$\mu$L).
+  \item Resuspend AMPure XP beads by vortexing. Equilibrate to room temperature.
+  \item Use wide-bore pipette tips throughout to minimise DNA shearing.
+\end{itemize}
+
+\textbf{Step 1: DNA repair and end-prep} (combines FFPE repair and end-prep in a single reaction):
+\begin{enumerate}[nosep]
+  \item In a 0.2\,mL thin-wall PCR tube, combine:
+    \begin{itemize}[nosep]
+      \item 47\,$\mu$L DNA (1,000\,ng)
+      \item 1\,$\mu$L FFPE DNA Repair Buffer
+      \item 1\,$\mu$L FFPE DNA Repair Mix
+      \item 3.5\,$\mu$L Ultra II End Prep Reaction Buffer
+      \item 1.5\,$\mu$L Ultra II End Prep Enzyme Mix
+      \item 1\,$\mu$L nuclease-free water
+    \end{itemize}
+    Total volume: 55\,$\mu$L.
+  \item Mix gently by flicking the tube 10--15 times. Do not vortex.
+  \item Spin down briefly in a mini centrifuge.
+  \item Incubate in a thermal cycler: 20\textdegree C for 5 minutes, then 65\textdegree C for 5 minutes. Hold at 4\textdegree C.
+\end{enumerate}
+
+\textbf{Step 2: AMPure XP cleanup} (removes enzymes, buffers, and short fragments):
+\begin{enumerate}[nosep, start=5]
+  \item Add 55\,$\mu$L (1$\times$ volume) AMPure XP beads to the end-prepped DNA. Mix by gentle flicking.
+  \item Incubate at room temperature for 5 minutes.
+  \item Place on magnetic rack. Wait 2 minutes until solution clears.
+  \item Remove and discard supernatant.
+  \item Wash twice with 200\,$\mu$L freshly prepared 80\% ethanol. Wait 30\,s each wash.
+  \item Remove residual ethanol with a fine tip. Air-dry for 30 seconds. \textbf{Do not over-dry.}
+  \item Remove from magnet. Resuspend in 61\,$\mu$L nuclease-free water. Incubate 2 minutes.
+  \item Return to magnet for 2 minutes. Transfer 61\,$\mu$L eluate to a clean tube.
+\end{enumerate}
+
+\textbf{Step 3: Adapter ligation:}
+\begin{enumerate}[nosep, start=13]
+  \item In the eluate tube (61\,$\mu$L end-prepped DNA), add:
+    \begin{itemize}[nosep]
+      \item 25\,$\mu$L Ligation Buffer (LNB)
+      \item 10\,$\mu$L Quick T4 DNA Ligase
+      \item 5\,$\mu$L Ligation Adapter (LA)
+    \end{itemize}
+    Total volume: 101\,$\mu$L.
+  \item Mix by gentle flicking 10 times. Spin down briefly.
+  \item Incubate at room temperature for 10 minutes.
+\end{enumerate}
+
+\textbf{Step 4: AMPure XP cleanup with Short Fragment Buffer:}
+\begin{enumerate}[nosep, start=16]
+  \item Add 40\,$\mu$L AMPure XP beads (0.4$\times$ ratio for long-fragment selection). Mix gently.
+  \item Incubate at room temperature for 5 minutes.
+  \item Place on magnetic rack for 2 minutes.
+  \item Remove and discard supernatant.
+  \item Wash twice with 250\,$\mu$L Short Fragment Buffer (SFB). \textbf{Not ethanol}---SFB is specifically formulated for this step.
+  \item Remove residual SFB. Air-dry for 30 seconds.
+  \item Remove from magnet. Resuspend in 15\,$\mu$L Elution Buffer (EB). Incubate 2 minutes.
+  \item Return to magnet for 2 minutes. Transfer 15\,$\mu$L to a clean 1.5\,mL DNA LoBind tube.
+  \item Quantify 1\,$\mu$L by Qubit. Expected: 20--50\,fmol (approximately 50--700\,ng depending on fragment length distribution).
+\end{enumerate}
+
+\textbf{The library is now ready for loading.} Proceed to flow cell priming and loading (\cref{sec:protocols:flowcell}).
+\end{protocolbox}
+\begin{warningbox}[title={Do Not Use Ethanol Washes After Ligation}]
+After ligation, wash with Short Fragment Buffer (SFB), \textbf{not} ethanol. Ethanol denatures the motor protein on the adapter, destroying the library---this is the most common ligation prep mistake and produces zero data. SFB removes short fragments while preserving motor protein integrity.
+\end{warningbox}
+
+\subsection{AMPure XP Bead Ratio Optimisation}
+\label{subsec:protocols:ampure}
+
+The ratio of AMPure XP beads to sample volume determines the size cutoff for DNA fragment retention. Lower ratios select for longer fragments. This is critical for tuning read length distributions.
+
+\begin{table}[htbp]
+\centering
+\caption{AMPure XP bead ratio and approximate fragment size cutoff for DNA selection.}
+\label{tab:protocols:ampure_ratios}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}c c c X@{}}
+\toprule
+\textbf{Bead:Sample Ratio} & \textbf{Size Cutoff} & \textbf{Recovery \%} & \textbf{Use Case} \\
+\midrule
+2.0$\times$ & $>$100\basepair{} & $>$95\% & Amplicon cleanup; retain all fragments \\
+\addlinespace
+1.0$\times$ & $>$200\basepair{} & $>$90\% & Standard cleanup; general-purpose \\
+\addlinespace
+0.8$\times$ & $>$400\basepair{} & 80--90\% & Post end-prep cleanup; remove adapter dimers \\
+\addlinespace
+0.6$\times$ & $>$800\basepair{} & 70--85\% & Select for longer fragments; reduce short-fragment noise \\
+\addlinespace
+0.45$\times$ & $>$1.5\kilobase{} & 60--75\% & Long-read enrichment; post-ligation \\
+\addlinespace
+0.4$\times$ & $>$2\kilobase{} & 50--70\% & Aggressive long-read selection; recommended for LSK114 \\
+\addlinespace
+0.35$\times$ & $>$3\kilobase{} & 40--60\% & Ultra-long read enrichment; significant yield loss \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Bead Ratio Fine-Tuning}]
+Exact cutoffs depend on DNA concentration, buffer composition, and temperature. For critical applications, test 3--4 ratios empirically on a gel or TapeStation. A 0.4$\times$ ratio is the default for SQK-LSK114 post-ligation cleanup; going below 0.35$\times$ causes unacceptable yield loss.
+\end{tipbox}
+
+%% ============================================================
+\section{16S/ITS Amplicon Library Preparation}
+\label{sec:protocols:amplicon}
+%% ============================================================
+
+Amplicon sequencing of phylogenetic marker genes is one of the most accessible \acrshort{NGS} applications. Nanopore sequencing enables full-length 16S ($\sim$1,500\basepair{}) and ITS sequencing, providing superior taxonomic resolution compared to short-read approaches targeting single variable regions.
+
+\subsection{Primer Selection}
+\label{subsec:protocols:primers}
+
+\begin{table}[htbp]
+\centering
+\caption{Recommended primers for full-length amplicon nanopore sequencing.}
+\label{tab:protocols:primers}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l l l c X@{}}
+\toprule
+\textbf{Target} & \textbf{Primer} & \textbf{Sequence (5$'$$\to$3$'$)} & \textbf{Amplicon} & \textbf{Notes} \\
+\midrule
+16S (bacteria, & 27F & AGAGTTTGATCMTGGCTCAG & \multirow{2}{*}{$\sim$1,465\basepair{}} & Universal bacterial; \\
+\quad archaea) & 1492R & TACGGYTACCTTGTTACGACTT & & covers V1--V9 \\
+\addlinespace
+ITS (fungi) & ITS1f & CTTGGTCATTTAGAGGAAGTAA & \multirow{2}{*}{500--850\basepair{}} & Fungal-biased forward \\
+ & ITS4 & TCCTCCGCTTATTGATATGC & & primer; broad coverage \\
+\addlinespace
+18S (eukaryotes) & Euk-A & AACCTGGTTGATCCTGCCAGT & \multirow{2}{*}{$\sim$1,800\basepair{}} & Broad eukaryotic \\
+ & Euk-B & TGATCCTTCTGCAGGTTCACCTAC & & coverage \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Adding Barcode Tails to Primers}]
+With SQK-RBK114.96, no primer modification is needed---the transposase attaches barcodes directly. For native barcoding (SQK-NBD114.96), add barcode sequences as 5$'$ tails on primers. Consult the \acrshort{ONT} protocol for current tail sequences (these change between kit versions).
+\end{tipbox}
+
+\subsection{PCR Cycling Conditions}
+\label{subsec:protocols:pcr_cycling}
+
+\begin{table}[htbp]
+\centering
+\caption{PCR cycling conditions for full-length 16S and ITS amplicon generation.}
+\label{tab:protocols:pcr_conditions}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l c c c X@{}}
+\toprule
+\textbf{Step} & \textbf{Temperature} & \textbf{Time} & \textbf{Cycles} & \textbf{Notes} \\
+\midrule
+Initial denaturation & 95\textdegree C & 3 min & 1 & Complete template denaturation \\
+Denaturation & 95\textdegree C & 30 s & \multirow{3}{*}{25--30} & Reduce cycles to 25 for high-input samples \\
+Annealing & 55\textdegree C & 30 s & & 55\textdegree C works for both 27F/1492R and ITS1f/ITS4 \\
+Extension & 72\textdegree C & 90 s & & 1 min/kb; 90\,s for $\sim$1.5\kilobase{} 16S \\
+Final extension & 72\textdegree C & 5 min & 1 & Complete all partial products \\
+Hold & 4\textdegree C & $\infty$ & --- & Short-term storage \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{protocolbox}[title={Protocol: 16S Amplicon PCR (25\,$\mu$L Reaction)}]
+\textbf{Per reaction:}
+\begin{itemize}[nosep]
+  \item 12.5\,$\mu$L LongAmp Taq 2$\times$ Master Mix (NEB, Cat.\ No.\ M0287)
+  \item 1\,$\mu$L forward primer 27F (10\,$\mu$M stock)
+  \item 1\,$\mu$L reverse primer 1492R (10\,$\mu$M stock)
+  \item 1\,$\mu$L template DNA (1--10\,ng)
+  \item 9.5\,$\mu$L nuclease-free water
+\end{itemize}
+
+\textbf{Cycling:} Use the conditions in \cref{tab:protocols:pcr_conditions} with 25--30 cycles.
+
+\textbf{Post-PCR:}
+\begin{enumerate}[nosep]
+  \item Confirm amplification by running 2\,$\mu$L on a 1\% agarose gel (expect a single band at $\sim$1,465\basepair{}).
+  \item Clean up with 0.8$\times$ AMPure XP beads to remove primers and dimers.
+  \item Quantify by Qubit dsDNA BR assay.
+  \item Normalise all samples to the same concentration before pooling for barcoding.
+\end{enumerate}
+\end{protocolbox}
+
+\subsection{Barcoding Strategy and Controls}
+\label{subsec:protocols:barcoding}
+
+For multiplexed amplicon experiments, proper barcoding and controls are essential:
+
+\begin{itemize}[nosep]
+  \item \textbf{Barcode assignment:} Assign unique barcodes to each sample with a mapping sheet linking barcodes to sample identifiers and metadata.
+  \item \textbf{Positive control:} Include a mock community (e.g., ZymoBIOMICS Microbial Community Standard, D6300: 8 bacteria + 2 fungi at known ratios) to assess classification accuracy.
+  \item \textbf{Negative controls:} Include \textbf{both} an extraction blank and a \acrshort{PCR} no-template control (NTC). Both must be barcoded and sequenced. Taxa in negatives indicate contamination.
+  \item \textbf{Balanced pooling:} Aim for equimolar pooling to ensure even read distribution across samples.
+\end{itemize}
+\begin{warningbox}[title={The ``Kitome'' Problem}]
+Extraction kits and \acrshort{PCR} reagents contain trace bacterial DNA (``kitome''). In low-biomass samples these contaminants can dominate results. Common kitome genera: \species{Bradyrhizobium}, \species{Ralstonia}, \species{Methylobacterium}, \species{Sphingomonas}. Extraction blanks are the only way to identify and remove these contaminants. Never omit them.
+\end{warningbox}
+
+%% ============================================================
+\section{Loading and Running the Flow Cell}
+\label{sec:protocols:flowcell}
+%% ============================================================
+
+The final steps are flow cell quality assessment, priming, library loading, and run monitoring.
+
+\subsection{Flow Cell QC Check}
+\label{subsec:protocols:flowcell_qc}
+
+Before loading any library, verify that the flow cell has sufficient active nanopores.
+
+\begin{protocolbox}[title={Protocol: Flow Cell Quality Check}]
+\begin{enumerate}[nosep]
+  \item Insert the R10.4.1 flow cell (FLO-MIN114) into the MinION or GridION device.
+  \item Open \software{MinKNOW} software. Navigate to the flow cell check (or ``Platform QC'') function.
+  \item Initiate the flow cell check. The software will apply a voltage and measure current through each pore (takes $\sim$5 minutes).
+  \item Read the result:
+    \begin{itemize}[nosep]
+      \item \textbf{$>$800 active pores:} Excellent. Proceed with loading.
+      \item \textbf{600--800 active pores:} Acceptable. Expect slightly reduced throughput.
+      \item \textbf{$<$600 active pores:} Contact \acrshort{ONT} support for a replacement. Running a library on a low-pore flow cell is not cost-effective.
+    \end{itemize}
+  \item Record the pore count in your laboratory notebook for later reference.
+\end{enumerate}
+\end{protocolbox}
+
+\subsection{Flow Cell Priming}
+\label{subsec:protocols:priming}
+
+Priming replaces storage buffer with sequencing-compatible buffer and removes air bubbles from the sensor array.
+
+\begin{protocolbox}[title={Protocol: Flow Cell Priming (R10.4.1)}]
+\textbf{Prepare the priming mix:}
+\begin{enumerate}[nosep]
+  \item Thaw one tube of Flow Cell Flush (FCF) at room temperature. Briefly spin down.
+  \item Add 30\,$\mu$L of Flow Cell Tether (FCT) to the FCF tube. Mix by gentle inversion. This is the Priming Mix.
+\end{enumerate}
+
+\textbf{Prime the flow cell:}
+\begin{enumerate}[nosep, start=3]
+  \item Open the priming port on the flow cell by sliding the cover clockwise. \textbf{Do not remove the SpotON port cover yet.}
+  \item Set a P1000 pipette to 200\,$\mu$L. Insert the tip into the priming port. Turn the pipette dial to draw back a small amount of buffer ($\sim$20--30\,$\mu$L) until you see a small amount of buffer entering the tip. This removes any air bubble from the sensor array.
+  \item Load 800\,$\mu$L of Priming Mix via the priming port. Allow to flow through by gravity (do not force). Wait 5 minutes.
+  \item Open the SpotON port cover.
+  \item Load another 200\,$\mu$L of Priming Mix via the priming port.
+\end{enumerate}
+\end{protocolbox}
+
+\subsection{Library Loading}
+\label{subsec:protocols:loading}
+
+\begin{protocolbox}[title={Protocol: Library Loading}]
+\textbf{Prepare the loading mix:}
+\begin{enumerate}[nosep]
+  \item In a clean 1.5\,mL tube, combine:
+    \begin{itemize}[nosep]
+      \item 37\,$\mu$L Sequencing Buffer (SB)
+      \item 25.5\,$\mu$L Loading Beads (LB)---\textbf{mix thoroughly by pipetting immediately before use}, as beads settle rapidly
+      \item 12\,$\mu$L prepared library (from SQK-LSK114 or SQK-RBK114.96)
+    \end{itemize}
+    Total volume: 75\,$\mu$L.
+  \item Mix by gentle pipetting. Do not vortex.
+\end{enumerate}
+
+\textbf{Load the library:}
+\begin{enumerate}[nosep, start=3]
+  \item Using a P200 pipette, add the entire 75\,$\mu$L \textbf{drop-by-drop} through the SpotON port. Ensure each drop is drawn into the flow cell before adding the next (you will see each drop wick into the port).
+  \item Close the SpotON port cover.
+  \item Close the priming port cover.
+  \item Close the MinION/GridION lid.
+\end{enumerate}
+\end{protocolbox}
+\begin{warningbox}[title={Loading Beads Must Be Mixed}]
+Loading Beads settle within seconds. Pipette-mix thoroughly immediately before adding to the loading mix and load promptly. Settled beads cause very low pore occupancy and minimal output.
+\end{warningbox}
+
+\subsection{MinKNOW Run Setup and Monitoring}
+\label{subsec:protocols:minknow}
+
+\begin{protocolbox}[title={Protocol: Starting a Sequencing Run in MinKNOW}]
+\begin{enumerate}[nosep]
+  \item In \software{MinKNOW}, select ``Start Sequencing.''
+  \item Configure run parameters:
+    \begin{itemize}[nosep]
+      \item \textbf{Kit:} Select the kit used (SQK-RBK114.96 or SQK-LSK114).
+      \item \textbf{Basecalling:} Select ``Super accuracy'' (SUP) model for highest accuracy ($>$Q20 modal). Alternatively, use ``Fast'' basecalling if real-time analysis is needed and accuracy requirements are lower.
+      \item \textbf{Barcoding:} If using rapid barcoding, enable barcode detection and select the appropriate barcode kit.
+      \item \textbf{Run length:} Default 72 hours. For rapid experiments or flow cell reuse, set to 24 hours.
+      \item \textbf{Output format:} FASTQ (for immediate analysis) or POD5 (raw signal, for re-basecalling).
+    \end{itemize}
+  \item Click ``Start'' to begin sequencing.
+\end{enumerate}
+
+\textbf{Monitoring parameters to check during the run:}
+\begin{itemize}[nosep]
+  \item \textbf{Pore occupancy:} Target $>$50\%. If below 20\%, the library loading was unsuccessful---check loading bead mixing.
+  \item \textbf{Strand rate:} Number of reads translating per minute. Should be steady or slowly declining.
+  \item \textbf{Read length distribution:} Should match expectations for your library type (5--10\kilobase{} N50 for rapid, $>$10\kilobase{} for ligation).
+  \item \textbf{Quality score distribution:} Modal quality should be $>$Q15 (fast basecalling) or $>$Q20 (SUP basecalling).
+  \item \textbf{Active pore count:} Will decline over 72 hours. A rapid drop in the first hour may indicate a problem (contaminated library, air bubbles, or membrane damage).
+  \item \textbf{Temperature:} The device should maintain 35\textdegree C. Overheating causes increased noise.
+\end{itemize}
+\end{protocolbox}
+
+\subsection{Nuclease Flush and Reload}
+\label{subsec:protocols:flush}
+
+If a run completes before 72 hours and active pores remain, flush and reload a new library to maximise flow cell utilisation.
+
+\begin{protocolbox}[title={Protocol: Nuclease Flush and Reload}]
+\begin{enumerate}[nosep]
+  \item In \software{MinKNOW}, stop the current sequencing run.
+  \item Prepare wash solution: add 380\,$\mu$L nuclease-free water to one tube of DNase I from the Flow Cell Wash Kit (EXP-WSH004). Mix by inversion.
+  \item Open the priming port and SpotON port covers on the flow cell.
+  \item Using a P1000 pipette, slowly draw off all the library from the priming port. Discard.
+  \item Load 400\,$\mu$L of the DNase I wash solution via the priming port.
+  \item Close both port covers. Leave at room temperature for 30 minutes. The DNase will digest remaining DNA and free the pores.
+  \item After 30 minutes, open both port covers and remove the wash solution via the priming port.
+  \item Re-prime the flow cell with fresh Priming Mix (as in the priming protocol, \cref{subsec:protocols:priming}).
+  \item Perform a flow cell check to assess remaining active pore count.
+  \item If $>$400 pores remain, load a new library via the SpotON port.
+  \item Start a new sequencing run in \software{MinKNOW}.
+\end{enumerate}
+\end{protocolbox}
+\begin{tipbox}[title={Maximising Flow Cell Value}]
+A single R10.4.1 flow cell can be reused 2--3 times with nuclease flushes. Use the first load for the most important library (best pore count). Each reload typically yields 50--70\% of the previous run's output. Store partially used flow cells at 4\textdegree C for up to one week.
+\end{tipbox}
+
+%% ============================================================
+\section{Troubleshooting}
+\label{sec:protocols:troubleshooting}
+%% ============================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Comprehensive troubleshooting guide for nanopore sequencing workflows.}
+\label{tab:protocols:troubleshooting}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{@{}p{3.5cm} p{4.5cm} p{6.5cm}@{}}
+\toprule
+\textbf{Problem} & \textbf{Likely Cause} & \textbf{Solution} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Problem} & \textbf{Likely Cause} & \textbf{Solution} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{3}{r}{\textit{Continued on next page}} \\
+\bottomrule
+\endfoot
+\bottomrule
+\endlastfoot
+
+Very low yield after extraction & Insufficient lysis or input material & Increase incubation time with Proteinase K; increase sample input volume; check expiry of lysis reagents \\
+\addlinespace
+
+A260/A280 $<$ 1.7 & Protein or phenol contamination & Re-precipitate DNA; run through a cleanup column; extend Proteinase K digestion \\
+\addlinespace
+
+A260/A230 $<$ 1.5 & Guanidinium, ethanol, or chaotropic salt carry-over & Additional ethanol wash steps; column cleanup; ensure full 3-min drying spin \\
+\addlinespace
+
+Degraded DNA (smear on gel) & Nuclease activity, improper storage, or excessive handling & Use fresh reagents; store DNA at $-20$\textdegree C; minimise freeze-thaw cycles; add EDTA to storage buffer \\
+\addlinespace
+
+Low pore occupancy ($<$20\%) & Insufficient library, loading bead settling, or air bubbles & Re-quantify library; ensure beads are mixed immediately before loading; remove air from priming port \\
+\addlinespace
+
+Pore occupancy drops rapidly in first hour & Library quality issue or membrane contamination & Check for contaminants (detergent, organic solvents); re-prepare library from clean DNA \\
+\addlinespace
+
+Short reads ($<$1\kilobase{} N50) with ligation kit & DNA shearing during preparation & Use wide-bore pipette tips; do not vortex; handle tubes gently; avoid freeze-thaw of HMW DNA \\
+\addlinespace
+
+No reads after starting run & Adapter not attached or motor protein denatured & Verify adapter ligation with Qubit (concentration should not drop $>$50\%); check that SFB (not ethanol) was used for post-ligation wash \\
+\addlinespace
+
+High adapter dimer reads & Excessive adapter in ligation reaction or insufficient cleanup & Lower adapter input; use a stricter AMPure bead ratio (0.4$\times$); check for DNA input below minimum \\
+\addlinespace
+
+Low quality scores ($<$Q10 modal) & Old flow cell, basecalling model mismatch, or temperature issue & Use SUP basecalling model; check flow cell manufacture date; ensure device is not overheating \\
+\addlinespace
+
+Uneven barcode distribution & Unequal DNA input or PCR amplification bias & Quantify all samples by Qubit and normalise to equimolar before pooling; reduce PCR cycle number \\
+\addlinespace
+
+High ``unclassified'' barcode reads & Poor barcode ligation or chimeric reads & Increase barcode stringency in \software{MinKNOW}; check DNA input was not degraded \\
+\addlinespace
+
+No amplicon band on gel & Primer failure, inhibitors, or template issue & Check primer sequences and concentrations; run positive control; dilute template 1:10 to reduce inhibitors \\
+\addlinespace
+
+Multiple amplicon bands & Non-specific priming or contamination & Increase annealing temperature (+2--5\textdegree C); reduce primer concentration; use fresh aliquot of primers \\
+\addlinespace
+
+MinKNOW software crashes & Insufficient disk space or RAM & Ensure $>$100\,GB free disk space; close other applications; restart software \\
+\addlinespace
+
+Temperature warning in MinKNOW & Blocked ventilation or ambient temperature too high & Ensure device ventilation is unobstructed; reduce ambient temperature; use external cooling fan \\
+\addlinespace
+
+Flow cell check shows 0 pores & Flow cell not inserted properly or damaged & Remove and reinsert flow cell firmly; check connector pins; try a different flow cell \\
+\addlinespace
+
+Mux scan shows declining pores & Normal pore attrition over time or membrane fouling & Normal for runs $>$24\,h; consider nuclease flush and reload to recover pores \\
+
+\end{longtable}
+\end{table}
+
+\begin{tipbox}[title={Keep a Sequencing Log}]
+Record every run: date, operator, flow cell ID, pore count, kit, DNA input, run time, total reads, N50, and anomalies. This record is invaluable for diagnosing problems and tracking performance.
+\end{tipbox}
+
+%% ============================================================
+\section{Sample Collection Best Practices}
+\label{sec:protocols:collection}
+%% ============================================================
+
+The best laboratory protocols cannot rescue a poorly collected sample. This section covers collection, preservation, storage, and documentation best practices.
+
+\subsection{Field Preservation Methods}
+\label{subsec:protocols:preservation}
+
+Different sample types require different preservation strategies to maintain DNA integrity:
+
+\begin{description}[style=nextline]
+  \item[Cold chain (ice/dry ice)] The default method. Wet ice (4\textdegree C) for transport $<$6 hours; dry ice ($-78$\textdegree C) for overnight shipping. Transfer to $-20$\textdegree C or $-80$\textdegree C upon arrival.
+  \item[Chemical preservation] For field situations without cold chain: \textbf{95\% ethanol} ($\geq$10$\times$ volume, stable months at RT); \textbf{RNAlater} (RNA preservation, tissue $<$0.5\,cm in 5$\times$ volume; can interfere with DNA kits); \textbf{DESS buffer} (20\% DMSO, 0.25\,M EDTA, NaCl-saturated, pH 8.0; versatile); \textbf{Longmire's buffer} (100\,mM Tris, 100\,mM EDTA, 10\,mM NaCl, 0.5\% SDS, pH 8.0; eDNA filters and wildlife tissue).
+  \item[Desiccation] Silica gel packets in sealed bags for plant leaf tissue. DNA stable for years when dry.
+  \item[FTA cards] Cellulose cards lyse cells on contact; DNA stable at RT for years. Punch a disc directly into the \acrshort{PCR} reaction.
+  \item[Saliva kits] DNA Genotek OG-500/OG-600 tubes preserve DNA at RT for $>$12 months. See \cref{subsec:protocols:saliva}.
+\end{description}
+
+\subsection{Storage Temperature Requirements}
+\label{subsec:protocols:storage}
+
+\begin{table}[htbp]
+\centering
+\caption{Recommended storage conditions and maximum holding times for common sample types.}
+\label{tab:protocols:storage}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l c c X@{}}
+\toprule
+\textbf{Sample Type} & \textbf{Temperature} & \textbf{Max.\ Hold Time} & \textbf{Notes} \\
+\midrule
+Whole blood (EDTA) & 4\textdegree C & 7 days & DNA quality declines after 3 days; freeze for longer storage \\
+\addlinespace
+Whole blood (EDTA) & $-20$\textdegree C & 5 years & Avoid repeated freeze-thaw \\
+\addlinespace
+Saliva (stabilised) & Room temp & 12 months & DNA Genotek OG-500 buffer \\
+\addlinespace
+Fresh tissue & 4\textdegree C & 24 hours & Extract ASAP or snap-freeze \\
+\addlinespace
+Fresh tissue & $-80$\textdegree C & 10+ years & Flash-freeze in liquid nitrogen before transfer \\
+\addlinespace
+Tissue in 95\% ethanol & Room temp & 6 months & Use $\geq$10$\times$ volume ethanol \\
+\addlinespace
+Tissue in RNAlater & $-20$\textdegree C & Indefinite & Best for RNA; acceptable for DNA \\
+\addlinespace
+Stool (fresh) & 4\textdegree C & 24 hours & Use OMNIgene Gut kit for room temp stability \\
+\addlinespace
+eDNA filter (dry) & $-20$\textdegree C & 6 months & Add preservation buffer for longer storage \\
+\addlinespace
+eDNA filter (in buffer) & $-20$\textdegree C & 12 months & Longmire's or ATL buffer \\
+\addlinespace
+Extracted DNA & $-20$\textdegree C & 2+ years & TE buffer or nuclease-free water; avoid freeze-thaw \\
+\addlinespace
+Extracted DNA & $-80$\textdegree C & 10+ years & Long-term archival storage \\
+\addlinespace
+Prepared library & 4\textdegree C & 1 week & Load promptly for best results \\
+\addlinespace
+FFPE blocks & Room temp & 10+ years & DNA is degraded; expect 200--500\basepair{} fragments \\
+\addlinespace
+Plant leaf (silica-dried) & Room temp & 5+ years & Use indicating silica gel; keep dry \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Chain of Custody Documentation}
+\label{subsec:protocols:custody}
+
+For clinical, forensic, or regulatory applications, a formal chain of custody must be maintained. Even for research, robust sample tracking prevents costly errors. Assign a \textbf{unique sample ID} at collection using a systematic scheme (e.g., ``EDNA-LK01-20260315-W01''). Label tubes with both human-readable text and machine-readable identifiers (barcode/QR code labels; use cryogenic labels for $-80$\textdegree C storage). Maintain a \textbf{chain of custody log} recording collector, date, location (GPS coordinates), preservation method, and every transfer between personnel. Photograph collection sites and sample tubes. Keep both physical (lab notebook) and digital (spreadsheet, LIMS) records.
+
+\subsection{Metadata Recording}
+\label{subsec:protocols:metadata}
+
+The biological value of sequencing data depends critically on its associated metadata. Record the following at minimum:
+
+\begin{table}[htbp]
+\centering
+\caption{Essential metadata fields for sequencing sample documentation.}
+\label{tab:protocols:metadata}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+\textbf{Field} & \textbf{Format} & \textbf{Description} \\
+\midrule
+Sample ID & Text & Unique identifier linking to all downstream data \\
+Collection date & YYYY-MM-DD & ISO 8601 format \\
+Collection time & HH:MM (24h) & Local time with timezone noted \\
+Collector & Text & Name of person who collected the sample \\
+Location & Decimal degrees & Latitude, longitude (GPS); include altitude if relevant \\
+Habitat/site & Text & Description of collection environment \\
+Sample type & Controlled vocab & e.g., ``saliva'', ``water-eDNA'', ``leaf-tissue'', ``soil'' \\
+Organism & Binomial & \species{Homo sapiens}, ``environmental'', or target species \\
+Preservation & Controlled vocab & e.g., ``ethanol-95pct'', ``frozen-80C'', ``OG500-stabiliser'' \\
+Storage temp & \textdegree C & Temperature at which sample is stored \\
+Extraction date & YYYY-MM-DD & Date DNA was extracted \\
+Extraction method & Text & Kit name, catalogue number, and any modifications \\
+DNA conc. (Qubit) & ng/$\mu$L & Qubit fluorometric measurement \\
+A260/A280 & Ratio & NanoDrop purity ratio \\
+A260/A230 & Ratio & NanoDrop purity ratio \\
+Notes & Free text & Any anomalies, deviations from protocol, or observations \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Use Standardised Metadata Standards}]
+Align metadata with GSC MIxS (Minimum Information about any (x) Sequence) checklists and \acrshort{SRA} submission requirements from the outset---recording these at collection saves hours of retroactive data entry. See \cref{ch:datastd} for details on data standards.
+\end{tipbox}
+
+\begin{warningbox}[title={Metadata Cannot Be Reconstructed}]
+Metadata lost at collection is gone forever. Make metadata recording a non-negotiable part of every field protocol. Pre-print field data sheets or use mobile apps (KoboToolbox, ODK Collect) to ensure completeness.
+\end{warningbox}
+
+%% ============================================================
+\section{Chapter Summary}
+\label{sec:protocols:summary}
+%% ============================================================
+
+\begin{keyconcept}[title={Key Takeaways}]
+\begin{enumerate}[nosep]
+  \item \textbf{Safety is non-negotiable.} Understand your BSL requirements, PPE needs, and chemical hazards before starting any protocol.
+  \item \textbf{DNA quality determines sequencing success.} Use the \acrshort{QC} decision tree (\cref{fig:protocols:qc_tree}) to verify every sample before committing it to an expensive flow cell.
+  \item \textbf{Choose the right kit for the job.} Rapid Barcoding (SQK-RBK114.96) for speed and high multiplexing; Ligation (SQK-LSK114) for long reads and maximum yield.
+  \item \textbf{Never use ethanol washes after ligation.} Use Short Fragment Buffer (SFB) to preserve motor protein integrity.
+  \item \textbf{Mix loading beads immediately before use.} Settled beads result in zero pore occupancy.
+  \item \textbf{Controls are essential.} Every amplicon experiment requires positive controls (mock community) and negative controls (extraction blank + \acrshort{PCR} NTC).
+  \item \textbf{Metadata matters as much as sequence data.} Record comprehensive metadata at the point of collection---it cannot be reconstructed later.
+  \item \textbf{Keep a sequencing log.} Track every run's parameters and performance for long-term quality management.
+\end{enumerate}
+\end{keyconcept}

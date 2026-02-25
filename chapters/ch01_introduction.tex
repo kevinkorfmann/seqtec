@@ -1,0 +1,543 @@
+\chapter{Introduction: The Sequencing Revolution}
+\label{ch:introduction}
+
+\begin{keyconcept}
+Sequencing is the process of determining the precise order of nucleotides---the chemical ``letters''---within a molecule of DNA or RNA. This seemingly simple act of reading biological information has become one of the most transformative technologies in the history of science, reshaping medicine, agriculture, ecology, forensics, and our fundamental understanding of life itself.
+\end{keyconcept}
+
+\section{What Is Sequencing and Why Does It Matter?}
+\label{sec:intro:what-is-sequencing}
+
+Every living organism on Earth carries an instruction manual written in the language of DNA. This manual, called the \textbf{genome}, contains the information needed to build and maintain an organism---from the simplest bacterium to the most complex whale. \textbf{Sequencing} is the technology that allows us to read this manual, letter by letter.
+
+To appreciate why this matters, consider an analogy. Imagine you have discovered an ancient library filled with millions of books, written in an alphabet you have only partially deciphered. These books contain the instructions for building every type of cell in the human body, the blueprints for every protein that carries out life's functions, and the regulatory logic that determines when and where each gene is activated. Sequencing is the technology that lets you read these books. Bioinformatics is the discipline that helps you understand what they say.
+
+The implications are staggering:
+
+\begin{itemize}[itemsep=2pt]
+  \item A physician can sequence a tumour's genome to identify the exact mutations driving a patient's cancer---and choose a drug that targets those specific mutations.
+  \item An ecologist can sequence environmental DNA (eDNA) from a water sample to catalogue every fish species present in a river, without catching a single fish.
+  \item A forensic scientist can identify a crime suspect from trace amounts of DNA left at a scene.
+  \item An agricultural scientist can sequence crop genomes to breed varieties that resist drought or disease.
+  \item An epidemiologist can track the real-time evolution of a pandemic virus by sequencing thousands of viral genomes per week.
+\end{itemize}
+
+None of this was possible fifty years ago. The story of how we got from reading a single gene to reading entire genomes in a matter of hours is one of the most remarkable technological narratives of the modern era.
+
+\section{A Brief History of Sequencing}
+\label{sec:intro:history}
+
+\subsection{The Sanger Era (1977--2000)}
+\label{subsec:intro:sanger}
+
+The story of DNA sequencing begins in 1977, when the British biochemist Frederick Sanger developed a method now known as \textbf{Sanger sequencing} (also called the \textbf{chain-termination method} or \textbf{dideoxy sequencing}). The core idea was elegant: Sanger used modified nucleotides---called \textbf{dideoxynucleotides} (ddNTPs)---that, when incorporated into a growing DNA strand, terminate the chain at specific positions. By running these terminated fragments on a gel and reading their lengths, researchers could deduce the order of bases in the original DNA molecule.
+
+Sanger sequencing could read approximately 500--1,000 bases at a time, which was revolutionary for its era. Sanger himself used the method to sequence the 5,386-nucleotide genome of bacteriophage $\phi$X174, the first complete DNA genome ever sequenced. For this and related work, Sanger received his second Nobel Prize in Chemistry in 1980.
+
+\begin{keyconcept}[title={Sanger Sequencing}]
+Sanger sequencing reads DNA by incorporating chain-terminating dideoxynucleotides. Each termination event marks the position of a specific base. By separating fragments by size, the sequence can be reconstructed. This method remained the gold standard for over 25 years and is still used today for targeted validation of short DNA regions.
+\end{keyconcept}
+
+Throughout the 1980s and 1990s, Sanger sequencing was progressively automated. Fluorescently labelled terminators replaced radioactive labels, capillary electrophoresis replaced slab gels, and robotic systems allowed higher throughput. These improvements set the stage for the most ambitious biological project in history.
+
+\subsection{The Human Genome Project (1990--2003)}
+\label{subsec:intro:hgp}
+
+In 1990, an international consortium of scientists launched the \textbf{Human Genome Project (HGP)}, an effort to determine the complete sequence of the approximately 3.2 billion base pairs in the human genome. The project was a monumental undertaking: it required over a decade of work by thousands of scientists across 20 institutions in six countries, at a total cost of roughly \$2.7 billion (in 1991 dollars).
+
+A competing private effort, led by Craig Venter and Celera Genomics, used a ``shotgun'' approach---fragmenting the genome into small pieces, sequencing them all in parallel, and using powerful computers to assemble the overlapping fragments. Both the public consortium and Celera published draft sequences simultaneously in February 2001, and a more complete reference genome was declared finished in April 2003, two years ahead of schedule.
+
+The Human Genome Project achieved several milestones beyond the sequence itself:
+\begin{itemize}[itemsep=2pt]
+  \item It drove the development of computational tools for sequence assembly and analysis.
+  \item It established norms for open data sharing in genomics (the ``Bermuda Principles'' required sequence data to be released within 24 hours of generation).
+  \item It catalysed the development of faster, cheaper sequencing technologies.
+  \item It revealed that the human genome contains only about 20,000--25,000 protein-coding genes---far fewer than the 100,000 initially predicted.
+\end{itemize}
+
+\subsection{The Next-Generation Sequencing Revolution (2005--2015)}
+\label{subsec:intro:ngs-revolution}
+
+The limitations of Sanger sequencing were clear: even with automation, reading an entire human genome required years and billions of dollars. The scientific community needed fundamentally new approaches.
+
+Beginning around 2005, a wave of new technologies---collectively called \textbf{\acrfull{NGS}}---dramatically changed the landscape. Instead of reading one DNA fragment at a time (as in Sanger sequencing), these platforms could read millions to billions of fragments \textit{simultaneously}. This massive parallelism was the key innovation.
+
+The major milestones in this era include:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{2005:} The 454 Life Sciences GS20 became the first commercially available NGS platform, using pyrosequencing (sequencing by synthesis with light detection).
+  \item \textbf{2006:} Solexa (later acquired by Illumina) released the Genome Analyzer, which used reversible-terminator sequencing by synthesis. This approach would come to dominate the market.
+  \item \textbf{2007:} Applied Biosystems released the SOLiD platform, based on sequencing by ligation.
+  \item \textbf{2010:} Ion Torrent introduced semiconductor sequencing, detecting hydrogen ions released during nucleotide incorporation.
+  \item \textbf{2011:} Pacific Biosciences released the RS system, the first commercial single-molecule real-time (SMRT) sequencer, capable of reads exceeding 10,000 bases.
+  \item \textbf{2014:} Oxford Nanopore Technologies shipped the MinION, a USB-stick-sized sequencer that reads DNA by passing it through a protein nanopore.
+\end{itemize}
+
+\subsection{The \$1,000 Genome and Beyond (2014--Present)}
+\label{subsec:intro:1000-genome}
+
+In January 2014, Illumina announced that its HiSeq X Ten system could sequence a human genome for approximately \$1,000 in reagent costs---a symbolic milestone that had been a stated goal of the genomics community for over a decade. By 2022, the Illumina NovaSeq X series brought this cost below \$200 per genome, and as of 2025--2026, some estimates place the cost of sequencing a human genome at roughly \$100--\$200.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=0.7cm, y=0.9cm]
+  % Axes
+  \draw[thick, -{Stealth}] (0,0) -- (16,0) node[right] {Year};
+  \draw[thick, -{Stealth}] (0,0) -- (0,8.5) node[above, align=center] {Cost per\\Genome};
+
+  % Y-axis labels (log scale conceptual)
+  \foreach \y/\lab in {0/\$100, 1.5/\$1{,}000, 3/\$10{,}000, 4.5/\$100{,}000, 6/\$1M, 7.5/\$100M} {
+    \draw (-0.15,\y) -- (0.15,\y);
+    \node[left] at (-0.2,\y) {\scriptsize \lab};
+  }
+
+  % X-axis labels
+  \foreach \x/\yr in {0/2001, 3/2005, 5/2007, 7/2010, 9/2012, 11/2014, 13/2019, 15/2025} {
+    \draw (\x,-0.15) -- (\x,0.15);
+    \node[below, rotate=45, anchor=north east] at (\x,-0.2) {\scriptsize \yr};
+  }
+
+  % Data points (approximate log-scale)
+  \filldraw[MidnightBlue] (0,7.5) circle (3pt);   % 2001: ~$100M
+  \filldraw[MidnightBlue] (3,6.8) circle (3pt);    % 2005: ~$50M
+  \filldraw[MidnightBlue] (5,4.5) circle (3pt);    % 2007: $100K (NGS arrives)
+  \filldraw[MidnightBlue] (7,3.0) circle (3pt);    % 2010: $10K
+  \filldraw[MidnightBlue] (9,2.3) circle (3pt);    % 2012: ~$5K
+  \filldraw[MidnightBlue] (11,1.5) circle (3pt);   % 2014: $1K
+  \filldraw[MidnightBlue] (13,0.7) circle (3pt);   % 2019: ~$600
+  \filldraw[MidnightBlue] (15,0.2) circle (3pt);   % 2025: ~$200
+
+  % Line connecting points
+  \draw[MidnightBlue, thick] (0,7.5) -- (3,6.8) -- (5,4.5) -- (7,3.0) -- (9,2.3) -- (11,1.5) -- (13,0.7) -- (15,0.2);
+
+  % Moore's Law reference
+  \draw[dashed, gray, thick] (0,7.5) -- (15,3.0);
+  \node[gray, rotate=-17, anchor=south] at (7.5,5.5) {\scriptsize Moore's Law};
+
+  % Annotation
+  \draw[-{Stealth}, BrickRed, thick] (5,5.5) -- (5,4.7);
+  \node[BrickRed, above, align=center, font=\scriptsize] at (5,5.6) {NGS\\arrives};
+
+  \draw[-{Stealth}, OliveGreen, thick] (11,2.5) -- (11,1.7);
+  \node[OliveGreen, above, align=center, font=\scriptsize] at (11,2.6) {\$1,000\\genome};
+\end{tikzpicture}
+\caption[Cost per human genome over time.]{The cost of sequencing a human genome has fallen faster than Moore's Law, particularly after the introduction of \acrshort{NGS} technologies around 2005--2007. Costs are approximate and reflect reagent costs.}
+\label{fig:intro:cost-trajectory}
+\end{figure}
+
+This dramatic cost reduction---faster than Moore's Law for semiconductor performance (\cref{fig:intro:cost-trajectory})---has fundamentally democratised access to sequencing. What once required a billion-dollar international consortium can now be performed by a single graduate student with a desktop sequencer.
+
+\begin{tipbox}
+The cost of \textit{sequencing} a genome is only part of the total cost of a genomics project. Sample collection, DNA/RNA extraction, library preparation, computational infrastructure, data storage, and expert analysis can collectively exceed the sequencing cost itself. When budgeting for a project, consider the complete workflow.
+\end{tipbox}
+
+
+\section{The Different ``Omes''}
+\label{sec:intro:omes}
+
+Sequencing technologies do not just read DNA. Modern methods can interrogate many different layers of biological information. Each layer is described by its own ``-ome'' and the corresponding ``-omics'' field:
+
+\subsection{The Genome}
+\label{subsec:intro:genome}
+
+The \textbf{genome} is the complete set of DNA in an organism. It includes all the genes (regions that encode proteins or functional RNAs) as well as vast stretches of non-coding DNA that play regulatory, structural, or still-unknown roles. \textbf{Genomics} is the study of genomes---their sequence, structure, function, and evolution. The human genome is approximately 3.2 billion base pairs long and is packaged into 23 pairs of chromosomes.
+
+\subsection{The Transcriptome}
+\label{subsec:intro:transcriptome}
+
+The \textbf{transcriptome} is the complete set of RNA molecules in a cell or tissue at a given moment. While every cell in your body (with few exceptions) contains the same genome, different cell types express different subsets of genes. A liver cell transcribes a very different set of genes than a neuron. \textbf{Transcriptomics} captures this snapshot of gene expression, revealing which genes are ``on'' and at what level.
+
+\subsection{The Epigenome}
+\label{subsec:intro:epigenome}
+
+The \textbf{epigenome} comprises the chemical modifications to DNA and its associated proteins (histones) that influence gene expression without changing the underlying DNA sequence. These modifications include \textbf{DNA methylation} (the addition of methyl groups to cytosine bases) and \textbf{histone modifications} (chemical tags on the protein spools around which DNA is wound). \textbf{Epigenomics} studies these modifications across the entire genome.
+
+\subsection{The Proteome}
+\label{subsec:intro:proteome}
+
+The \textbf{proteome} is the complete set of proteins expressed by a cell, tissue, or organism. While the genome provides the blueprint and the transcriptome reflects which blueprints are being read, the proteome represents the actual molecular machines carrying out cellular functions. \textbf{Proteomics} traditionally uses mass spectrometry rather than sequencing, though sequencing-based methods (such as Ribo-seq for ribosome profiling) can provide indirect measurements of protein production.
+
+\subsection{The Metabolome}
+\label{subsec:intro:metabolome}
+
+The \textbf{metabolome} is the complete set of small molecules (metabolites) present in a biological sample. These include sugars, lipids, amino acids, nucleotides, and the thousands of other small molecules involved in cellular metabolism. \textbf{Metabolomics} typically uses mass spectrometry or nuclear magnetic resonance (NMR), though it is sometimes integrated with sequencing-based multi-omics studies.
+
+\subsection{The Microbiome}
+\label{subsec:intro:microbiome}
+
+The \textbf{microbiome} refers to the community of microorganisms---bacteria, archaea, fungi, viruses---that inhabit a particular environment, such as the human gut, soil, or ocean water. \textbf{Metagenomics} uses sequencing to identify and characterise these microbial communities, often without the need to culture individual species in the laboratory. This has revealed that the human body harbours trillions of microbial cells that play critical roles in health and disease.
+
+\begin{keyconcept}[title={Multi-Omics}]
+No single ``ome'' tells the complete story of a biological system. Modern research increasingly integrates data from multiple omics layers---genomics, transcriptomics, epigenomics, proteomics, and metabolomics---to build comprehensive models of cellular function and disease. Some cutting-edge single-cell technologies can even measure multiple omics layers simultaneously from the same individual cell.
+\end{keyconcept}
+
+
+\section{How Sequencing Has Transformed Science}
+\label{sec:intro:transformations}
+
+\subsection{Medicine and Clinical Diagnostics}
+\label{subsec:intro:medicine}
+
+Sequencing has fundamentally altered the practice of medicine in several ways:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Cancer genomics:} Tumour sequencing identifies the specific mutations driving a patient's cancer, enabling \textbf{precision oncology}---the selection of targeted therapies matched to a tumour's molecular profile. Large-scale projects such as The Cancer Genome Atlas (TCGA) have catalogued mutations across dozens of cancer types.
+  \item \textbf{Rare disease diagnosis:} For patients with undiagnosed genetic conditions, \acrfull{WGS} or \acrfull{WES} can identify the causal mutation. Studies have shown that genomic sequencing can provide a diagnosis for 25--40\% of previously undiagnosed rare disease patients.
+  \item \textbf{Prenatal screening:} Non-invasive prenatal testing (NIPT) sequences cell-free fetal DNA circulating in the mother's blood to screen for chromosomal abnormalities such as Down syndrome (trisomy 21), with high sensitivity and specificity.
+  \item \textbf{Pharmacogenomics:} Sequencing a patient's genome can reveal genetic variants that affect drug metabolism, helping clinicians choose the right drug and dosage.
+  \item \textbf{Infectious disease:} Rapid sequencing of pathogen genomes enables real-time outbreak tracking, identification of antimicrobial resistance genes, and development of targeted diagnostics and vaccines. The COVID-19 pandemic demonstrated this on a global scale, with millions of SARS-CoV-2 genomes sequenced worldwide.
+\end{itemize}
+
+\subsection{Agriculture and Food Science}
+\label{subsec:intro:agriculture}
+
+Genomic sequencing has accelerated crop and livestock improvement. By sequencing the genomes of important crop species (rice, wheat, maize, soybean), researchers have identified genes associated with yield, drought tolerance, disease resistance, and nutritional quality. Genomic selection---using genome-wide genetic markers to predict an organism's traits---has dramatically shortened breeding cycles in both plants and animals.
+
+\subsection{Ecology and Conservation Biology}
+\label{subsec:intro:ecology}
+
+Environmental DNA (eDNA) sequencing allows ecologists to survey biodiversity by collecting water or soil samples and sequencing the trace DNA shed by organisms. This non-invasive approach can detect rare or elusive species, monitor ecosystem health, and track the spread of invasive species. Population genomics studies use sequencing to assess genetic diversity within endangered species, informing conservation strategies.
+
+\subsection{Forensic Science}
+\label{subsec:intro:forensics}
+
+DNA sequencing has become a cornerstone of forensic identification. Beyond traditional short tandem repeat (STR) profiling, \acrshort{NGS}-based forensic methods can extract more information from degraded or mixed samples, determine biogeographic ancestry, and even predict physical appearance traits from DNA.
+
+\subsection{Evolutionary Biology and Palaeogenomics}
+\label{subsec:intro:evolution}
+
+Sequencing has illuminated the tree of life, resolving evolutionary relationships from viruses to vertebrates. Perhaps most spectacularly, advances in ancient DNA (aDNA) extraction and sequencing have enabled researchers to sequence genomes from organisms that died tens of thousands of years ago---including Neanderthals, Denisovans, woolly mammoths, and cave bears. Svante P\"a\"abo received the 2022 Nobel Prize in Physiology or Medicine for his pioneering work in palaeogenomics.
+
+
+\section{What Modern Sequencing Can Measure}
+\label{sec:intro:what-sequencing-measures}
+
+The versatility of modern sequencing is remarkable. By varying the sample preparation (called \textbf{library preparation}---see \cref{ch:seqprinciples}), the same sequencing instrument can be used to measure fundamentally different biological properties:
+
+\begin{table}[htbp]
+\centering
+\caption[Biological layers measurable by sequencing.]{Major biological layers that can be interrogated using sequencing-based approaches.}
+\label{tab:intro:measurement-types}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}l X l}
+\toprule
+\textbf{What Is Measured} & \textbf{Description} & \textbf{Key Methods} \\
+\midrule
+DNA sequence & The order of bases in the genome & \acrshort{WGS}, \acrshort{WES} \\
+\addlinespace
+RNA expression & Which genes are active and at what level & \acrshort{RNA-seq}, \acrshort{scRNA-seq} \\
+\addlinespace
+DNA methylation & Methyl groups on cytosine residues & \acrshort{WGBS}, RRBS, nanopore \\
+\addlinespace
+Chromatin accessibility & Which genomic regions are ``open'' and potentially active & \acrshort{ATAC-seq}, DNase-seq \\
+\addlinespace
+Protein--DNA interactions & Where proteins bind to the genome & \acrshort{ChIP-seq}, CUT\&RUN \\
+\addlinespace
+Spatial gene expression & Gene expression mapped to tissue location & 10x Visium, MERFISH, Slide-seq \\
+\addlinespace
+3D genome architecture & How the genome folds in three-dimensional space & \acrshort{Hi-C}, Micro-C, GAM \\
+\addlinespace
+Microbial communities & Species composition of complex microbial ecosystems & 16S/ITS amplicon, shotgun metagenomics \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+As shown in \cref{tab:intro:measurement-types}, the key insight is that \textit{the sequencing instrument itself is largely agnostic to what is being measured}. The specificity comes from how the sample is prepared before sequencing. This concept---that library preparation defines the experiment---is one of the most important ideas in modern genomics and will be explored in detail throughout this book.
+
+\begin{warningbox}
+Sequencing measures \textbf{nucleic acid sequences}. It does not directly measure protein levels, metabolite concentrations, or protein structures. When we say ``sequencing measures chromatin accessibility'' or ``protein--DNA interactions,'' we mean that a clever biochemical protocol converts these properties into a DNA sequencing readout. Understanding these conversions is essential for interpreting sequencing data correctly.
+\end{warningbox}
+
+
+\section{The General Sequencing Workflow}
+\label{sec:intro:general-workflow}
+
+Although each sequencing application has its own specific protocol, all sequencing experiments share a common high-level workflow. Understanding this workflow provides a conceptual framework for the rest of the book.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=1.5cm,
+  box/.style={
+    draw, rounded corners=4pt, thick,
+    minimum width=3.2cm, minimum height=1.2cm,
+    text width=3cm, align=center, font=\small\bfseries
+  },
+  arrow/.style={-{Stealth[length=3mm]}, thick, MidnightBlue},
+  desc/.style={font=\scriptsize, text width=3.8cm, align=left}
+]
+
+% Boxes
+\node[box, fill=MidnightBlue!12] (sample) {1. Biological\\Sample};
+\node[box, fill=MidnightBlue!12, right=2.2cm of sample] (extract) {2. Nucleic Acid\\Extraction};
+\node[box, fill=OliveGreen!12, right=2.2cm of extract] (library) {3. Library\\Preparation};
+\node[box, fill=BrickRed!12, below=2.5cm of library] (sequencing) {4. Sequencing};
+\node[box, fill=Goldenrod!12, left=2.2cm of sequencing] (analysis) {5. Data\\Analysis};
+\node[box, fill=MidnightBlue!20, left=2.2cm of analysis] (insight) {6. Biological\\Insight};
+
+% Arrows
+\draw[arrow] (sample) -- (extract);
+\draw[arrow] (extract) -- (library);
+\draw[arrow] (library) -- (sequencing);
+\draw[arrow] (sequencing) -- (analysis);
+\draw[arrow] (analysis) -- (insight);
+
+% Descriptions
+\node[desc, below=0.15cm of sample] {Blood, tissue, cell culture, environmental sample};
+\node[desc, below=0.15cm of extract] {Isolate DNA or RNA; assess quality and quantity};
+\node[desc, below=0.15cm of library] {Fragment, add adapters, amplify; defines the experiment};
+\node[desc, above=0.15cm of sequencing] {Run on sequencing platform; generate reads};
+\node[desc, above=0.15cm of analysis] {QC, alignment, quantification, statistics};
+\node[desc, above=0.15cm of insight] {Variant discovery, expression changes, etc.};
+
+\end{tikzpicture}
+\caption[The general sequencing workflow.]{The general sequencing workflow, from biological sample to biological insight. Every sequencing experiment follows some version of this pipeline.}
+\label{fig:intro:general-workflow}
+\end{figure}
+
+\subsection{Step 1: Biological Sample}
+\label{subsec:intro:sample}
+
+Every sequencing experiment begins with a biological sample. This could be blood drawn from a patient, a tissue biopsy, a bacterial culture, a water sample from a lake, soil, or even ancient bone. The nature and quality of the starting material profoundly influence every downstream step. A fresh, well-preserved sample will yield high-quality nucleic acids; a degraded or contaminated sample may produce unreliable results.
+
+\subsection{Step 2: Nucleic Acid Extraction}
+\label{subsec:intro:extraction}
+
+The DNA or RNA must be isolated from the sample. Extraction protocols use chemical and physical methods to break open cells (lysis), remove proteins and other contaminants, and purify the nucleic acids. The quality and quantity of extracted material are assessed using instruments such as a spectrophotometer (e.g., NanoDrop), a fluorometer (e.g., Qubit), or electrophoresis (e.g., Bioanalyzer, TapeStation).
+
+\subsection{Step 3: Library Preparation}
+\label{subsec:intro:library-prep}
+
+This is the step where the nucleic acid is converted into a form compatible with the sequencing instrument. The details vary enormously depending on the application, but the general steps include:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Fragmentation:} Breaking the nucleic acid into pieces of an appropriate size (e.g., 200--500\basepair{} for short-read sequencing).
+  \item \textbf{Adapter ligation:} Attaching short, synthetic DNA sequences (adapters) to the ends of fragments. These adapters allow fragments to bind to the sequencing instrument and serve as priming sites for sequencing.
+  \item \textbf{Amplification:} Using \acrfull{PCR} to create multiple copies of each library fragment (though some protocols are ``PCR-free'').
+  \item \textbf{Selection or enrichment:} Optionally selecting fragments of a specific size or enriching for specific genomic regions (e.g., exome capture).
+\end{enumerate}
+
+The resulting collection of adapter-ligated fragments is called a \textbf{sequencing library}. This concept is explored in depth in \cref{ch:seqprinciples}.
+
+\subsection{Step 4: Sequencing}
+\label{subsec:intro:sequencing}
+
+The library is loaded onto a sequencing instrument, which reads the sequence of each fragment. Different platforms use different chemistries (discussed in \cref{ch:seqprinciples} and subsequent chapters), but all produce the same fundamental output: millions to billions of short text strings representing the sequences of the library fragments, along with quality scores indicating the confidence of each base call.
+
+\subsection{Step 5: Data Analysis}
+\label{subsec:intro:analysis}
+
+The raw sequencing data (typically in \acrshort{FASTQ} format) must be processed computationally. A typical analysis pipeline involves:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Quality control:} Assessing data quality and removing low-quality reads or adapter sequences.
+  \item \textbf{Alignment / Mapping:} Aligning reads to a reference genome to determine where each read originated.
+  \item \textbf{Quantification or variant calling:} Counting reads per gene (for expression analysis) or identifying positions where the sample differs from the reference (for variant calling).
+  \item \textbf{Statistical analysis:} Applying statistical methods to identify significant biological signals (e.g., differentially expressed genes, significantly mutated regions).
+  \item \textbf{Visualisation and interpretation:} Presenting results in an interpretable format and placing them in biological context.
+\end{enumerate}
+
+\subsection{Step 6: Biological Insight}
+\label{subsec:intro:insight}
+
+The ultimate goal of any sequencing experiment is biological understanding. This might be identifying the mutation causing a patient's disease, discovering a new gene regulatory mechanism, characterising the microbial community in a specific environment, or any of thousands of other scientific questions that sequencing can address.
+
+\begin{tipbox}
+A common mistake for beginners is to focus exclusively on the sequencing step itself, underestimating the importance of sample quality, library preparation, and computational analysis. In practice, the ``wetlab'' steps (sample prep and library construction) and the ``drylab'' steps (bioinformatics and statistics) are at least as important as the sequencing itself. Garbage in, garbage out.
+\end{tipbox}
+
+
+\section{The Cost Trajectory and Democratisation of Sequencing}
+\label{sec:intro:cost}
+
+The cost of sequencing has decreased at a pace that outstrips even the famous Moore's Law for computer transistors. As illustrated in \cref{fig:intro:cost-trajectory}, the cost of sequencing a human genome fell from approximately \$100 million in 2001 to under \$200 by 2025---a decline of roughly six orders of magnitude in 24 years.
+
+This cost reduction has had profound consequences:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Democratisation:} Sequencing is no longer restricted to a handful of large genome centres. University core facilities, clinical laboratories, and even field stations now operate sequencing instruments. The Oxford Nanopore MinION, which costs roughly \$1,000 and is the size of a stapler, has been used in Antarctic research stations, the International Space Station, and disease outbreak zones in remote regions of Africa.
+
+  \item \textbf{Scale:} Projects like the UK Biobank (500,000 genomes), the All of Us Research Program (1 million+ participants), and large-scale cancer genomics initiatives would have been unthinkable at earlier cost points.
+
+  \item \textbf{Clinical adoption:} As costs have fallen, sequencing has moved from a research tool to a clinical diagnostic. Many hospitals now offer clinical \acrshort{WGS} or \acrshort{WES} for rare disease diagnosis, and tumour sequencing panels are standard of care in oncology.
+
+  \item \textbf{New applications:} Low costs have enabled entirely new categories of experiments, such as single-cell sequencing (profiling thousands to millions of individual cells), spatial transcriptomics (mapping gene expression to tissue locations), and real-time pathogen surveillance.
+\end{itemize}
+
+\begin{warningbox}
+While sequencing costs have plummeted, the costs of data storage, computational analysis, and expert interpretation have not decreased at the same rate. For large-scale projects generating petabytes of data, computational costs can exceed sequencing costs. This growing imbalance is sometimes called the ``\$1,000 genome, \$1,000,000 analysis'' problem.
+\end{warningbox}
+
+
+\section{The Current Sequencing Landscape}
+\label{sec:intro:landscape}
+
+As of the mid-2020s, the sequencing landscape is dominated by a few major technology families:
+
+\begin{description}[style=nextline, itemsep=4pt]
+  \item[Short-read sequencing (Illumina)] The most widely used platform, producing reads of 50--300\basepair{} with very high accuracy (>99.9\% per base). Dominant for applications requiring high throughput: \acrshort{WGS}, \acrshort{RNA-seq}, \acrshort{ChIP-seq}, \acrshort{ATAC-seq}, and most clinical diagnostics.
+
+  \item[Long-read sequencing (PacBio SMRT)] Produces reads averaging 15--25\kilobase{} (and up to >100\kilobase{}), with high consensus accuracy achieved through circular consensus sequencing (HiFi reads). Excellent for genome assembly, structural variant detection, and full-length transcript sequencing.
+
+  \item[Long-read sequencing (Oxford Nanopore)] Produces ultra-long reads (routinely >100\kilobase{}, with records exceeding 4\megabase{}). Can directly detect base modifications (e.g., methylation) without chemical conversion. Uniquely portable (MinION) and capable of real-time data streaming.
+
+  \item[Emerging platforms] New entrants, including Element Biosciences (AVITI), Ultima Genomics, and others, are introducing competition in the short-read space with novel chemistries and pricing models.
+\end{description}
+
+These platforms are covered in detail in \cref{ch:seqprinciples} and the chapters that follow.
+
+
+% ============================================================
+\section{An Information-Theoretic View of Sequencing}
+\label{sec:intro:information-theory}
+
+Sequencing can be framed as an information-recovery problem. A genome of length $G$ bases, drawn from an alphabet of size $|\Sigma|=4$, carries at most $2G$ bits of information (since $\log_2 4 = 2$). In practice, the information content is lower because of compositional biases. The \textbf{Shannon entropy} of a sequence quantifies this:
+
+\begin{equation}
+H = -\sum_{i \in \{A,C,G,T\}} p_i \log_2 p_i
+\label{eq:intro:shannon-entropy}
+\end{equation}
+
+where $p_i$ is the frequency of base $i$. For a genome with perfectly uniform composition ($p_A = p_C = p_G = p_T = 0.25$), $H = 2$ bits per position. For an AT-rich genome such as \species{Plasmodium falciparum} ($\sim$80\% AT), $H \approx 1.72$ bits per position, meaning the sequence is intrinsically more compressible and, in a sense, carries less information per base.
+
+\begin{keyconcept}[title={Shannon Entropy and Genome Complexity}]
+Shannon entropy provides a rigorous lower bound on the number of bits needed to encode each position in a genome. This quantity has direct practical consequences: genomes with low entropy (e.g., highly repetitive or AT-biased) are easier to compress (relevant for storage), but harder to assemble (because repeats create ambiguity in fragment overlap). Entropy also constrains the theoretical minimum number of reads required to reconstruct a genome, a result formalised by information-theoretic limits on sequence assembly.
+\end{keyconcept}
+
+This perspective connects to a practical trade-off: every sequencing experiment must generate enough information (reads $\times$ read length $\times$ accuracy) to overcome the entropy of the target plus the noise introduced by the instrument's error rate. For a base call with error probability $P_e$, the mutual information between the true base and the observed call is:
+
+\begin{equation}
+I = \log_2 |\Sigma| + P_e \log_2 \frac{P_e}{|\Sigma|-1} + (1-P_e)\log_2(1-P_e)
+\label{eq:intro:mutual-info}
+\end{equation}
+
+At Q30 accuracy ($P_e = 0.001$), each observed base carries $\sim$1.99 bits of information---nearly all of the 2-bit theoretical maximum. At Q10 ($P_e = 0.1$), this drops to $\sim$1.53 bits, meaning roughly 30\% more sequencing is needed to achieve the same total information content.
+
+
+\subsection{Quantitative Comparison of Sequencing Generations}
+\label{subsec:intro:generation-comparison}
+
+The evolution of sequencing technology can be summarised quantitatively across several dimensions. \Cref{tab:intro:generation-comparison} provides a comprehensive comparison.
+
+\begin{table}[htbp]
+\centering
+\caption[Quantitative comparison of sequencing generations.]{Quantitative comparison of sequencing technology generations. Costs are approximate and reflect the mid-2020s.}
+\label{tab:intro:generation-comparison}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}l X X X X}
+\toprule
+\textbf{Metric} & \textbf{Sanger} & \textbf{2nd Gen (Illumina)} & \textbf{3rd Gen (PacBio HiFi)} & \textbf{3rd Gen (ONT)} \\
+\midrule
+Read length & 500--1,000\basepair{} & 50--300\basepair{} & 10--25\kilobase{} & 1\kilobase{}--4\megabase{} \\
+\addlinespace
+Per-read accuracy & 99.99\% & 99.9\% (Q30) & 99.9\% (Q30 HiFi) & 92--99\% (raw) \\
+\addlinespace
+Throughput / run & $\sim$0.1\megabase{} & 0.6--16,000\gigabase{} & 15--90\gigabase{} & 2--300\gigabase{} \\
+\addlinespace
+Reads / run & 96 & $10^6$--$10^{10}$ & $10^5$--$10^7$ & $10^4$--$10^7$ \\
+\addlinespace
+Cost / Gb & \$500,000 & \$2--20 & \$20--50 & \$5--30 \\
+\addlinespace
+Instrument cost & \$90K & \$20K--1.0M & \$200K--600K & \$1K--48K \\
+\addlinespace
+Time to result & 2--3 h & 12--48 h & 12--30 h & 1 h--72 h \\
+\addlinespace
+Dominant error & Substitution & Substitution & Indel (residual) & Indel (homopolymer) \\
+\addlinespace
+Base modifications & No & No (indirect only) & Yes (kinetics) & Yes (direct signal) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  bubble/.style={circle, draw=#1, thick, fill=#1!15, inner sep=0pt, font=\scriptsize\bfseries, align=center},
+]
+  % Axes
+  \draw[thick, -{Stealth[length=3mm]}] (0,0) -- (13,0) node[right] {\small Read length};
+  \draw[thick, -{Stealth[length=3mm]}] (0,0) -- (0,8) node[above] {\small Throughput};
+
+  % Axis labels
+  \node[below, font=\scriptsize] at (1,-0.3) {100\basepair{}};
+  \node[below, font=\scriptsize] at (4,-0.3) {1\kilobase{}};
+  \node[below, font=\scriptsize] at (7.5,-0.3) {10\kilobase{}};
+  \node[below, font=\scriptsize] at (11,-0.3) {100\kilobase{}+};
+
+  \node[left, font=\scriptsize] at (-0.2,1.5) {Low};
+  \node[left, font=\scriptsize] at (-0.2,4) {Med};
+  \node[left, font=\scriptsize] at (-0.2,6.5) {High};
+
+  % Sanger bubble (small, short reads, low throughput)
+  \node[bubble=gray, minimum size=0.8cm] at (1.5,0.8) {Sanger};
+
+  % Illumina bubble (large for throughput, short reads)
+  \node[bubble=MidnightBlue, minimum size=2.2cm] at (2.5,6.5) {Illumina};
+
+  % PacBio HiFi (medium throughput, long reads)
+  \node[bubble=OliveGreen, minimum size=1.6cm] at (7.5,4.0) {PacBio\\HiFi};
+
+  % ONT (medium throughput, ultra-long reads possible)
+  \node[bubble=BrickRed, minimum size=1.4cm] at (10.5,3.5) {ONT};
+
+  % Annotation: bubble size = cost-effectiveness
+  \node[font=\scriptsize\itshape, text width=3cm, align=center] at (11,7) {Bubble size $\propto$\\cost-effectiveness\\(Gb per \$)};
+\end{tikzpicture}
+\caption[Sequencing platform comparison.]{Conceptual comparison of major sequencing platforms. The $x$-axis represents read length, the $y$-axis represents throughput per run, and bubble size approximates cost-effectiveness. Each technology occupies a distinct niche; the choice depends on the biological question.}
+\label{fig:intro:platform-bubbles}
+\end{figure}
+
+The key insight from this comparison is that \textit{no single platform dominates across all dimensions}. Short-read platforms excel in throughput and cost per base, making them ideal for large-scale surveys (population genomics, RNA-seq). Long-read platforms sacrifice some throughput for the ability to resolve complex genomic features (structural variants, repeat-rich regions, full-length transcripts, base modifications). This complementarity is why many modern studies employ a hybrid approach, combining short and long reads to leverage the strengths of both.
+
+
+% ============================================================
+\section{Reading Guide for This Book}
+\label{sec:intro:reading-guide}
+
+This book is organised into seven parts, designed to take you from foundational concepts to advanced applications and analysis:
+
+\begin{description}[style=nextline, itemsep=4pt]
+  \item[Part~I: Foundations (Chapters~\ref{ch:introduction}--\ref{ch:seqprinciples})]
+  You are here. \Cref{ch:molbio} covers the essential molecular biology you need to understand sequencing technologies---DNA structure, gene expression, epigenetics, and genetic variation. \Cref{ch:seqprinciples} introduces the core principles shared by all modern sequencing platforms: how reads are generated, what quality scores mean, and key concepts like coverage and multiplexing.
+
+  \item[Part~II: Sequencing Platforms and Technologies (Chapters~4--6)]
+  A detailed survey of current sequencing instruments. Chapter~4 covers short-read platforms (Illumina and emerging competitors). Chapter~5 covers long-read platforms (PacBio and Oxford Nanopore). Chapter~6 provides a comprehensive guide to library preparation methods.
+
+  \item[Part~III: Genomics (Chapters~7--9)]
+  DNA-level applications: whole-genome sequencing, exome sequencing, variant discovery and annotation, and metagenomics for microbial community analysis.
+
+  \item[Part~IV: Transcriptomics (Chapters~10--12)]
+  RNA-level applications: bulk \acrshort{RNA-seq}, single-cell \acrshort{RNA-seq} (\acrshort{scRNA-seq}), and spatial transcriptomics. These chapters cover both experimental design and computational analysis.
+
+  \item[Part~V: Epigenomics (Chapters~13--16)]
+  Epigenomic applications: DNA methylation profiling (\acrshort{WGBS} and related methods), chromatin accessibility (\acrshort{ATAC-seq}, DNase-seq), histone modification mapping (\acrshort{ChIP-seq}, CUT\&RUN/CUT\&Tag), and three-dimensional genome architecture (\acrshort{Hi-C}).
+
+  \item[Part~VI: Multiomics and Emerging Frontiers (Chapters~17--19)]
+  Cutting-edge technologies that measure multiple molecular layers simultaneously, specialised applications (long-read transcriptomics, direct RNA sequencing, spatial multi-omics), and emerging technologies poised to reshape the field.
+
+  \item[Part~VII: Bioinformatics and Data Analysis (Chapters~20--23)]
+  Computational fundamentals: file formats, alignment algorithms, workflow management (Nextflow, Snakemake), experimental design and statistical considerations, data standards, and reproducibility.
+
+  \item[Part~VIII: Democratisation of Sequencing (Chapters~24--26)]
+  Hands-on genomics for everyone. \Cref{ch:accessible} surveys accessible sequencing platforms and cost models for individual researchers and citizen scientists. \Cref{ch:protocols} provides step-by-step wet-lab protocols---from DNA extraction through library preparation to flow cell loading. \Cref{ch:diyanalysis} walks you through complete computational analyses, from basecalling to genome assembly and species identification, with full Snakemake and Nextflow workflows.
+\end{description}
+
+\begin{tipbox}[title={How to Use This Book}]
+If you are completely new to genomics, we recommend reading Part~I (Chapters~\ref{ch:introduction}--\ref{ch:seqprinciples}) in full before branching into the topics most relevant to your work. If you already have a molecular biology background, you can skim \cref{ch:molbio} and start with \cref{ch:seqprinciples}. Each application chapter (Parts~III--VI) is designed to be relatively self-contained, so you can jump directly to the application most relevant to your research.
+\end{tipbox}
+
+
+\section{Summary}
+\label{sec:intro:summary}
+
+This chapter has provided a bird's-eye view of the sequencing revolution:
+
+\begin{itemize}[itemsep=2pt]
+  \item Sequencing is the process of reading the nucleotide sequence of DNA or RNA, and it has become one of the most transformative technologies in modern science.
+  \item From Sanger sequencing in 1977 through the Human Genome Project and the \acrshort{NGS} revolution, the cost and speed of sequencing have improved by many orders of magnitude.
+  \item Modern sequencing can interrogate many biological layers beyond DNA sequence, including gene expression, epigenetic modifications, chromatin structure, protein--DNA interactions, and spatial gene expression patterns.
+  \item The general workflow---sample collection, nucleic acid extraction, library preparation, sequencing, data analysis, and biological interpretation---provides a framework for understanding all sequencing experiments.
+  \item The dramatic decrease in sequencing costs has democratised the technology, enabling applications from clinical diagnostics to ecological surveys to palaeogenomics.
+\end{itemize}
+
+In the next chapter, we will build the molecular biology foundation you need to understand how these technologies work at the chemical and biological level.

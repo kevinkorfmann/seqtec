@@ -1,0 +1,975 @@
+\chapter{Histone Modifications and Protein--DNA Interactions}
+\label{ch:histones}
+
+\begin{keyconcept}
+Histones are the protein spools around which DNA is wound in eukaryotic cells, forming nucleosomes---the fundamental units of chromatin. Chemical modifications to histone tails (methylation, acetylation, phosphorylation, ubiquitylation, and others) constitute a combinatorial \textbf{histone code} that regulates gene expression, DNA repair, replication, and chromosome condensation. Sequencing-based methods---ChIP-seq, CUT\&RUN, and CUT\&Tag---allow researchers to map the genome-wide locations of specific histone modifications and DNA-binding proteins, revealing the regulatory logic that governs cellular identity. This chapter covers the major histone marks, the experimental methods to profile them, and the bioinformatics workflows for their analysis.
+\end{keyconcept}
+
+%% ============================================================
+\section{The Histone Code}
+\label{sec:histones:code}
+
+\subsection{Histone Structure and Modifications}
+\label{subsec:histones:structure}
+
+The nucleosome consists of 147\basepair{} of DNA wrapped 1.65 times around an octamer of histone proteins (two copies each of H2A, H2B, H3, and H4). Each histone has an unstructured N-terminal ``tail'' that protrudes from the nucleosome and is subject to a wide array of post-translational modifications. These modifications are ``written'' by specific enzymes (methyltransferases, acetyltransferases), ``erased'' by others (demethylases, deacetylases), and ``read'' by effector proteins containing recognition domains (chromodomains, bromodomains, PHD fingers).
+
+\subsection{Key Histone Marks and Their Functions}
+\label{subsec:histones:key-marks}
+
+\begin{table}[htbp]
+\centering
+\caption[Key histone modifications and their biological meanings.]{Major histone modifications profiled by sequencing-based methods and their associated chromatin states.}
+\label{tab:histones:marks}
+\small
+\begin{tabularx}{\textwidth}{l l l X}
+\toprule
+\textbf{Mark} & \textbf{Type} & \textbf{Peak Shape} & \textbf{Biological Meaning} \\
+\midrule
+H3K4me1 & Methylation & Broad & Active and poised enhancers \\
+\addlinespace
+H3K4me3 & Methylation & Sharp & Active promoters; marks TSSs of expressed genes \\
+\addlinespace
+H3K27ac & Acetylation & Sharp/medium & Active regulatory elements (promoters and enhancers); distinguishes active from poised enhancers \\
+\addlinespace
+H3K36me3 & Methylation & Broad & Actively transcribed gene bodies; marks elongating RNA Pol II \\
+\addlinespace
+H3K27me3 & Methylation & Broad & Polycomb-mediated repression; silences developmental genes \\
+\addlinespace
+H3K9me3 & Methylation & Broad & Constitutive heterochromatin; marks pericentromeric repeats, transposable elements \\
+\addlinespace
+H3K9me2 & Methylation & Broad & Facultative heterochromatin; gene silencing in differentiated cells \\
+\addlinespace
+H4K20me3 & Methylation & Broad & Heterochromatin; DNA damage response \\
+\addlinespace
+H3K4me2 & Methylation & Sharp/medium & Active and poised regulatory elements \\
+\addlinespace
+H2A.Z & Variant & Sharp & Nucleosome variant at promoters and enhancers; marks regulatory regions \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Bivalent Chromatin}
+\label{subsec:histones:bivalent}
+
+A particularly important concept is \textbf{bivalent chromatin}: the co-occurrence of the activating mark H3K4me3 and the repressive mark H3K27me3 at the same genomic locus. Bivalent domains are found at the promoters of key developmental genes in embryonic stem cells (ESCs). These genes are silenced but ``poised'' for rapid activation upon differentiation. During lineage commitment, bivalent domains resolve to either H3K4me3-only (activation) or H3K27me3-only (stable silencing).
+
+\subsection{The Combinatorial Histone Code}
+\label{subsec:histones:combinatorial}
+
+No single histone mark defines a chromatin state in isolation. Instead, combinations of marks define functional chromatin states. The \textbf{ChromHMM} algorithm (discussed in \cref{subsec:histones:chromhmm}) uses hidden Markov models to learn chromatin states from multiple histone mark profiles simultaneously. Typical chromatin state models include 15--18 states such as:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Active TSS:} H3K4me3 + H3K27ac
+  \item \textbf{Active enhancer:} H3K4me1 + H3K27ac
+  \item \textbf{Poised enhancer:} H3K4me1 (without H3K27ac)
+  \item \textbf{Strong transcription:} H3K36me3
+  \item \textbf{Polycomb repressed:} H3K27me3
+  \item \textbf{Heterochromatin:} H3K9me3
+  \item \textbf{Quiescent:} no marks (desert)
+\end{itemize}
+
+\begin{keyconcept}[title={Why Profile Multiple Histone Marks?}]
+A minimum set of six histone marks---H3K4me3, H3K4me1, H3K27ac, H3K27me3, H3K9me3, and H3K36me3---is sufficient to define the major chromatin states in most cell types. This ``core six'' set is the basis for ENCODE and Roadmap Epigenomics chromatin state annotations. Profiling all six marks in your cell type of interest provides a comprehensive regulatory annotation of the genome.
+\end{keyconcept}
+
+%% ============================================================
+\section{ChIP-seq: Chromatin Immunoprecipitation Sequencing}
+\label{sec:histones:chipseq}
+
+\subsection{Principle}
+\label{subsec:histones:chipseq-principle}
+
+\acrfull{ChIP-seq} is the original and most widely used sequencing-based method for mapping protein--DNA interactions and histone modifications. The principle involves using an antibody specific to the target protein or modification to selectively enrich DNA fragments associated with that target:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Crosslinking:} Treat cells with formaldehyde (1\%, 10 minutes at room temperature) to covalently link proteins to nearby DNA.
+  \item \textbf{Cell lysis and chromatin shearing:} Lyse cells and shear chromatin into fragments of 200--500\basepair{} by sonication or enzymatic digestion (MNase).
+  \item \textbf{Immunoprecipitation:} Incubate sheared chromatin with an antibody specific to the target (e.g., anti-H3K27ac). The antibody--chromatin complexes are captured on Protein A/G magnetic beads.
+  \item \textbf{Washing:} Wash beads stringently to remove non-specifically bound DNA.
+  \item \textbf{Reverse crosslinking:} Heat samples to reverse formaldehyde crosslinks and release DNA.
+  \item \textbf{DNA purification and library preparation:} Purify the enriched DNA and prepare a sequencing library (end repair, adapter ligation, PCR amplification).
+  \item \textbf{Sequencing:} Typically single-end 50--75\basepair{} reads; 20--40 million uniquely mapped reads per sample.
+\end{enumerate}
+
+\begin{protocolbox}[title={ChIP-seq Protocol Summary}]
+\begin{tabular}{ll}
+\textbf{Starting material:} & 1--10 million cells per IP \\
+\textbf{Crosslinking:} & 1\% formaldehyde, 10 min, RT \\
+\textbf{Fragmentation:} & Sonication to 200--500\basepair{} \\
+\textbf{Antibody:} & 2--10 $\mu$g per IP; validated, lot-tested \\
+\textbf{IP incubation:} & Overnight at 4\textdegree{}C \\
+\textbf{Washes:} & 4--6 washes, increasing stringency \\
+\textbf{Reverse crosslink:} & 65\textdegree{}C, 4--16 hours \\
+\textbf{Library prep:} & Standard Illumina (e.g., NEBNext) \\
+\textbf{Sequencing:} & SE50/75; 20--40M reads \\
+\textbf{Controls:} & Input DNA (sheared, no IP) or IgG IP \\
+\end{tabular}
+\end{protocolbox}
+
+\subsection{Controls in ChIP-seq}
+\label{subsec:histones:controls}
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Input control:} A fraction of the sheared chromatin that was not immunoprecipitated. This represents the background distribution of reads and corrects for biases in chromatin accessibility, mappability, and PCR amplification. \textit{Input is the preferred control.}
+  \item \textbf{IgG control:} An immunoprecipitation with a non-specific IgG antibody. Theoretically captures only non-specific binding. In practice, IgG controls often recover very little DNA and can be difficult to sequence, making input preferred.
+  \item \textbf{Spike-in controls:} Adding a known amount of chromatin from another species (e.g., \species{Drosophila} chromatin with anti-H2Av antibody) to enable quantitative comparison between samples (spike-in normalisation).
+\end{itemize}
+
+\subsection{Antibody Quality}
+\label{subsec:histones:antibody}
+
+\begin{warningbox}
+The quality of the ChIP-seq antibody is the single most critical factor determining experimental success. A poor antibody will produce high background, false-positive peaks, and unreliable results. ENCODE has established rigorous antibody validation standards:
+\begin{itemize}[itemsep=1pt]
+  \item Western blot showing specificity (single band at expected size).
+  \item Immunoprecipitation followed by mass spectrometry.
+  \item Comparison of ChIP-seq signal with known genomic features (e.g., H3K4me3 at active TSSs).
+  \item Lot-to-lot consistency testing.
+\end{itemize}
+Always use ENCODE-validated antibodies when available and check the antibody lot before committing to large-scale experiments.
+\end{warningbox}
+
+\subsection{Limitations of ChIP-seq}
+\label{subsec:histones:chipseq-limitations}
+
+\begin{itemize}[itemsep=2pt]
+  \item Requires large cell numbers (1--10 million per IP).
+  \item Antibody-dependent: quality and specificity vary.
+  \item High background noise: only 1--5\% of input DNA is typically recovered.
+  \item Requires 20--40 million reads per sample.
+  \item Crosslinking can introduce artefacts and is not fully reversible.
+  \item Multi-day protocol (2--3 days minimum).
+\end{itemize}
+
+%% ============================================================
+\section{CUT\&RUN: Cleavage Under Targets and Release Using Nuclease}
+\label{sec:histones:cutrun}
+
+\subsection{Principle}
+\label{subsec:histones:cutrun-principle}
+
+CUT\&RUN (Cleavage Under Targets and Release Using Nuclease), developed by Skene and Henikoff in 2017, addresses many limitations of ChIP-seq:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Antibody binding:} Intact cells or nuclei (no crosslinking, no sonication) are incubated with a primary antibody against the target.
+  \item \textbf{Protein A--MNase binding:} A fusion protein of Protein A and micrococcal nuclease (pA-MN) is added and binds to the antibody.
+  \item \textbf{Targeted cleavage:} Addition of calcium activates the MNase, which cleaves DNA immediately adjacent to the antibody-bound target.
+  \item \textbf{Fragment release:} The small cleaved fragments ($\sim$150\basepair{}) diffuse out of the nucleus into the supernatant.
+  \item \textbf{Collection and sequencing:} The released fragments are collected from the supernatant, purified, and sequenced.
+\end{enumerate}
+
+Key advantages over ChIP-seq:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Lower input:} 100,000--500,000 cells (vs.\ 1--10 million for ChIP-seq).
+  \item \textbf{Lower background:} only target-adjacent fragments are released; unbound chromatin stays in the nucleus.
+  \item \textbf{Lower sequencing depth needed:} 3--8 million reads (vs.\ 20--40 million for ChIP-seq).
+  \item \textbf{No crosslinking or sonication:} preserves native chromatin structure.
+  \item \textbf{Faster:} can be completed in one day.
+\end{itemize}
+
+%% ============================================================
+\section{CUT\&Tag: Cleavage Under Targets and Tagmentation}
+\label{sec:histones:cuttag}
+
+\subsection{Principle}
+\label{subsec:histones:cuttag-principle}
+
+CUT\&Tag (Cleavage Under Targets and Tagmentation), developed by Kaya-Okur et al.\ in 2019, further simplifies the workflow by replacing MNase cleavage with Tn5 transposase-mediated tagmentation:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Antibody binding:} Intact nuclei are bound to concanavalin A magnetic beads, then incubated with primary antibody.
+  \item \textbf{Secondary antibody:} A secondary antibody is added to amplify the signal.
+  \item \textbf{pA-Tn5 or pAG-Tn5 binding:} A fusion protein of Protein A (or Protein A/G) and Tn5 transposase, pre-loaded with sequencing adapters, binds to the secondary antibody at target sites.
+  \item \textbf{Tagmentation:} Addition of magnesium activates Tn5, which inserts sequencing adapters into DNA near the target site.
+  \item \textbf{Library amplification:} DNA is purified and amplified with indexed primers. The library is ready for sequencing.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  scale=0.85,
+  node distance=0.8cm,
+  box/.style={draw, rounded corners=3pt, thick, minimum width=2.5cm, minimum height=0.7cm, align=center, font=\scriptsize},
+  arrow/.style={-{Stealth[length=2mm]}, thick, MidnightBlue},
+  method/.style={font=\small\bfseries, MidnightBlue},
+  labelstep/.style={font=\tiny, gray}
+]
+
+% Title
+\node[font=\bfseries\small, MidnightBlue] at (6, 11.5) {Comparison: ChIP-seq vs CUT\&RUN vs CUT\&Tag};
+
+% === ChIP-seq column ===
+\node[method] at (1.5, 10.5) {ChIP-seq};
+
+\node[box, fill=BrickRed!10] (cs1) at (1.5, 9.5) {Crosslink\\(formaldehyde)};
+\node[box, fill=BrickRed!10] (cs2) at (1.5, 8.3) {Sonicate\\(200--500 bp)};
+\node[box, fill=BrickRed!10] (cs3) at (1.5, 7.1) {Add antibody\\+ beads};
+\node[box, fill=BrickRed!10] (cs4) at (1.5, 5.9) {Wash \&\\elute IP};
+\node[box, fill=BrickRed!10] (cs5) at (1.5, 4.7) {Reverse\\crosslink};
+\node[box, fill=BrickRed!10] (cs6) at (1.5, 3.5) {Library\\prep};
+\node[box, fill=BrickRed!10] (cs7) at (1.5, 2.3) {Sequence};
+
+\draw[arrow] (cs1) -- (cs2);
+\draw[arrow] (cs2) -- (cs3);
+\draw[arrow] (cs3) -- (cs4);
+\draw[arrow] (cs4) -- (cs5);
+\draw[arrow] (cs5) -- (cs6);
+\draw[arrow] (cs6) -- (cs7);
+
+\node[labelstep, right] at (3.0, 9.5) {2--3 days};
+\node[labelstep, right] at (3.0, 7.1) {1--10M cells};
+\node[labelstep, right] at (3.0, 2.3) {20--40M reads};
+
+% === CUT&RUN column ===
+\node[method] at (6, 10.5) {CUT\&RUN};
+
+\node[box, fill=OliveGreen!10] (cr1) at (6, 9.5) {Bind nuclei\\to beads};
+\node[box, fill=OliveGreen!10] (cr2) at (6, 8.3) {Add primary\\antibody};
+\node[box, fill=OliveGreen!10] (cr3) at (6, 7.1) {Add pA-MNase\\fusion};
+\node[box, fill=OliveGreen!10] (cr4) at (6, 5.9) {Add Ca$^{2+}$:\\targeted cleavage};
+\node[box, fill=OliveGreen!10] (cr5) at (6, 4.7) {Collect\\released fragments};
+\node[box, fill=OliveGreen!10] (cr6) at (6, 3.5) {Library\\prep};
+\node[box, fill=OliveGreen!10] (cr7) at (6, 2.3) {Sequence};
+
+\draw[arrow] (cr1) -- (cr2);
+\draw[arrow] (cr2) -- (cr3);
+\draw[arrow] (cr3) -- (cr4);
+\draw[arrow] (cr4) -- (cr5);
+\draw[arrow] (cr5) -- (cr6);
+\draw[arrow] (cr6) -- (cr7);
+
+\node[labelstep, right] at (7.5, 9.5) {1 day};
+\node[labelstep, right] at (7.5, 7.1) {100K--500K cells};
+\node[labelstep, right] at (7.5, 2.3) {3--8M reads};
+
+% === CUT&Tag column ===
+\node[method] at (10.5, 10.5) {CUT\&Tag};
+
+\node[box, fill=Goldenrod!15] (ct1) at (10.5, 9.5) {Bind nuclei\\to beads};
+\node[box, fill=Goldenrod!15] (ct2) at (10.5, 8.3) {Add 1\textdegree{} and\\2\textdegree{} antibody};
+\node[box, fill=Goldenrod!15] (ct3) at (10.5, 7.1) {Add pA(G)-Tn5\\fusion};
+\node[box, fill=Goldenrod!15] (ct4) at (10.5, 5.9) {Add Mg$^{2+}$:\\tagmentation};
+\node[box, fill=Goldenrod!15] (ct5) at (10.5, 4.7) {PCR amplify\\(library ready)};
+\node[box, fill=Goldenrod!15] (ct7) at (10.5, 3.5) {Sequence};
+
+\draw[arrow] (ct1) -- (ct2);
+\draw[arrow] (ct2) -- (ct3);
+\draw[arrow] (ct3) -- (ct4);
+\draw[arrow] (ct4) -- (ct5);
+\draw[arrow] (ct5) -- (ct7);
+
+\node[labelstep, right] at (12, 9.5) {$<$ 1 day};
+\node[labelstep, right] at (12, 7.1) {100--1,000 cells};
+\node[labelstep, right] at (12, 3.5) {3--8M reads};
+
+% Summary boxes at bottom
+\node[box, fill=BrickRed!20, text width=2.5cm, minimum height=1cm] at (1.5, 1.0) {High background\\Multi-day\\Gold standard};
+\node[box, fill=OliveGreen!20, text width=2.5cm, minimum height=1cm] at (6, 1.0) {Low background\\Low input\\1-day protocol};
+\node[box, fill=Goldenrod!25, text width=2.5cm, minimum height=1cm] at (10.5, 1.0) {Lowest input\\Simplest protocol\\Single-tube};
+
+\end{tikzpicture}
+\caption[Comparison of ChIP-seq, CUT\&RUN, and CUT\&Tag workflows.]{Side-by-side comparison of ChIP-seq, CUT\&RUN, and CUT\&Tag workflows. CUT\&RUN and CUT\&Tag progressively simplify the protocol, reduce input requirements, lower background, and decrease the sequencing depth needed. CUT\&Tag is the simplest, requiring as few as 100--1,000 cells and producing sequencing-ready libraries in a single tube.}
+\label{fig:histones:comparison}
+\end{figure}
+
+\subsection{Advantages and Limitations of CUT\&Tag}
+\label{subsec:histones:cuttag-advantages}
+
+\textbf{Advantages:}
+\begin{itemize}[itemsep=2pt]
+  \item Works with as few as \textbf{100--1,000 cells} (or even single cells).
+  \item \textbf{Single-tube protocol:} no library preparation step---tagmentation directly inserts adapters.
+  \item \textbf{Excellent signal-to-noise ratio:} very low background because only target-proximal DNA is tagmented.
+  \item \textbf{Low sequencing cost:} 3--8 million reads are sufficient for most histone marks.
+  \item \textbf{Fast:} can be completed in half a day.
+  \item \textbf{No crosslinking or sonication required.}
+\end{itemize}
+
+\textbf{Limitations:}
+\begin{itemize}[itemsep=2pt]
+  \item Works best for \textbf{abundant histone marks} (H3K27me3, H3K4me3, H3K27ac). Less reliable for transcription factors with small footprints and low abundance.
+  \item Requires a \textbf{secondary antibody} (or Protein A/G-Tn5 that binds the primary directly).
+  \item The pAG-Tn5 reagent may not be commercially available from all vendors; some labs produce it in-house.
+  \item Some bias from Tn5 sequence preferences (similar to ATAC-seq).
+\end{itemize}
+
+\begin{tipbox}
+For most new histone modification profiling experiments, CUT\&Tag is the recommended starting point. It offers the simplest protocol, lowest input, and lowest cost. Reserve ChIP-seq for situations requiring ENCODE-standard comparability, for transcription factors that fail with CUT\&Tag, or when large existing ChIP-seq datasets provide better statistical frameworks.
+\end{tipbox}
+
+%% ============================================================
+\section{Single-Cell CUT\&Tag}
+\label{sec:histones:sc-cuttag}
+
+Single-cell CUT\&Tag enables profiling of histone modifications in individual cells. Approaches include:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Droplet-based scCUT\&Tag:} Nuclei are tagmented in bulk, then single nuclei are encapsulated in droplets (10x Genomics or similar) for barcoding, analogous to scATAC-seq.
+  \item \textbf{Plate-based scCUT\&Tag:} Individual cells or nuclei are sorted into 96/384-well plates, and the CUT\&Tag reaction is performed in each well with unique index primers.
+  \item \textbf{Multi-CUT\&Tag:} Profiling multiple histone marks simultaneously in the same cell using different antibody--barcode combinations.
+\end{itemize}
+
+scCUT\&Tag data shares the extreme sparsity challenges of scATAC-seq and uses similar computational approaches (LSI, clustering, pseudo-bulk analysis).
+
+%% ============================================================
+\section{PLAC-seq and HiChIP}
+\label{sec:histones:plac-hichip}
+
+PLAC-seq (Proximity Ligation-Assisted ChIP-seq) and HiChIP combine chromatin immunoprecipitation with proximity ligation to map chromatin interactions at sites bound by a specific protein or bearing a specific histone mark:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{HiChIP:} Cells are crosslinked, chromatin is digested with a restriction enzyme, and proximity ligation joins nearby fragments. The ligated chromatin is then immunoprecipitated with an antibody (e.g., anti-H3K27ac) and sequenced.
+  \item \textbf{PLAC-seq:} Similar to HiChIP but with ChIP performed before proximity ligation.
+  \item \textbf{Application:} H3K27ac HiChIP is widely used to map \textbf{active enhancer--promoter loops}, providing direct evidence for which enhancers regulate which genes.
+  \item \textbf{Advantage over Hi-C:} By enriching for contacts at active regulatory elements, HiChIP requires far less sequencing depth than genome-wide Hi-C to detect enhancer--promoter interactions.
+\end{itemize}
+
+%% ============================================================
+\section{RNA--Protein Interaction Methods}
+\label{sec:histones:clip}
+
+\subsection{CLIP-seq / eCLIP}
+\label{subsec:histones:clip}
+
+Cross-Linking and Immunoprecipitation followed by sequencing (CLIP-seq) maps the binding sites of \textbf{RNA-binding proteins (RBPs)} on RNA:
+
+\begin{enumerate}[itemsep=2pt]
+  \item UV crosslink cells (254 nm) to covalently link RBPs to bound RNA.
+  \item Lyse cells and fragment RNA (RNase treatment).
+  \item Immunoprecipitate with an anti-RBP antibody.
+  \item Ligate adapters to RNA fragments.
+  \item Reverse transcribe, amplify, and sequence.
+\end{enumerate}
+
+Key variants:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{iCLIP} (individual-nucleotide resolution CLIP): uses a circularisation step to capture cDNA truncation sites, providing nucleotide-resolution binding sites.
+  \item \textbf{eCLIP} (enhanced CLIP): the ENCODE standard method. Includes size-matched input controls and an optimised protocol that improves library complexity and reduces artefacts. ENCODE has generated eCLIP datasets for $>$150 RBPs across multiple cell lines.
+  \item \textbf{irCLIP} (infrared CLIP): uses infrared-labelled adapters for visualisation and optimised efficiency.
+\end{itemize}
+
+\subsection{RIP-seq}
+\label{subsec:histones:rip}
+
+RNA Immunoprecipitation sequencing (RIP-seq) is a simpler alternative to CLIP-seq. Cells are lysed, and an antibody against the RBP is used to immunoprecipitate the protein along with associated RNA, which is then sequenced. Unlike CLIP, RIP-seq does not use UV crosslinking, which makes it simpler but also means that some interactions may be lost or artefactual (due to post-lysis reassociation). RIP-seq provides transcript-level rather than nucleotide-level resolution.
+
+\subsection{DAP-seq}
+\label{subsec:histones:dap}
+
+DNA Affinity Purification sequencing (DAP-seq) is an \textit{in vitro} method for mapping transcription factor binding sites. Purified TF protein is incubated with naked genomic DNA (no chromatin context), and bound fragments are captured and sequenced. DAP-seq is widely used in plant genomics, where ChIP-grade antibodies are often unavailable, and has been applied to survey the binding specificities of hundreds of plant TFs.
+
+%% ============================================================
+\section{Bioinformatics Workflow for ChIP-seq/CUT\&Tag}
+\label{sec:histones:bioinformatics}
+
+\subsection{Analysis Overview}
+\label{subsec:histones:analysis-overview}
+
+The core bioinformatics pipeline for ChIP-seq, CUT\&RUN, and CUT\&Tag data follows a common structure, with minor differences in parameter settings:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Quality control:} FastQC, MultiQC.
+  \item \textbf{Trimming:} Trim Galore or fastp (adapter removal).
+  \item \textbf{Alignment:} Bowtie2 (SE or PE). Use \texttt{--very-sensitive} mode. For CUT\&Tag, use \texttt{--very-sensitive --no-mixed --no-discordant -X 700}.
+  \item \textbf{Filtering:} Remove duplicates, low-quality reads (MAPQ $<$ 30), and reads in blacklist regions.
+  \item \textbf{Peak calling:}
+    \begin{itemize}[itemsep=1pt]
+      \item \textbf{Sharp/narrow peaks} (H3K4me3, H3K27ac, TFs): MACS2 default settings.
+      \item \textbf{Broad peaks} (H3K27me3, H3K9me3, H3K36me3): MACS2 with \texttt{--broad} flag, or SICER2/epic2.
+    \end{itemize}
+  \item \textbf{Reproducibility:} IDR (Irreproducibility Discovery Rate) to assess peak reproducibility across replicates.
+  \item \textbf{Differential binding:} DiffBind or MAnorm2.
+  \item \textbf{Visualisation:} deepTools (computeMatrix, plotHeatmap, plotProfile), IGV.
+  \item \textbf{Chromatin state segmentation:} ChromHMM (when profiling multiple marks).
+\end{enumerate}
+
+\subsubsection{Quality Metrics}
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{FRiP (Fraction of Reads in Peaks):} ENCODE minimum is 1\% for broad marks and 1\% for narrow marks, though good experiments typically achieve 5--30\%.
+  \item \textbf{Cross-correlation (strand-shift) analysis:} Plots the Pearson correlation between read density on the + and $-$ strands as a function of strand shift. A clear peak at the fragment length indicates successful enrichment. Metrics include NSC (Normalised Strand Coefficient) and RSC (Relative Strand Correlation).
+  \item \textbf{IDR (Irreproducibility Discovery Rate):} Measures concordance between biological replicates. Peaks with IDR $<$ 0.05 are considered reproducible.
+  \item \textbf{Library complexity:} NRF (Non-Redundant Fraction), PBC1, PBC2 metrics from ENCODE.
+\end{itemize}
+
+\subsubsection{ChIP Enrichment Statistics in Detail}
+\label{subsubsec:histones:enrichment-stats}
+
+The quality of a ChIP-seq or CUT\&Tag experiment is determined by the degree of enrichment above background. Three key metrics---FRiP, NSC, and RSC---quantify this enrichment from complementary perspectives.
+
+\textbf{FRiP (Fraction of Reads in Peaks).} FRiP measures the proportion of all mapped reads that fall within called peaks:
+\begin{equation}
+\label{eq:histones:frip}
+\text{FRiP} = \frac{\text{Number of reads in peaks}}{\text{Total number of mapped reads}}
+\end{equation}
+
+ENCODE has established the following FRiP guidelines:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Sharp/narrow marks} (H3K4me3, H3K27ac, TFs): FRiP $> 5\%$ is acceptable; FRiP $> 10\%$ indicates a high-quality experiment. Top-performing experiments can achieve FRiP $> 30\%$.
+  \item \textbf{Broad marks} (H3K27me3, H3K9me3, H3K36me3): FRiP $> 1\%$ is the minimum ENCODE threshold. Because broad marks span large genomic domains, a lower FRiP can still represent genuine enrichment. Values of 5--15\% are typical for well-performing experiments.
+  \item FRiP is sensitive to peak calling parameters: more lenient thresholds inflate FRiP. Always report the peak caller and parameters used alongside FRiP values.
+\end{itemize}
+
+\textbf{Cross-Correlation Analysis: NSC and RSC.} The strand cross-correlation analysis exploits the directional asymmetry of ChIP-seq fragments. In a successful ChIP experiment, reads on the forward ($+$) strand are shifted upstream of the true binding site, while reads on the reverse ($-$) strand are shifted downstream, by a distance equal to the fragment length. Computing the Pearson correlation between $+$ strand and $-$ strand read density as a function of strand shift $d$ produces a cross-correlation profile with:
+
+\begin{itemize}[itemsep=2pt]
+  \item A peak at $d = \text{fragment length}$ (the true enrichment signal).
+  \item A ``phantom'' peak at $d = \text{read length}$ (an artefact of mappability).
+\end{itemize}
+
+The two quality metrics derived from this profile are:
+\begin{align}
+\label{eq:histones:nsc}
+\text{NSC (Normalised Strand Coefficient)} &= \frac{CC_{\text{fragment}}}{CC_{\min}} \\[6pt]
+\label{eq:histones:rsc}
+\text{RSC (Relative Strand Coefficient)} &= \frac{CC_{\text{fragment}} - CC_{\min}}{CC_{\text{phantom}} - CC_{\min}}
+\end{align}
+where $CC_{\text{fragment}}$ is the cross-correlation at the fragment-length shift, $CC_{\text{phantom}}$ is the cross-correlation at the read-length shift, and $CC_{\min}$ is the minimum cross-correlation value.
+
+ENCODE thresholds:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{NSC $\geq$ 1.05} and \textbf{RSC $\geq$ 0.8}: acceptable quality.
+  \item \textbf{NSC $\geq$ 1.1} and \textbf{RSC $\geq$ 1.0}: high quality.
+  \item NSC or RSC values near 1.0 suggest weak enrichment or failed ChIP.
+\end{itemize}
+
+These metrics are computed by the \software{phantompeakqualtools} R package (also called \software{SPP}), which is integrated into the ENCODE pipeline and \software{nf-core/chipseq}.
+
+\subsubsection{Spike-in Normalisation for Quantitative Comparisons}
+\label{subsubsec:histones:spikein}
+
+Standard ChIP-seq normalisation methods (e.g., reads per million, RPGC) assume that the total amount of the target modification is approximately constant across samples. This assumption fails in experimental settings where the modification undergoes \textbf{global changes}---for example, when comparing cells treated with an HDAC inhibitor (global increase in acetylation) to untreated cells, or when studying H3K27me3 loss after \gene{EZH2} knockout.
+
+\textbf{The spike-in approach.} To enable quantitative comparisons when global histone modification levels change, a known amount of chromatin from a different species is added to each sample before immunoprecipitation:
+
+\begin{enumerate}[itemsep=2pt]
+  \item Add a fixed amount of \species{Drosophila melanogaster} chromatin (typically 1--5\% of the total chromatin mass) to each human/mouse sample prior to the ChIP step.
+  \item Perform ChIP using an antibody that recognises both the human/mouse target and the \species{Drosophila} ortholog (e.g., anti-H3K27me3 recognises the mark in both species), or add a second antibody against a \species{Drosophila}-specific histone variant (anti-H2Av).
+  \item After sequencing, align reads to a combined human/mouse + \species{Drosophila} reference genome.
+  \item Use the number of reads mapping to the \species{Drosophila} genome as a normalisation factor.
+\end{enumerate}
+
+\textbf{The scaling formula.} For sample $i$, the spike-in scaling factor is:
+\begin{equation}
+\label{eq:histones:spikein-scale}
+\text{scale}_i = \frac{\text{median}_{j}(\text{spike}_j)}{\text{spike}_i}
+\end{equation}
+where $\text{spike}_i$ is the number of reads mapping to the \species{Drosophila} genome in sample $i$, and the median is taken across all samples in the experiment. Multiplying the human/mouse read counts by $\text{scale}_i$ adjusts for differences in ChIP efficiency and global modification levels.
+
+\begin{warningbox}
+Spike-in normalisation requires careful experimental execution. The \species{Drosophila} chromatin must be added at a consistent ratio before the immunoprecipitation step---not after. Variation in the spike-in amount across samples introduces normalisation artefacts. Additionally, the spike-in reads should constitute 1--10\% of the total reads; too few spike-in reads lead to noisy normalisation, while too many waste sequencing capacity on non-target reads. Active Motif and EpiCypher offer commercial spike-in kits with calibrated standards.
+\end{warningbox}
+
+\subsection{Snakemake Workflow}
+\label{subsec:histones:snakemake}
+
+\begin{lstlisting}[language=Python, caption={Snakemake workflow for ChIP-seq/CUT\&Tag analysis.}, label={lst:histones:snakemake}]
+# Snakefile for ChIP-seq / CUT&Tag analysis
+configfile: "config.yaml"
+
+SAMPLES = config["samples"]        # Dict: sample -> {mark, condition}
+CONTROLS = config["controls"]      # Dict: sample -> input_control
+GENOME = config["genome_index"]    # Bowtie2 index prefix
+BLACKLIST = config["blacklist"]
+EFFECTIVE_GENOME = config["effective_genome_size"]
+
+rule all:
+    input:
+        "results/multiqc/multiqc_report.html",
+        expand("results/peaks/{sample}_peaks.broadPeak",
+               sample=[s for s in SAMPLES
+                       if SAMPLES[s]["mark"] in
+                       ["H3K27me3","H3K9me3","H3K36me3"]]),
+        expand("results/peaks/{sample}_peaks.narrowPeak",
+               sample=[s for s in SAMPLES
+                       if SAMPLES[s]["mark"] in
+                       ["H3K4me3","H3K27ac"]]),
+        expand("results/bigwig/{sample}.bw", sample=SAMPLES),
+        "results/deeptools/heatmap_TSS.pdf",
+        "results/diffbind/differential_binding.tsv",
+        "results/chromhmm/chromatin_states.bed"
+
+rule trim_reads:
+    input:
+        r1 = "raw_data/{sample}_R1.fastq.gz",
+        r2 = "raw_data/{sample}_R2.fastq.gz"
+    output:
+        r1 = "results/trimmed/{sample}_R1_val_1.fq.gz",
+        r2 = "results/trimmed/{sample}_R2_val_2.fq.gz"
+    threads: 4
+    conda: "envs/trim_galore.yaml"
+    shell:
+        """
+        trim_galore --paired --cores {threads} \
+            --output_dir results/trimmed \
+            {input.r1} {input.r2}
+        """
+
+rule bowtie2_align:
+    input:
+        r1 = "results/trimmed/{sample}_R1_val_1.fq.gz",
+        r2 = "results/trimmed/{sample}_R2_val_2.fq.gz"
+    output:
+        bam = "results/aligned/{sample}.bam",
+        bai = "results/aligned/{sample}.bam.bai"
+    threads: 12
+    resources:
+        mem_mb = 16000
+    conda: "envs/bowtie2.yaml"
+    shell:
+        """
+        bowtie2 --very-sensitive --no-mixed \
+            --no-discordant -X 700 \
+            --threads {threads} \
+            -x {GENOME} \
+            -1 {input.r1} -2 {input.r2} \
+        | samtools sort -@ {threads} -O bam -o - \
+        | samtools markdup -r -@ {threads} - {output.bam}
+        samtools index {output.bam}
+        """
+
+rule filter_bam:
+    input:
+        bam = "results/aligned/{sample}.bam",
+        bai = "results/aligned/{sample}.bam.bai"
+    output:
+        bam = "results/filtered/{sample}_filtered.bam",
+        bai = "results/filtered/{sample}_filtered.bam.bai"
+    params:
+        blacklist = BLACKLIST
+    conda: "envs/samtools.yaml"
+    shell:
+        """
+        samtools view -b -f 2 -q 30 {input.bam} \
+            | bedtools intersect -v -abam stdin \
+                -b {params.blacklist} \
+            > {output.bam}
+        samtools index {output.bam}
+        """
+
+rule macs2_narrow:
+    input:
+        treatment = "results/filtered/{sample}_filtered.bam",
+        control = lambda wc: "results/filtered/"
+                  + CONTROLS[wc.sample] + "_filtered.bam"
+    output:
+        peaks = "results/peaks/{sample}_peaks.narrowPeak"
+    params:
+        name = "{sample}",
+        gs = EFFECTIVE_GENOME
+    conda: "envs/macs2.yaml"
+    shell:
+        """
+        macs2 callpeak -t {input.treatment} \
+            -c {input.control} \
+            -f BAMPE -g {params.gs} \
+            -n {params.name} --outdir results/peaks \
+            -q 0.01
+        """
+
+rule macs2_broad:
+    input:
+        treatment = "results/filtered/{sample}_filtered.bam",
+        control = lambda wc: "results/filtered/"
+                  + CONTROLS[wc.sample] + "_filtered.bam"
+    output:
+        peaks = "results/peaks/{sample}_peaks.broadPeak"
+    params:
+        name = "{sample}",
+        gs = EFFECTIVE_GENOME
+    conda: "envs/macs2.yaml"
+    shell:
+        """
+        macs2 callpeak -t {input.treatment} \
+            -c {input.control} \
+            -f BAMPE -g {params.gs} \
+            -n {params.name} --outdir results/peaks \
+            --broad --broad-cutoff 0.05
+        """
+
+rule make_bigwig:
+    input:
+        bam = "results/filtered/{sample}_filtered.bam",
+        bai = "results/filtered/{sample}_filtered.bam.bai"
+    output:
+        bw = "results/bigwig/{sample}.bw"
+    threads: 4
+    params:
+        gs = EFFECTIVE_GENOME
+    conda: "envs/deeptools.yaml"
+    shell:
+        """
+        bamCoverage -b {input.bam} -o {output.bw} \
+            --binSize 10 --normalizeUsing RPGC \
+            --effectiveGenomeSize {params.gs} \
+            -p {threads} --extendReads
+        """
+
+rule deeptools_heatmap:
+    input:
+        bw = expand("results/bigwig/{sample}.bw",
+                     sample=SAMPLES),
+        bed = config["tss_bed"]
+    output:
+        matrix = "results/deeptools/matrix_TSS.gz",
+        heatmap = "results/deeptools/heatmap_TSS.pdf",
+        profile = "results/deeptools/profile_TSS.pdf"
+    threads: 8
+    conda: "envs/deeptools.yaml"
+    shell:
+        """
+        computeMatrix reference-point \
+            -S {input.bw} -R {input.bed} \
+            --referencePoint TSS \
+            -b 3000 -a 3000 \
+            -p {threads} -o {output.matrix}
+
+        plotHeatmap -m {output.matrix} \
+            -o {output.heatmap} \
+            --colorMap RdBu_r \
+            --whatToShow 'heatmap and colorbar'
+
+        plotProfile -m {output.matrix} \
+            -o {output.profile} \
+            --perGroup
+        """
+
+rule diffbind:
+    input:
+        peaks = expand("results/peaks/{sample}_peaks.narrowPeak",
+                       sample=SAMPLES),
+        bams = expand("results/filtered/{sample}_filtered.bam",
+                      sample=SAMPLES)
+    output:
+        "results/diffbind/differential_binding.tsv"
+    conda: "envs/diffbind.yaml"
+    script:
+        "scripts/run_diffbind.R"
+
+rule chromhmm:
+    input:
+        bams = expand("results/filtered/{sample}_filtered.bam",
+                      sample=SAMPLES)
+    output:
+        "results/chromhmm/chromatin_states.bed"
+    conda: "envs/chromhmm.yaml"
+    script:
+        "scripts/run_chromhmm.sh"
+
+rule multiqc:
+    input:
+        expand("results/aligned/{sample}.bam", sample=SAMPLES)
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "envs/multiqc.yaml"
+    shell:
+        "multiqc results/ -o results/multiqc --force"
+\end{lstlisting}
+
+\subsection{Nextflow Workflow}
+\label{subsec:histones:nextflow}
+
+\begin{lstlisting}[language=Java, caption={Nextflow DSL2 workflow for ChIP-seq/CUT\&Tag analysis.}, label={lst:histones:nextflow}]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl=2
+
+params.reads          = "raw_data/*_R{1,2}.fastq.gz"
+params.genome_index   = "reference/genome"
+params.genome_fasta   = "reference/genome.fa"
+params.blacklist      = "reference/blacklist.bed"
+params.effective_size = "2.7e9"
+params.tss_bed        = "reference/tss_regions.bed"
+params.sample_sheet   = "sample_sheet.csv"
+params.outdir         = "results"
+
+process TRIM_READS {
+    tag "$sample_id"
+    cpus 4
+    publishDir "${params.outdir}/trimmed", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    tuple val(sample_id), path("*_val_{1,2}.fq.gz"),
+                                             emit: trimmed
+    path "*_trimming_report.txt",            emit: reports
+
+    script:
+    """
+    trim_galore --paired --cores ${task.cpus} \
+        ${reads[0]} ${reads[1]}
+    """
+}
+
+process BOWTIE2_ALIGN {
+    tag "$sample_id"
+    cpus 12
+    memory '16 GB'
+    publishDir "${params.outdir}/aligned", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.bam"),
+          path("${sample_id}.bam.bai"),      emit: bam
+
+    script:
+    """
+    bowtie2 --very-sensitive --no-mixed \
+        --no-discordant -X 700 \
+        --threads ${task.cpus} \
+        -x ${params.genome_index} \
+        -1 ${reads[0]} -2 ${reads[1]} \
+    | samtools sort -@ ${task.cpus} -O bam \
+    | samtools markdup -r -@ ${task.cpus} - \
+        ${sample_id}.bam
+    samtools index ${sample_id}.bam
+    """
+}
+
+process FILTER_BAM {
+    tag "$sample_id"
+    publishDir "${params.outdir}/filtered", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bam), path(bai)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_filt.bam"),
+          path("${sample_id}_filt.bam.bai"), emit: bam
+
+    script:
+    """
+    samtools view -b -f 2 -q 30 ${bam} \
+        | bedtools intersect -v -abam stdin \
+            -b ${params.blacklist} \
+        > ${sample_id}_filt.bam
+    samtools index ${sample_id}_filt.bam
+    """
+}
+
+process CALL_PEAKS_NARROW {
+    tag "$sample_id"
+    publishDir "${params.outdir}/peaks", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(treat_bam), path(treat_bai)
+    tuple val(control_id), path(ctrl_bam), path(ctrl_bai)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_peaks.narrowPeak"),
+                                             emit: peaks
+
+    script:
+    """
+    macs2 callpeak -t ${treat_bam} \
+        -c ${ctrl_bam} -f BAMPE \
+        -g ${params.effective_size} \
+        -n ${sample_id} -q 0.01
+    """
+}
+
+process CALL_PEAKS_BROAD {
+    tag "$sample_id"
+    publishDir "${params.outdir}/peaks", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(treat_bam), path(treat_bai)
+    tuple val(control_id), path(ctrl_bam), path(ctrl_bai)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_peaks.broadPeak"),
+                                             emit: peaks
+
+    script:
+    """
+    macs2 callpeak -t ${treat_bam} \
+        -c ${ctrl_bam} -f BAMPE \
+        -g ${params.effective_size} \
+        -n ${sample_id} \
+        --broad --broad-cutoff 0.05
+    """
+}
+
+process BIGWIG {
+    tag "$sample_id"
+    cpus 4
+    publishDir "${params.outdir}/bigwig", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bam), path(bai)
+
+    output:
+    tuple val(sample_id), path("${sample_id}.bw"),
+                                             emit: bigwig
+
+    script:
+    """
+    bamCoverage -b ${bam} -o ${sample_id}.bw \
+        --binSize 10 --normalizeUsing RPGC \
+        --effectiveGenomeSize ${params.effective_size} \
+        -p ${task.cpus} --extendReads
+    """
+}
+
+process DEEPTOOLS_HEATMAP {
+    cpus 8
+    publishDir "${params.outdir}/deeptools", mode: 'copy'
+
+    input:
+    path bigwigs
+    path tss_bed
+
+    output:
+    path "heatmap_TSS.pdf"
+    path "profile_TSS.pdf"
+
+    script:
+    """
+    computeMatrix reference-point \
+        -S ${bigwigs} -R ${tss_bed} \
+        --referencePoint TSS \
+        -b 3000 -a 3000 \
+        -p ${task.cpus} -o matrix_TSS.gz
+
+    plotHeatmap -m matrix_TSS.gz \
+        -o heatmap_TSS.pdf \
+        --colorMap RdBu_r
+
+    plotProfile -m matrix_TSS.gz \
+        -o profile_TSS.pdf --perGroup
+    """
+}
+
+// Main workflow
+workflow {
+    reads_ch = Channel
+        .fromFilePairs(params.reads,
+                       checkIfExists: true)
+
+    TRIM_READS(reads_ch)
+    BOWTIE2_ALIGN(TRIM_READS.out.trimmed)
+    FILTER_BAM(BOWTIE2_ALIGN.out.bam)
+    BIGWIG(FILTER_BAM.out.bam)
+
+    DEEPTOOLS_HEATMAP(
+        BIGWIG.out.bigwig.map{ it[1] }.collect(),
+        file(params.tss_bed)
+    )
+}
+\end{lstlisting}
+
+\begin{tipbox}
+The nf-core community provides \software{nf-core/chipseq} for ChIP-seq data and \software{nf-core/cutandrun} for CUT\&RUN/CUT\&Tag data. Both pipelines handle alignment, filtering, peak calling, QC, and visualisation with sensible defaults and extensive documentation. They support both narrow and broad peak calling modes and include IDR analysis for replicate concordance.
+\end{tipbox}
+
+\subsection{ChromHMM: Chromatin State Segmentation}
+\label{subsec:histones:chromhmm}
+
+When multiple histone marks have been profiled in the same cell type, \textbf{ChromHMM} uses a multivariate hidden Markov model to segment the genome into discrete chromatin states:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Binarise:} Convert each histone mark's signal into binary (present/absent) calls in 200\basepair{} genomic bins.
+  \item \textbf{Learn model:} Train an HMM with a user-specified number of states (typically 15--18). The model learns the emission probabilities (which combinations of marks define each state) and transition probabilities (how states change along the genome).
+  \item \textbf{Segment:} Apply the trained model to assign each 200\basepair{} bin to a chromatin state.
+  \item \textbf{Annotate:} Compare the learned states to known genomic features (TSSs, gene bodies, enhancers, heterochromatin) to assign biological labels.
+\end{enumerate}
+
+\begin{keyconcept}[title={Typical ChromHMM States (15-State Model)}]
+\begin{itemize}[itemsep=1pt]
+  \item States 1--3: Active TSS and flanking regions (H3K4me3, H3K27ac)
+  \item States 4--5: Transcription (H3K36me3)
+  \item States 6--7: Active enhancers (H3K4me1, H3K27ac)
+  \item States 8--9: Zinc finger genes and repeats (H3K9me3, H3K36me3)
+  \item States 10--11: Poised/bivalent elements (H3K4me1/me3, H3K27me3)
+  \item States 12--13: Polycomb repressed (H3K27me3)
+  \item States 14--15: Quiescent/heterochromatin (H3K9me3 or no marks)
+\end{itemize}
+\end{keyconcept}
+
+\subsubsection{ChromHMM Emission and Transition Model}
+\label{subsubsec:histones:chromhmm-model}
+
+ChromHMM formalises the combinatorial histone code as a \textbf{multivariate hidden Markov model (HMM)}. Understanding the mathematical framework clarifies how chromatin states are learned and why the resulting annotations are biologically meaningful.
+
+\textbf{Hidden states and observations.} The genome is divided into fixed-size bins (typically 200\basepair{}). At each bin $t$ along the genome, the hidden state $q_t \in \{1, 2, \ldots, K\}$ represents the unknown chromatin state, and the observation $\mathbf{o}_t = (o_{t,1}, o_{t,2}, \ldots, o_{t,M})$ is a binary vector indicating the presence (1) or absence (0) of each of $M$ histone marks. With six marks (the ``core six''), each bin has a 6-dimensional binary observation vector, yielding $2^6 = 64$ possible observation patterns.
+
+\textbf{Emission probabilities.} Each chromatin state $k$ has an associated \textbf{emission probability matrix} that defines how likely each histone mark is to be observed when the genome is in state $k$. Assuming conditional independence of marks given the state (a key simplifying assumption), the emission probability for observing pattern $\mathbf{o}_t$ in state $k$ is:
+\begin{equation}
+\label{eq:histones:chromhmm-emission}
+P(\mathbf{o}_t \mid q_t = k) = \prod_{m=1}^{M} p_{k,m}^{\,o_{t,m}} \,(1 - p_{k,m})^{1 - o_{t,m}}
+\end{equation}
+where $p_{k,m}$ is the probability of observing mark $m$ in state $k$. The emission matrix $\mathbf{P} = [p_{k,m}]_{K \times M}$ is typically visualised as a heatmap, where each row is a state and each column is a mark. For example, the ``Active TSS'' state has high emission probabilities for H3K4me3 and H3K27ac but low probabilities for H3K27me3.
+
+\textbf{Transition probabilities.} The \textbf{transition matrix} $\mathbf{A} = [a_{k,l}]_{K \times K}$ specifies the probability of transitioning from state $k$ to state $l$ between adjacent bins:
+\begin{equation}
+\label{eq:histones:chromhmm-transition}
+a_{k,l} = P(q_{t+1} = l \mid q_t = k)
+\end{equation}
+with $\sum_{l=1}^{K} a_{k,l} = 1$ for all $k$. The transition matrix encodes the spatial organisation of chromatin states. For example, the ``Active TSS'' state has a high transition probability to the ``Flanking TSS'' state and a low probability of transitioning directly to ``Heterochromatin.''
+
+\textbf{Training with Baum--Welch.} The emission and transition parameters are learned from the data using the \textbf{Baum--Welch algorithm} (a special case of expectation-maximisation for HMMs):
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Initialisation:} Randomly initialise the emission matrix $\mathbf{P}$, transition matrix $\mathbf{A}$, and initial state distribution $\boldsymbol{\pi}$.
+  \item \textbf{E-step (Forward--Backward):} Compute the posterior probability $\gamma_t(k) = P(q_t = k \mid \mathbf{O})$ that each bin is in each state, given the full observation sequence $\mathbf{O}$ and current parameters.
+  \item \textbf{M-step:} Update the parameters to maximise the expected log-likelihood:
+  \begin{itemize}[itemsep=1pt]
+    \item $\hat{p}_{k,m} = \sum_t \gamma_t(k) \cdot o_{t,m} \;/\; \sum_t \gamma_t(k)$
+    \item $\hat{a}_{k,l} = \sum_t \xi_t(k,l) \;/\; \sum_t \gamma_t(k)$
+  \end{itemize}
+  where $\xi_t(k,l) = P(q_t = k, q_{t+1} = l \mid \mathbf{O})$.
+  \item \textbf{Iterate} E- and M-steps until convergence.
+\end{enumerate}
+
+\textbf{Decoding with Viterbi.} Once the model is trained, the \textbf{Viterbi algorithm} finds the most probable sequence of hidden states (chromatin state assignment) for each chromosome:
+\begin{equation}
+\label{eq:histones:chromhmm-viterbi}
+\hat{\mathbf{q}} = \arg\max_{\mathbf{q}} P(\mathbf{q} \mid \mathbf{O},\; \mathbf{A},\; \mathbf{P},\; \boldsymbol{\pi})
+\end{equation}
+This produces the final genome-wide chromatin state annotation---a segmentation of the genome into labelled states that can be viewed in a genome browser, compared across cell types, and used to annotate regulatory elements.
+
+\textbf{Choosing the number of states.} ChromHMM requires the user to specify the number of states $K$. The standard Roadmap Epigenomics models use:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{15-state model:} Sufficient for the ``core six'' marks; widely used and well-characterised.
+  \item \textbf{18-state model:} Provides finer distinctions (e.g., separating genic enhancers from distal enhancers); used when additional marks (e.g., H3K4me2, H2A.Z) are available.
+  \item Increasing $K$ beyond the mark complexity leads to redundant states; decreasing $K$ merges biologically distinct states. A useful diagnostic is to examine the emission heatmap---if two states have nearly identical emission patterns, $K$ is too high.
+\end{itemize}
+
+\subsection{Differential Binding Analysis}
+\label{subsec:histones:diffbind}
+
+To compare histone modification or TF binding between conditions:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{DiffBind:} R/Bioconductor package that counts reads in a consensus peak set across all samples, normalises using DESeq2 or edgeR, and identifies significantly differentially bound sites. Provides MA plots, PCA, and heatmaps for visualisation.
+  \item \textbf{MAnorm2:} Normalises ChIP-seq signals using common peaks (regions with similar enrichment across conditions) as anchors, then tests for differential binding.
+  \item \textbf{THOR:} HMM-based differential peak calling that does not require pre-called peaks; identifies differentially enriched regions directly from read data.
+\end{itemize}
+
+%% ============================================================
+\section{Experimental Design Considerations}
+\label{sec:histones:design}
+
+\begin{keyconcept}[title={Choosing Between ChIP-seq, CUT\&RUN, and CUT\&Tag}]
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{CUT\&Tag:} First choice for histone marks (H3K4me3, H3K27me3, H3K27ac). Simplest protocol, lowest input, lowest cost.
+  \item \textbf{CUT\&RUN:} Good for transcription factors that do not work well with CUT\&Tag.
+  \item \textbf{ChIP-seq:} Reserve for ENCODE comparability, for targets where CUT\&RUN/Tag fails, or for very well-established pipelines.
+  \item \textbf{Replicates:} Minimum 2 biological replicates; 3+ recommended for differential analysis.
+  \item \textbf{Controls:} Input control required for ChIP-seq; IgG control for CUT\&RUN; no control or IgG for CUT\&Tag.
+  \item \textbf{Sequencing depth:} ChIP-seq 20--40M reads; CUT\&RUN/Tag 3--8M reads for histone marks, 10--15M for TFs.
+\end{itemize}
+\end{keyconcept}
+
+%% ============================================================
+\section{Chapter Summary}
+\label{sec:histones:summary}
+
+Histone modifications constitute a rich regulatory layer that controls gene expression, chromatin organisation, and cellular identity. The combinatorial histone code---read through methods like ChIP-seq, CUT\&RUN, and CUT\&Tag---reveals the functional annotation of every region in the genome. CUT\&Tag has emerged as the most accessible method, enabling histone modification profiling from as few as hundreds of cells in a single-tube, half-day protocol. Bioinformatically, peak calling (MACS2 for narrow marks, SICER/epic2 for broad marks), differential binding analysis (DiffBind), chromatin state segmentation (ChromHMM), and signal visualisation (deepTools) form the core analytical toolkit. Combining histone modification data with chromatin accessibility (ATAC-seq), DNA methylation, and 3D genome organisation provides the most complete picture of the epigenomic landscape.

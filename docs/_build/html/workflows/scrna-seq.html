@@ -1,0 +1,656 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>scRNA-seq &mdash; SeqTec 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/tabs.css?v=a5c4661c" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b5f39899" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=96c007af"></script>
+      <script src="../_static/tabs.js?v=3030b3cb"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Bisulfite Sequencing (WGBS)" href="bisulfite-seq.html" />
+    <link rel="prev" title="ChIP-seq" href="chipseq.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            SeqTec
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/index.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started/installation.html">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/installation.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/installation.html#id1">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/installation.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/installation.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/installation.html#exporting-for-reproducibility">Exporting for Reproducibility</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/installation.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/installation.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started/computing-environment.html">Computing Environment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/computing-environment.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/computing-environment.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/computing-environment.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/computing-environment.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/computing-environment.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/computing-environment.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../getting-started/test-datasets.html">Test Datasets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/test-datasets.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/test-datasets.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/test-datasets.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/test-datasets.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/test-datasets.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../getting-started/test-datasets.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Data Formats</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../data-formats/index.html">Data Formats</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/fastq.html">FASTQ</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/fastq.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/fastq.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/fastq.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/fastq.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/fasta.html">FASTA</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/fasta.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/fasta.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/fasta.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/fasta.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/sam-bam-cram.html">SAM / BAM / CRAM</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/sam-bam-cram.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/sam-bam-cram.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/sam-bam-cram.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/sam-bam-cram.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/vcf-bcf.html">VCF / BCF</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/vcf-bcf.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/vcf-bcf.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/vcf-bcf.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/vcf-bcf.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/bed.html">BED</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/bed.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/bed.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/bed.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/bed.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/gff-gtf.html">GFF / GTF</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/gff-gtf.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/gff-gtf.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/gff-gtf.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/gff-gtf.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/bigwig-bedgraph.html">BigWig / bedGraph</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/bigwig-bedgraph.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/bigwig-bedgraph.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/bigwig-bedgraph.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/bigwig-bedgraph.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/h5ad-anndata.html">h5ad / AnnData</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/h5ad-anndata.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/h5ad-anndata.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/h5ad-anndata.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/h5ad-anndata.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/mex-10x.html">MEX / 10x Format</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/mex-10x.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/mex-10x.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/mex-10x.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/mex-10x.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../data-formats/hic-formats.html">Hi-C Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/hic-formats.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/hic-formats.html#hic-format">.hic Format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/hic-formats.html#cool-mcool-format">.cool / .mcool Format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/hic-formats.html#working-with-hi-c-data-in-python">Working with Hi-C Data in Python</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/hic-formats.html#key-differences">Key Differences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../data-formats/hic-formats.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tools/index.html">Tools</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tools/quality-control/index.html">Quality Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quality-control/fastqc.html">FastQC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quality-control/fastp.html">fastp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quality-control/multiqc.html">MultiQC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quality-control/nanoplot.html">NanoPlot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quality-control/pycoqc.html">pycoQC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quality-control/chopper.html">Chopper</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/alignment/index.html">Alignment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/alignment/bwa-mem2.html">BWA-MEM2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/alignment/minimap2.html">minimap2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/alignment/bowtie2.html">Bowtie2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/alignment/star.html">STAR</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/sam-bam-processing/index.html">SAM/BAM Processing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/sam-bam-processing/samtools.html">SAMtools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/sam-bam-processing/sambamba.html">Sambamba</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/sam-bam-processing/picard.html">Picard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/sam-bam-processing/deeptools.html">deepTools</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/interval-operations/index.html">Interval Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/interval-operations/bedtools.html">BEDTools</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/assembly/index.html">Genome Assembly</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/assembly/flye.html">Flye</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/assembly/canu.html">Canu</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/assembly/spades.html">SPAdes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/assembly/unicycler.html">Unicycler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/assembly/medaka.html">Medaka</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/assembly-qc/index.html">Assembly Quality Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/assembly-qc/quast.html">QUAST</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/assembly-qc/busco.html">BUSCO</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/annotation/index.html">Genome Annotation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/annotation/bakta.html">Bakta</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/annotation/prokka.html">Prokka</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/annotation/braker.html">BRAKER</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/variant-calling/index.html">Variant Calling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/variant-calling/gatk.html">GATK</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/variant-calling/clair3.html">Clair3</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/variant-calling/freebayes.html">FreeBayes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/variant-calling/deepvariant.html">DeepVariant</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/variant-annotation/index.html">Variant Annotation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/variant-annotation/vep.html">VEP (Variant Effect Predictor)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/variant-annotation/snpeff.html">SnpEff</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/variant-processing/index.html">Variant Processing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/variant-processing/bcftools.html">BCFtools</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/quantification/index.html">Quantification</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quantification/kallisto.html">kallisto</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quantification/salmon.html">Salmon</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quantification/featurecounts.html">featureCounts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/quantification/htseq.html">HTSeq</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/differential-expression/index.html">Differential Expression</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/differential-expression/deseq2.html">DESeq2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/differential-expression/edger.html">edgeR</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/single-cell/index.html">Single-Cell Analysis</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/single-cell/cellranger.html">Cell Ranger</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/single-cell/starsolo.html">STARsolo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/single-cell/seurat.html">Seurat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/single-cell/scanpy.html">Scanpy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/metagenomics/index.html">Metagenomics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/metagenomics/kraken2.html">Kraken2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/metagenomics/bracken.html">Bracken</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/metagenomics/krona.html">Krona</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/epigenomics/index.html">Epigenomics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/epigenomics/macs2.html">MACS2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/epigenomics/bismark.html">Bismark</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/basecalling/index.html">Basecalling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/basecalling/dorado.html">Dorado</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/basecalling/guppy.html">Guppy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/data-access/index.html">Data Access</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/data-access/sra-toolkit.html">SRA Toolkit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../tools/data-access/entrez-direct.html">Entrez Direct</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tools/visualization/index.html">Visualization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tools/visualization/igv.html">IGV</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Workflows</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Workflows</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="snakemake.html">Snakemake</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="snakemake.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="snakemake.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="snakemake.html#qc-pipeline">QC Pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="snakemake.html#running-the-pipeline">Running the Pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="snakemake.html#configuration">Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="snakemake.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nextflow.html">Nextflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nextflow.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nextflow.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nextflow.html#qc-pipeline">QC Pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nextflow.html#configuration">Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nextflow.html#running-the-pipeline">Running the Pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nextflow.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="wgs-variant-calling.html">WGS Variant Calling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="wgs-variant-calling.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="wgs-variant-calling.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="wgs-variant-calling.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="wgs-variant-calling.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="rnaseq-differential-expression.html">RNA-seq Differential Expression</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rnaseq-differential-expression.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rnaseq-differential-expression.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rnaseq-differential-expression.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rnaseq-differential-expression.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="atacseq.html">ATAC-seq</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="atacseq.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="atacseq.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="atacseq.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="atacseq.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="chipseq.html">ChIP-seq</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="chipseq.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="chipseq.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="chipseq.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="chipseq.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">scRNA-seq</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bisulfite-seq.html">Bisulfite Sequencing (WGBS)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bisulfite-seq.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bisulfite-seq.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bisulfite-seq.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bisulfite-seq.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bisulfite-seq.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="16s-amplicon.html">16S Amplicon Sequencing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="16s-amplicon.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="16s-amplicon.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="16s-amplicon.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="16s-amplicon.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="16s-amplicon.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bacterial-genome-assembly.html">Bacterial Genome Assembly (Nanopore)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bacterial-genome-assembly.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bacterial-genome-assembly.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bacterial-genome-assembly.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bacterial-genome-assembly.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="bacterial-genome-assembly.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="metagenomics-classification.html">Metagenomic Classification</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="metagenomics-classification.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metagenomics-classification.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metagenomics-classification.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metagenomics-classification.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metagenomics-classification.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nanopore-variant-calling.html">Nanopore Variant Calling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nanopore-variant-calling.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nanopore-variant-calling.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nanopore-variant-calling.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nanopore-variant-calling.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nanopore-variant-calling.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Infrastructure</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../infrastructure/index.html">Infrastructure</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../infrastructure/conda-mamba.html">Conda / Mamba</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/conda-mamba.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/conda-mamba.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/conda-mamba.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/conda-mamba.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/conda-mamba.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/conda-mamba.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../infrastructure/docker.html">Docker</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/docker.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/docker.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/docker.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/docker.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/docker.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/docker.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../infrastructure/singularity-apptainer.html">Singularity / Apptainer</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/singularity-apptainer.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/singularity-apptainer.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/singularity-apptainer.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/singularity-apptainer.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/singularity-apptainer.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../infrastructure/singularity-apptainer.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">SeqTec</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Workflows</a></li>
+      <li class="breadcrumb-item active">scRNA-seq</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/workflows/scrna-seq.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="scrna-seq">
+<h1>scRNA-seq<a class="headerlink" href="#scrna-seq" title="Link to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>Single-cell RNA sequencing (scRNA-seq) measures gene expression in individual
+cells, enabling the identification of cell types, states, and trajectories
+within heterogeneous tissues. This workflow covers the complete analysis from
+raw FASTQ files to an integrated multi-sample object. STARsolo performs barcode
+demultiplexing and UMI counting directly during alignment, producing a
+cell-by-gene count matrix. Scanpy then handles quality filtering, normalization,
+dimensionality reduction, clustering, and marker gene detection. When multiple
+samples are profiled, batch-aware integration (e.g., scVI, Harmony, or
+scanorama) corrects for technical variation while preserving biological signal.</p>
+</section>
+<section id="pipeline-steps">
+<h2>Pipeline Steps<a class="headerlink" href="#pipeline-steps" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>STARsolo</strong> – Align reads, demultiplex cell barcodes, collapse UMIs, and
+produce a filtered count matrix per sample. Empty droplets are removed with
+the <code class="docutils literal notranslate"><span class="pre">EmptyDrops_CR</span></code> cell-calling algorithm.</p></li>
+<li><p><strong>Scanpy analysis</strong> – For each sample, load the count matrix, filter cells
+and genes, normalize, identify highly variable genes, compute PCA, build a
+neighbor graph, cluster (Leiden), and run UMAP embedding.</p></li>
+<li><p><strong>Integration</strong> – Concatenate per-sample AnnData objects and apply a
+batch-correction method to produce a unified embedding across all samples.</p></li>
+</ol>
+</section>
+<section id="implementation">
+<h2>Implementation<a class="headerlink" href="#implementation" title="Link to this heading"></a></h2>
+<div class="sphinx-tabs docutils container">
+<div aria-label="Tabbed content" role="tablist"><button aria-controls="panel-0-0-0" aria-selected="true" class="sphinx-tabs-tab" id="tab-0-0-0" name="0-0" role="tab" tabindex="0">Snakemake</button><button aria-controls="panel-0-0-1" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-1" name="0-1" role="tab" tabindex="-1">Nextflow</button></div><div aria-labelledby="tab-0-0-0" class="sphinx-tabs-panel" id="panel-0-0-0" name="0-0" role="tabpanel" tabindex="0"><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Snakefile -- scRNA-seq Pipeline</span>
+<span class="n">configfile</span><span class="p">:</span> <span class="s2">&quot;config.yaml&quot;</span>
+
+<span class="n">SAMPLES</span>    <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;samples&quot;</span><span class="p">]</span>
+<span class="n">STAR_IDX</span>   <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;star_index&quot;</span><span class="p">]</span>
+<span class="n">WHITELIST</span>  <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;barcode_whitelist&quot;</span><span class="p">]</span>
+
+<span class="n">rule</span> <span class="nb">all</span><span class="p">:</span>
+    <span class="nb">input</span><span class="p">:</span>
+        <span class="n">expand</span><span class="p">(</span><span class="s2">&quot;results/scanpy/</span><span class="si">{sample}</span><span class="s2">_processed.h5ad&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">SAMPLES</span><span class="p">),</span>
+        <span class="s2">&quot;results/scanpy/integrated.h5ad&quot;</span>
+
+<span class="n">rule</span> <span class="n">starsolo</span><span class="p">:</span>
+    <span class="nb">input</span><span class="p">:</span>
+        <span class="n">r1</span><span class="o">=</span><span class="s2">&quot;data/</span><span class="si">{sample}</span><span class="s2">_R1.fastq.gz&quot;</span><span class="p">,</span>
+        <span class="n">r2</span><span class="o">=</span><span class="s2">&quot;data/</span><span class="si">{sample}</span><span class="s2">_R2.fastq.gz&quot;</span>
+    <span class="n">output</span><span class="p">:</span>
+        <span class="n">bam</span><span class="o">=</span><span class="s2">&quot;results/starsolo/</span><span class="si">{sample}</span><span class="s2">/Aligned.sortedByCoord.out.bam&quot;</span><span class="p">,</span>
+        <span class="n">mtx</span><span class="o">=</span><span class="s2">&quot;results/starsolo/</span><span class="si">{sample}</span><span class="s2">/Solo.out/Gene/filtered/matrix.mtx&quot;</span>
+    <span class="n">threads</span><span class="p">:</span> <span class="mi">16</span>
+    <span class="n">params</span><span class="p">:</span>
+        <span class="n">idx</span><span class="o">=</span><span class="n">STAR_IDX</span><span class="p">,</span>
+        <span class="n">wl</span><span class="o">=</span><span class="n">WHITELIST</span><span class="p">,</span>
+        <span class="n">outdir</span><span class="o">=</span><span class="s2">&quot;results/starsolo/</span><span class="si">{sample}</span><span class="s2">/&quot;</span>
+    <span class="n">conda</span><span class="p">:</span> <span class="s2">&quot;envs/starsolo.yaml&quot;</span>
+    <span class="n">shell</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        STAR --runThreadN {threads} \</span>
+<span class="sd">          --genomeDir {params.idx} \</span>
+<span class="sd">          --readFilesIn {input.r1} {input.r2} \</span>
+<span class="sd">          --readFilesCommand zcat \</span>
+<span class="sd">          --soloType CB_UMI_Simple \</span>
+<span class="sd">          --soloCBwhitelist {params.wl} \</span>
+<span class="sd">          --soloCBstart 1 --soloCBlen 16 \</span>
+<span class="sd">          --soloUMIstart 17 --soloUMIlen 12 \</span>
+<span class="sd">          --outSAMtype BAM SortedByCoordinate \</span>
+<span class="sd">          --outFileNamePrefix {params.outdir} \</span>
+<span class="sd">          --soloFeatures Gene \</span>
+<span class="sd">          --soloCellFilter EmptyDrops_CR</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<span class="n">rule</span> <span class="n">scanpy_analysis</span><span class="p">:</span>
+    <span class="nb">input</span><span class="p">:</span>
+        <span class="n">mtx</span><span class="o">=</span><span class="s2">&quot;results/starsolo/</span><span class="si">{sample}</span><span class="s2">/Solo.out/Gene/filtered/matrix.mtx&quot;</span>
+    <span class="n">output</span><span class="p">:</span>
+        <span class="n">h5ad</span><span class="o">=</span><span class="s2">&quot;results/scanpy/</span><span class="si">{sample}</span><span class="s2">_processed.h5ad&quot;</span>
+    <span class="n">conda</span><span class="p">:</span> <span class="s2">&quot;envs/scanpy.yaml&quot;</span>
+    <span class="n">script</span><span class="p">:</span>
+        <span class="s2">&quot;scripts/run_scanpy.py&quot;</span>
+
+<span class="n">rule</span> <span class="n">integrate_samples</span><span class="p">:</span>
+    <span class="nb">input</span><span class="p">:</span>
+        <span class="n">expand</span><span class="p">(</span><span class="s2">&quot;results/scanpy/</span><span class="si">{sample}</span><span class="s2">_processed.h5ad&quot;</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">SAMPLES</span><span class="p">)</span>
+    <span class="n">output</span><span class="p">:</span>
+        <span class="s2">&quot;results/scanpy/integrated.h5ad&quot;</span>
+    <span class="n">conda</span><span class="p">:</span> <span class="s2">&quot;envs/scanpy.yaml&quot;</span>
+    <span class="n">script</span><span class="p">:</span>
+        <span class="s2">&quot;scripts/integrate_scanpy.py&quot;</span>
+</pre></div>
+</div>
+</div><div aria-labelledby="tab-0-0-1" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-1" name="0-1" role="tabpanel" tabindex="0"><div class="highlight-groovy notranslate"><div class="highlight"><pre><span></span><span class="cp">#!/usr/bin/env nextflow</span>
+<span class="n">nextflow</span><span class="o">.</span><span class="na">enable</span><span class="o">.</span><span class="na">dsl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span>
+
+<span class="n">params</span><span class="o">.</span><span class="na">samplesheet</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;samplesheet.csv&quot;</span>
+<span class="n">params</span><span class="o">.</span><span class="na">star_index</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ref/star_index&quot;</span>
+<span class="n">params</span><span class="o">.</span><span class="na">whitelist</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ref/3M-february-2018.txt&quot;</span>
+<span class="n">params</span><span class="o">.</span><span class="na">outdir</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;results&quot;</span>
+
+<span class="n">process</span><span class="w"> </span><span class="n">STARSOLO</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="n">tag</span><span class="w"> </span><span class="s2">&quot;${sample_id}&quot;</span>
+<span class="w">    </span><span class="n">publishDir</span><span class="w"> </span><span class="s2">&quot;${params.outdir}/starsolo/${sample_id}&quot;</span><span class="o">,</span><span class="w"> </span><span class="nl">mode:</span><span class="w"> </span><span class="s1">&#39;copy&#39;</span>
+<span class="w">    </span><span class="n">cpus</span><span class="w"> </span><span class="mi">16</span>
+<span class="w">    </span><span class="n">memory</span><span class="w"> </span><span class="s1">&#39;64 GB&#39;</span>
+<span class="w">    </span><span class="nl">input:</span>
+<span class="w">        </span><span class="n">tuple</span><span class="w"> </span><span class="n">val</span><span class="o">(</span><span class="n">sample_id</span><span class="o">),</span><span class="w"> </span><span class="n">path</span><span class="o">(</span><span class="n">r1</span><span class="o">),</span><span class="w"> </span><span class="n">path</span><span class="o">(</span><span class="n">r2</span><span class="o">)</span>
+<span class="w">        </span><span class="n">path</span><span class="o">(</span><span class="n">star_index</span><span class="o">)</span>
+<span class="w">        </span><span class="n">path</span><span class="o">(</span><span class="n">whitelist</span><span class="o">)</span>
+<span class="w">    </span><span class="nl">output:</span>
+<span class="w">        </span><span class="n">tuple</span><span class="w"> </span><span class="n">val</span><span class="o">(</span><span class="n">sample_id</span><span class="o">),</span><span class="w"> </span><span class="n">path</span><span class="o">(</span><span class="s2">&quot;Solo.out/Gene/filtered/&quot;</span><span class="o">),</span><span class="w"> </span><span class="nl">emit:</span><span class="w"> </span><span class="n">counts</span>
+<span class="w">        </span><span class="n">path</span><span class="o">(</span><span class="s2">&quot;Log.final.out&quot;</span><span class="o">),</span><span class="w"> </span><span class="nl">emit:</span><span class="w"> </span><span class="n">log</span>
+<span class="w">    </span><span class="nl">script:</span>
+<span class="w">    </span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    STAR --runThreadN ${task.cpus} \</span>
+<span class="s2">      --genomeDir ${star_index} \</span>
+<span class="s2">      --readFilesIn ${r1} ${r2} \</span>
+<span class="s2">      --readFilesCommand zcat \</span>
+<span class="s2">      --soloType CB_UMI_Simple \</span>
+<span class="s2">      --soloCBwhitelist ${whitelist} \</span>
+<span class="s2">      --soloCBstart 1 --soloCBlen 16 \</span>
+<span class="s2">      --soloUMIstart 17 --soloUMIlen 12 \</span>
+<span class="s2">      --outSAMtype BAM SortedByCoordinate \</span>
+<span class="s2">      --soloFeatures Gene \</span>
+<span class="s2">      --soloCellFilter EmptyDrops_CR</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+<span class="o">}</span>
+
+<span class="n">process</span><span class="w"> </span><span class="n">SCANPY_PROCESS</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="n">tag</span><span class="w"> </span><span class="s2">&quot;${sample_id}&quot;</span>
+<span class="w">    </span><span class="n">publishDir</span><span class="w"> </span><span class="s2">&quot;${params.outdir}/scanpy&quot;</span><span class="o">,</span><span class="w"> </span><span class="nl">mode:</span><span class="w"> </span><span class="s1">&#39;copy&#39;</span>
+<span class="w">    </span><span class="nl">input:</span><span class="w">  </span><span class="n">tuple</span><span class="w"> </span><span class="n">val</span><span class="o">(</span><span class="n">sample_id</span><span class="o">),</span><span class="w"> </span><span class="n">path</span><span class="o">(</span><span class="n">counts_dir</span><span class="o">)</span>
+<span class="w">    </span><span class="nl">output:</span><span class="w"> </span><span class="n">tuple</span><span class="w"> </span><span class="n">val</span><span class="o">(</span><span class="n">sample_id</span><span class="o">),</span><span class="w"> </span><span class="n">path</span><span class="o">(</span><span class="s2">&quot;${sample_id}_processed.h5ad&quot;</span><span class="o">),</span><span class="w"> </span><span class="nl">emit:</span><span class="w"> </span><span class="n">h5ad</span>
+<span class="w">    </span><span class="nl">script:</span>
+<span class="w">    </span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    python ${projectDir}/scripts/run_scanpy.py \</span>
+<span class="s2">      --input ${counts_dir} --sample ${sample_id} \</span>
+<span class="s2">      --output ${sample_id}_processed.h5ad</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+<span class="o">}</span>
+
+<span class="n">process</span><span class="w"> </span><span class="n">INTEGRATE</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="n">publishDir</span><span class="w"> </span><span class="s2">&quot;${params.outdir}/scanpy&quot;</span><span class="o">,</span><span class="w"> </span><span class="nl">mode:</span><span class="w"> </span><span class="s1">&#39;copy&#39;</span>
+<span class="w">    </span><span class="nl">input:</span><span class="w">  </span><span class="n">path</span><span class="o">(</span><span class="n">h5ad_files</span><span class="o">)</span>
+<span class="w">    </span><span class="nl">output:</span><span class="w"> </span><span class="n">path</span><span class="o">(</span><span class="s2">&quot;integrated.h5ad&quot;</span><span class="o">)</span>
+<span class="w">    </span><span class="nl">script:</span>
+<span class="w">    </span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    python ${projectDir}/scripts/integrate_scanpy.py \</span>
+<span class="s2">      --input_files ${h5ad_files} --output integrated.h5ad</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+<span class="o">}</span>
+
+<span class="n">workflow</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="n">ch_input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Channel</span><span class="o">.</span><span class="na">fromPath</span><span class="o">(</span><span class="n">params</span><span class="o">.</span><span class="na">samplesheet</span><span class="o">)</span>
+<span class="w">        </span><span class="o">.</span><span class="na">splitCsv</span><span class="o">(</span><span class="nl">header:</span><span class="w"> </span><span class="kc">true</span><span class="o">)</span>
+<span class="w">        </span><span class="o">.</span><span class="na">map</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">tuple</span><span class="o">(</span><span class="n">row</span><span class="o">.</span><span class="na">sample_id</span><span class="o">,</span><span class="w"> </span><span class="n">file</span><span class="o">(</span><span class="n">row</span><span class="o">.</span><span class="na">fastq_r1</span><span class="o">),</span><span class="w"> </span><span class="n">file</span><span class="o">(</span><span class="n">row</span><span class="o">.</span><span class="na">fastq_r2</span><span class="o">))</span><span class="w"> </span><span class="o">}</span>
+
+<span class="w">    </span><span class="n">star_idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Channel</span><span class="o">.</span><span class="na">value</span><span class="o">(</span><span class="n">file</span><span class="o">(</span><span class="n">params</span><span class="o">.</span><span class="na">star_index</span><span class="o">))</span>
+<span class="w">    </span><span class="n">wl</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="n">Channel</span><span class="o">.</span><span class="na">value</span><span class="o">(</span><span class="n">file</span><span class="o">(</span><span class="n">params</span><span class="o">.</span><span class="na">whitelist</span><span class="o">))</span>
+
+<span class="w">    </span><span class="n">STARSOLO</span><span class="o">(</span><span class="n">ch_input</span><span class="o">,</span><span class="w"> </span><span class="n">star_idx</span><span class="o">,</span><span class="w"> </span><span class="n">wl</span><span class="o">)</span>
+<span class="w">    </span><span class="n">SCANPY_PROCESS</span><span class="o">(</span><span class="n">STARSOLO</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">counts</span><span class="o">)</span>
+<span class="w">    </span><span class="n">INTEGRATE</span><span class="o">(</span><span class="n">SCANPY_PROCESS</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">h5ad</span><span class="o">.</span><span class="na">map</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="n">it</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span><span class="w"> </span><span class="o">}.</span><span class="na">collect</span><span class="o">())</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+</div></div>
+</section>
+<section id="expected-output">
+<h2>Expected Output<a class="headerlink" href="#expected-output" title="Link to this heading"></a></h2>
+<p>After a successful run the output directory will contain:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">results/starsolo/&lt;sample&gt;/Solo.out/Gene/filtered/</span></code> – Per-sample filtered
+count matrices (<code class="docutils literal notranslate"><span class="pre">matrix.mtx</span></code>, <code class="docutils literal notranslate"><span class="pre">barcodes.tsv</span></code>, <code class="docutils literal notranslate"><span class="pre">features.tsv</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">results/scanpy/&lt;sample&gt;_processed.h5ad</span></code> – AnnData objects with QC
+metrics, clusters, UMAP coordinates, and marker genes per sample.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">results/scanpy/integrated.h5ad</span></code> – Combined AnnData with batch-corrected
+embedding, joint clustering, and cell-type annotations.</p></li>
+</ul>
+</section>
+<section id="see-also">
+<h2>See Also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="rnaseq-differential-expression.html"><span class="doc">RNA-seq Differential Expression</span></a> – Bulk RNA-seq differential expression pipeline</p></li>
+<li><p><a class="reference internal" href="snakemake.html"><span class="doc">Snakemake</span></a> – Snakemake workflow manager overview</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="chipseq.html" class="btn btn-neutral float-left" title="ChIP-seq" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="bisulfite-seq.html" class="btn btn-neutral float-right" title="Bisulfite Sequencing (WGBS)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, SeqTec Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

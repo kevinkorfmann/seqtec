@@ -1,0 +1,690 @@
+\chapter{Long-Read Sequencing Platforms}
+\label{ch:longread}
+
+While short-read sequencing excels at generating massive volumes of highly accurate data, it has an inherent limitation: individual reads of 100--300 bases cannot span many of the repetitive elements, structural variants, and complex genomic regions that are biologically and clinically important. Long-read sequencing technologies---generating reads from thousands to millions of bases---address these limitations and have opened entirely new areas of genomics research. This chapter provides a comprehensive survey of long-read sequencing platforms, focusing on the two dominant technologies: Pacific Biosciences (PacBio) Single Molecule, Real-Time (SMRT) sequencing and Oxford Nanopore Technologies (ONT) nanopore sequencing.
+
+\section{Why Long Reads Matter}
+\label{sec:why_long_reads}
+
+Before diving into platform specifics, it is worth understanding the biological questions that fundamentally require long reads.
+
+\begin{keyconcept}[title={The Long-Read Advantage}]
+Long reads provide three capabilities that short reads cannot:
+\begin{enumerate}[nosep]
+  \item \textbf{Spanning repetitive regions.} Roughly 50\% of the human genome consists of repetitive elements. Short reads cannot be unambiguously placed within repeats longer than the read length. Long reads that span entire repeats resolve their location.
+  \item \textbf{Detecting structural variants.} Insertions, deletions, inversions, and translocations larger than a few hundred bases are poorly detected by short reads. Long reads capture both breakpoints of a structural variant in a single read.
+  \item \textbf{Phasing haplotypes.} Long reads can link distant variants on the same chromosome, enabling haplotype-resolved (phased) assembly without the need for family data.
+\end{enumerate}
+\end{keyconcept}
+
+Specific application areas where long reads are essential or strongly preferred include:
+
+\begin{itemize}
+  \item \textbf{De novo genome assembly.} Long reads produce contiguous assemblies (high N50 values) that can span centromeres, telomeres, and segmental duplications. The Telomere-to-Telomere (T2T) Consortium used long reads to complete the first truly gapless human reference genome.
+
+  \item \textbf{Structural variant detection.} Clinical and population genetics increasingly recognise that \glspl{SV} (variants $>50$\basepair) account for more variable bases per genome than \glspl{SNV}. Long reads detect SVs with far greater sensitivity and precision.
+
+  \item \textbf{Full-length transcript isoform sequencing.} Long reads can capture entire mRNA molecules (including all exons and UTRs) in a single read, eliminating the need for computational transcript assembly from short-read fragments.
+
+  \item \textbf{Direct base modification detection.} Both PacBio and ONT can detect DNA methylation and other base modifications directly from the sequencing signal, without bisulfite conversion or other chemical treatments.
+
+  \item \textbf{Repetitive region characterisation.} Tandem repeats, microsatellites, and mobile element insertions are resolved by reads long enough to span the entire repeat and anchor into flanking unique sequence.
+
+  \item \textbf{Metagenomics.} Long reads can span entire operons or even full microbial chromosomes, improving species-level classification and enabling the assembly of individual genomes from complex communities.
+\end{itemize}
+
+
+\section{Pacific Biosciences (PacBio)}
+\label{sec:pacbio}
+
+\subsection{Historical Context}
+
+Pacific Biosciences (Menlo Park, California) commercialised single-molecule real-time (\gls{SMRTseq}) sequencing in 2011 with the RS system. The technology has undergone continuous improvement through the RS~II, Sequel, Sequel~II, Sequel~IIe, Revio, and most recently the Vega system. PacBio was acquired by and subsequently merged operations with the former Illumina competitor Omniome, whose sequencing-by-binding (SBB) chemistry now forms the basis of PacBio's short-read instrument, the Onso.
+
+\subsection{SMRT Sequencing Principle}
+
+The fundamental innovation of PacBio is the ability to observe a single DNA polymerase molecule synthesising a complementary strand in \textbf{real time}.
+
+\subsubsection{Zero-Mode Waveguides (ZMWs)}
+
+The heart of the PacBio system is the \textbf{SMRT Cell}, a chip containing millions of tiny cylindrical holes called \textbf{zero-mode waveguides (ZMWs)}. Each ZMW is approximately 70--100~nm in diameter and 100~nm deep, fabricated in a thin aluminium film deposited on a glass substrate.
+
+The ZMW is so small that its diameter is below the wavelength of the excitation light (${\sim}500$--600~nm). This means that while laser light can enter the well, it decays exponentially---only the bottom 20--30~nm of the well is illuminated. A single polymerase molecule is immobilised at the bottom of each ZMW, and only the nucleotide being incorporated at the active site dwells long enough to produce a detectable fluorescent pulse.
+
+\subsubsection{Evanescent Wave Physics}
+\label{subsubsec:longread:evanescent}
+
+The operating principle of the ZMW relies on \textbf{evanescent wave} behaviour. When light encounters an aperture smaller than its wavelength, it cannot propagate through as a freely travelling wave. Instead, the electromagnetic field decays exponentially with distance from the entrance:
+
+\begin{equation}
+I(z) = I_0 \, e^{-z/d}
+\label{eq:longread:evanescent}
+\end{equation}
+
+where $I(z)$ is the light intensity at depth $z$ into the waveguide, $I_0$ is the intensity at the entrance, and $d$ is the \textbf{penetration depth}. For a ZMW of diameter $a$ illuminated at wavelength $\lambda$:
+
+\begin{equation}
+d \approx \frac{a}{2} \cdot \frac{1}{\sqrt{(2.405 \cdot \lambda / (\pi a))^2 - 1}}
+\label{eq:longread:penetration}
+\end{equation}
+
+For typical ZMW dimensions ($a \approx 70$--$100$~nm, $\lambda \approx 532$~nm), the penetration depth $d \approx 20$--$30$~nm. This creates an observation volume of approximately $10^{-21}$ litres (one zeptolitre)---six orders of magnitude smaller than the diffraction limit of conventional optics.
+
+\begin{keyconcept}[title={Why the ZMW Works}]
+At micromolar concentrations of fluorescently labelled nucleotides (necessary for polymerase activity), a confocal microscope would observe hundreds of molecules simultaneously, creating overwhelming background fluorescence. The ZMW's zeptolitre observation volume reduces this to an average of $\sim$0.01 freely diffusing molecules in the illuminated zone. Only the nucleotide being incorporated by the polymerase dwells long enough ($\sim$10--100~ms) to produce a detectable pulse above the shot noise of rapidly transiting molecules ($\sim$10~$\mu$s dwell time).
+\end{keyconcept}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  scale=1.0,
+]
+
+% --- Aluminium layer ---
+\fill[gray!60] (-3.5, 0) rectangle (-0.7, 2.5);
+\fill[gray!60] (0.7, 0) rectangle (3.5, 2.5);
+
+% --- ZMW well ---
+\fill[MidnightBlue!10] (-0.7, 0) rectangle (0.7, 2.5);
+
+% --- Glass substrate ---
+\fill[cyan!8] (-3.5, -0.5) rectangle (3.5, 0);
+\draw[thick, cyan!40] (-3.5, 0) -- (3.5, 0);
+
+% --- Labels ---
+\node[font=\sffamily\footnotesize, gray!80] at (-2.1, 1.25) {Al film};
+\node[font=\sffamily\footnotesize, gray!80] at (2.1, 1.25) {Al film};
+\node[font=\sffamily\footnotesize, cyan!60!black] at (2.5, -0.25) {glass};
+
+% --- Illumination zone ---
+\fill[Goldenrod!30, opacity=0.5] (-0.5, 0) -- (0.5, 0) -- (0.3, 0.6) -- (-0.3, 0.6) -- cycle;
+\node[font=\sffamily\tiny, Goldenrod!70!black] at (0, 0.9) {illumination};
+\node[font=\sffamily\tiny, Goldenrod!70!black] at (0, 0.7) {zone (${\sim}30$\,nm)};
+
+% --- Polymerase ---
+\node[circle, fill=OliveGreen!70, inner sep=3pt] (pol) at (0, 0.2) {};
+\node[font=\sffamily\tiny, OliveGreen!70!black, right=3pt of pol] {polymerase};
+
+% --- Template DNA ---
+\draw[thick, BrickRed!70, decorate, decoration={snake, amplitude=0.3mm, segment length=2mm}]
+  (-0.5, 0.2) -- (pol);
+\draw[thick, BrickRed!70, decorate, decoration={snake, amplitude=0.3mm, segment length=2mm}]
+  (pol) -- (0.5, 0.4) -- (0.5, 1.5);
+\node[font=\sffamily\tiny, BrickRed!70] at (1.0, 1.0) {SMRTbell};
+
+% --- Fluorescent nucleotide ---
+\node[circle, fill=ForestGreen!80, inner sep=1.5pt] (nuc) at (0, 0.45) {};
+\draw[->, ForestGreen!60, thick] (nuc) -- ++(0, 0.5) node[above, font=\sffamily\tiny, ForestGreen!70!black] {fluorescent pulse};
+
+% --- Laser arrows ---
+\draw[->, Goldenrod!80, thick, dashed] (-2.5, -1.0) -- (-0.3, -0.1);
+\draw[->, Goldenrod!80, thick, dashed] (2.5, -1.0) -- (0.3, -0.1);
+\node[font=\sffamily\footnotesize, Goldenrod!70!black] at (0, -1.3) {laser excitation from below};
+
+% --- Dimensions ---
+\draw[<->, thin, gray] (-0.7, 2.7) -- (0.7, 2.7) node[midway, above, font=\tiny\sffamily] {70--100\,nm};
+
+\end{tikzpicture}
+\caption[Zero-mode waveguide (ZMW) principle]{Cross-section of a PacBio zero-mode waveguide (ZMW). A single polymerase molecule is immobilised at the bottom of a nanophotonic well. Laser light illuminates only the bottom ${\sim}30$\,nm, so only the nucleotide being incorporated produces a detectable fluorescent signal.}
+\label{fig:zmw}
+\end{figure}
+
+\subsubsection{The SMRTbell Template}
+
+PacBio library molecules are prepared as \textbf{SMRTbell} constructs: a double-stranded DNA insert flanked by hairpin adapters on both ends, creating a topologically circular (dumbbell-shaped) molecule. The polymerase initiates synthesis at a sequencing primer annealed in the adapter and proceeds around the circular template continuously.
+
+\subsection{Continuous Long Reads (CLR) vs HiFi Reads (CCS)}
+
+PacBio generates two fundamentally different read types from the same instrument:
+
+\subsubsection{Continuous Long Reads (CLR)}
+
+In CLR mode, the polymerase reads around the SMRTbell template as many times as it can before it dissociates or the movie time expires. If the insert is long (e.g., 15--20\kilobase\ or more), the polymerase may traverse the insert only once or a few times, yielding a single long but relatively error-prone read. CLR reads can exceed 100\kilobase, with some reaching beyond 300\kilobase.
+
+\begin{itemize}[nosep]
+  \item \textbf{Accuracy:} approximately 85--90\% per-pass (Q10--Q13).
+  \item \textbf{Error type:} predominantly insertions and deletions (indels), particularly in homopolymer contexts. Substitution errors are comparatively rare.
+  \item \textbf{Strengths:} maximum read length; essential for spanning very large repeats and producing the most contiguous genome assemblies.
+\end{itemize}
+
+\subsubsection{HiFi Reads (Circular Consensus Sequencing, CCS)}
+
+If the insert is shorter (typically 10--25\kilobase), the polymerase traverses the circular template multiple times, generating multiple passes (subreads) of the same molecule. These subreads are computationally aligned and a \textbf{consensus} sequence is generated, dramatically reducing the error rate.
+
+\begin{itemize}[nosep]
+  \item \textbf{Passes required:} typically 3--10+ passes for high-quality consensus.
+  \item \textbf{Accuracy:} $>$Q30 (99.9\%) median per-read accuracy; the best reads exceed Q40.
+  \item \textbf{Read length:} typically 10--25\kilobase\ (limited by the requirement for multiple passes within the movie time).
+  \item \textbf{Error profile:} residual errors are approximately evenly distributed among substitutions, insertions, and deletions, with no strong systematic biases.
+\end{itemize}
+
+\begin{keyconcept}[title={HiFi: The Best of Both Worlds}]
+PacBio HiFi reads combine the advantages of long reads (10--25\kilobase) with accuracy rivalling or exceeding that of short reads ($>$Q30). This combination has made HiFi the method of choice for reference-quality genome assembly, clinical structural variant detection, and haplotype-resolved (phased) analysis.
+\end{keyconcept}
+
+
+\subsubsection{CCS Accuracy Model}
+\label{subsubsec:longread:ccs-model}
+
+The accuracy improvement from circular consensus sequencing can be modelled quantitatively. If the per-pass (single-subread) error rate is $\varepsilon$ and a position is covered by $N$ independent passes, the consensus error rate $\varepsilon_{\text{CCS}}$ at that position follows a binomial model. For a simple majority-vote consensus, an error occurs only when more than half of the passes contain the same error. The probability of the consensus being wrong is approximately:
+
+\begin{equation}
+\varepsilon_{\text{CCS}} \approx \sum_{k=\lceil N/2 \rceil}^{N} \binom{N}{k} \varepsilon^k (1-\varepsilon)^{N-k}
+\label{eq:longread:ccs-accuracy}
+\end{equation}
+
+For small $\varepsilon$ and moderate $N$, this simplifies to:
+
+\begin{equation}
+\varepsilon_{\text{CCS}} \approx \binom{N}{\lceil N/2 \rceil} \varepsilon^{\lceil N/2 \rceil}
+\label{eq:longread:ccs-approx}
+\end{equation}
+
+In practice, PacBio's \software{ccs} tool uses a more sophisticated approach: it builds a partial-order alignment of all subreads and calls the consensus using a pair-HMM, which accounts for the indel-dominated error profile. The resulting accuracy is:
+
+\begin{table}[htbp]
+\centering
+\caption[CCS accuracy vs.\ number of passes.]{Expected CCS consensus quality as a function of the number of full passes, assuming $\sim$90\% single-pass accuracy.}
+\label{tab:longread:ccs-passes}
+\small
+\begin{tabular}{ccl}
+\toprule
+\textbf{Full passes} & \textbf{Consensus quality} & \textbf{Phred equivalent} \\
+\midrule
+1 & $\sim$90\% & Q10 \\
+3 & $\sim$99\% & Q20 \\
+5 & $\sim$99.8\% & Q27 \\
+7 & $\sim$99.95\% & Q33 \\
+10 & $>$99.99\% & $>$Q40 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\subsection{PacBio Platforms}
+
+\subsubsection{Revio System}
+
+The Revio, launched in late 2022 and widely deployed from 2023 onward, is PacBio's current flagship production instrument.
+
+\begin{itemize}[nosep]
+  \item \textbf{SMRT Cells:} each cell contains approximately 25~million ZMWs.
+  \item \textbf{Throughput:} approximately 90~Gb of HiFi reads per SMRT Cell; with four SMRT Cell positions running in parallel, up to 360~Gb per day.
+  \item \textbf{Movie time:} 24 hours per SMRT Cell (standard).
+  \item \textbf{Cost:} approximately \$800--1{,}000 per SMRT Cell; approximately \$1{,}000--1{,}500 for a 30$\times$ human \gls{WGS} (HiFi).
+  \item \textbf{On-instrument analysis:} HiFi read generation (CCS calling) occurs on-instrument in real time using GPUs.
+  \item \textbf{Key improvement over Sequel~IIe:} approximately 8-fold increase in throughput per instrument per day, primarily through the 25M ZMW SMRT Cell (vs.\ 8M on Sequel~IIe) and reduced run turnaround.
+\end{itemize}
+
+\subsubsection{Vega System}
+
+The Vega, announced in 2024 and entering the market in 2025, is PacBio's next-generation benchtop system.
+
+\begin{itemize}[nosep]
+  \item \textbf{Positioning:} designed for laboratories seeking HiFi data at lower capital cost and smaller scale.
+  \item \textbf{Throughput:} lower than Revio per run but sufficient for individual genome projects, targeted long-read panels, and isoform sequencing.
+  \item \textbf{SMRT Cell format:} uses a new, smaller SMRT Cell format optimised for lower-throughput applications.
+  \item \textbf{Workflow simplification:} streamlined library preparation and reduced hands-on time.
+\end{itemize}
+
+\subsubsection{Onso (Short-Read Platform)}
+
+PacBio also offers the Onso, a short-read sequencer based on \textbf{Sequencing by Binding (SBB)} chemistry (acquired from Omniome). In SBB, the identity of the next nucleotide is determined by a binding event (without incorporation), followed by separate incorporation of a natural nucleotide. This decoupling of recognition from extension is claimed to reduce context-dependent errors. The Onso competes with Illumina's mid-throughput platforms but is not a long-read instrument and is mentioned here only for completeness.
+
+\subsection{Kinetic Information and Base Modification Detection}
+
+A unique advantage of PacBio SMRT sequencing is that the polymerase's kinetics---specifically, the \textbf{inter-pulse duration} (IPD, the time between fluorescent pulses) and the \textbf{pulse width}---are sensitive to chemical modifications on the template DNA. Modified bases (such as 5-methylcytosine, N6-methyladenine, and others) alter the polymerase's behaviour as it traverses them, producing characteristic kinetic signatures.
+
+\begin{itemize}[nosep]
+  \item \textbf{5mC detection:} PacBio HiFi reads can detect 5-methylcytosine (5mC) at CpG sites with high accuracy, using machine learning models trained on kinetic features. This enables simultaneous genome sequencing and methylation profiling without bisulfite conversion.
+  \item \textbf{m6A detection:} N6-methyladenine produces a strong kinetic signature and is readily detected even from single-pass CLR data.
+  \item \textbf{Other modifications:} various other modifications, including damaged bases, can be detected from kinetic signatures.
+\end{itemize}
+
+\begin{tipbox}[title={PacBio Kinetics for Epigenomics}]
+If you need both genome sequence and CpG methylation calls from the same experiment, PacBio HiFi is an excellent choice. A single 30$\times$ HiFi whole-genome dataset can provide variant calls, structural variant calls, phased haplotypes, and genome-wide CpG methylation---all without any additional library preparation or chemical treatment.
+\end{tipbox}
+
+
+\section{Oxford Nanopore Technologies (ONT)}
+\label{sec:ont}
+
+\subsection{Historical Context}
+
+Oxford Nanopore Technologies (Oxford, United Kingdom) was founded in 2005 as a spin-out from the University of Oxford, based on the pioneering work of Hagan Bayley on protein nanopores. The company's first commercial product, the MinION, was released through an early-access programme (MAP) in 2014. ONT has since expanded its product line to include instruments ranging from the pocket-sized Flongle adapter to the production-scale PromethION, and it remains the only company offering portable, real-time, long-read DNA and RNA sequencing.
+
+\subsection{Nanopore Sequencing Principle}
+
+The fundamental principle of nanopore sequencing is elegantly simple: a single strand of DNA or RNA is driven through a tiny protein pore embedded in an electrically resistant membrane. As each nucleotide passes through the narrowest constriction of the pore, it partially blocks the ionic current flowing through the pore. The pattern of current disruption encodes the sequence.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  scale=1.0,
+]
+
+% --- Membrane ---
+\fill[Goldenrod!20] (-4, -0.2) rectangle (-0.5, 0.2);
+\fill[Goldenrod!20] (0.5, -0.2) rectangle (4, 0.2);
+\draw[Goldenrod!60, thick] (-4, 0.2) -- (-0.5, 0.2);
+\draw[Goldenrod!60, thick] (0.5, 0.2) -- (4, 0.2);
+\draw[Goldenrod!60, thick] (-4, -0.2) -- (-0.5, -0.2);
+\draw[Goldenrod!60, thick] (0.5, -0.2) -- (4, -0.2);
+\node[font=\sffamily\footnotesize, Goldenrod!70!black] at (2.5, 0) {membrane};
+
+% --- Pore protein ---
+\fill[MidnightBlue!30] (-0.5, -0.2) -- (-0.5, 0.2) -- (-0.35, 1.2) -- (-0.2, 1.5)
+  -- (-0.2, -1.0) -- (-0.35, -0.8) -- (-0.5, -0.2);
+\fill[MidnightBlue!30] (0.5, -0.2) -- (0.5, 0.2) -- (0.35, 1.2) -- (0.2, 1.5)
+  -- (0.2, -1.0) -- (0.35, -0.8) -- (0.5, -0.2);
+
+\node[font=\sffamily\tiny, MidnightBlue!70] at (-1.2, 1.0) {protein};
+\node[font=\sffamily\tiny, MidnightBlue!70] at (-1.2, 0.75) {pore};
+
+% --- Constriction arrows ---
+\draw[<->, thin, BrickRed!60] (-0.15, 0.0) -- (0.15, 0.0);
+\node[font=\sffamily\tiny, BrickRed!60] at (1.3, 0.0) {constriction};
+\node[font=\sffamily\tiny, BrickRed!60] at (1.3, -0.2) {(${\sim}1$\,nm)};
+
+% --- DNA strand going through ---
+\foreach \y/\base/\col in {2.5/A/ForestGreen, 2.1/T/BrickRed, 1.7/C/MidnightBlue, 1.3/G/Goldenrod!80!black, 0.9/A/ForestGreen, 0.5/T/BrickRed, 0.1/C/MidnightBlue, -0.3/G/Goldenrod!80!black, -0.7/A/ForestGreen} {
+  \node[circle, fill=\col!60, inner sep=1.5pt, font=\tiny\bfseries\sffamily, text=white] at (0, \y) {\base};
+}
+
+% --- Motor protein ---
+\fill[OliveGreen!40, rounded corners=2pt] (-0.4, 1.5) rectangle (0.4, 1.9);
+\node[font=\sffamily\tiny, OliveGreen!70!black] at (1.2, 1.7) {motor protein};
+
+% --- Current direction ---
+\draw[->, thick, cyan!60] (-3.0, 1.5) -- (-3.0, -0.8) node[midway, left, font=\sffamily\footnotesize, cyan!70!black] {ionic current};
+
+% --- Signal trace ---
+\begin{scope}[xshift=6cm, yshift=-0.5cm]
+\draw[->] (0,0) -- (0, 2.5) node[above, font=\sffamily\tiny] {current (pA)};
+\draw[->] (0,0) -- (3.5, 0) node[right, font=\sffamily\tiny] {time};
+\draw[thick, MidnightBlue!70]
+  (0.0, 2.0) -- (0.3, 2.0) -- (0.3, 1.2) -- (0.7, 1.2) -- (0.7, 1.8)
+  -- (1.0, 1.8) -- (1.0, 0.8) -- (1.4, 0.8) -- (1.4, 1.5)
+  -- (1.7, 1.5) -- (1.7, 2.0) -- (2.1, 2.0) -- (2.1, 1.0)
+  -- (2.5, 1.0) -- (2.5, 1.6) -- (2.8, 1.6) -- (2.8, 0.9) -- (3.2, 0.9);
+\node[font=\sffamily\tiny, gray] at (1.6, -0.3) {raw signal (squiggle)};
+\end{scope}
+
+% --- Labels ---
+\node[font=\sffamily\footnotesize, gray] at (0, 3.0) {\textbf{cis} (above membrane)};
+\node[font=\sffamily\footnotesize, gray] at (0, -1.5) {\textbf{trans} (below membrane)};
+
+\end{tikzpicture}
+\caption[Nanopore sequencing principle]{The nanopore sequencing principle. A single-stranded DNA molecule is threaded through a protein pore embedded in a lipid membrane. Each nucleotide passing through the constriction produces a characteristic disruption in the ionic current. The resulting ``squiggle'' signal is decoded by neural network basecallers to produce a DNA sequence.}
+\label{fig:nanopore}
+\end{figure}
+
+\subsubsection{Key Components}
+
+\begin{description}[style=nextline, font=\bfseries]
+  \item[Protein pore.] Currently, ONT uses engineered versions of the \textit{CsgG} protein (R10 series pores) embedded in an electrically resistant polymer membrane. The pore contains a dual-constriction region that samples approximately 5--9 nucleotides simultaneously, providing a richer signal than the single-constriction R9.4.1 pore.
+
+  \item[Motor protein.] A helicase enzyme (the ``motor protein'') is attached to the DNA and controls the rate at which the strand passes through the pore---approximately 400--450 bases per second. Without the motor protein, the DNA would translocate too fast for accurate current measurement.
+
+  \item[Adapter and tether.] Library preparation attaches a sequencing adapter (containing the motor protein) to the DNA. A membrane-associated tether helps localise the adapted DNA near the pore.
+
+  \item[ASIC and sensor array.] Each flow cell contains an application-specific integrated circuit (ASIC) with an array of individually addressable electrodes (channels), each capable of hosting one active pore. The ASIC measures the ionic current through each channel at kilohertz sampling rates.
+\end{description}
+
+
+\subsubsection{Nanopore Ion Current Model}
+\label{subsubsec:longread:current-model}
+
+The measured ionic current through the nanopore depends on the sequence of nucleotides occupying the constriction region at any given moment. For a pore with a sensing region spanning $k$ nucleotides (a ``$k$-mer context''), each unique $k$-mer produces a characteristic current level. The measured current at time $t$ can be modelled as:
+
+\begin{equation}
+I(t) = \mu_{s(t)} + \eta(t)
+\label{eq:longread:current-model}
+\end{equation}
+
+where $\mu_{s(t)}$ is the expected current level for the $k$-mer $s(t)$ in the constriction at time $t$, and $\eta(t)$ is Gaussian noise. The signal-to-noise ratio (SNR) for distinguishing between two $k$-mers $s_1$ and $s_2$ is:
+
+\begin{equation}
+\text{SNR} = \frac{|\mu_{s_1} - \mu_{s_2}|}{\sigma}
+\label{eq:longread:snr}
+\end{equation}
+
+where $\sigma$ is the standard deviation of the noise. For the R10.4.1 pore with its dual-constriction design, the effective $k$-mer context is approximately $k = 9$ bases, giving $4^9 = 262{,}144$ possible $k$-mers---each with a distinct (though not always easily separable) current level.
+
+\begin{keyconcept}[title={Why Homopolymers Are Hard}]
+Homopolymer runs (e.g., AAAAAA) are the dominant error mode in nanopore sequencing because consecutive identical bases produce \textit{the same current level} as they transit the pore. The only information about homopolymer length comes from the \textit{duration} of the signal plateau, which is stochastic: the motor protein does not advance each base at a perfectly constant rate. This duration-to-length mapping is inherently noisier than the current-level-to-identity mapping used for non-homopolymer contexts.
+\end{keyconcept}
+
+
+\subsubsection{Stochastic Models of Homopolymer Errors}
+\label{subsubsec:longread:homopolymer}
+
+The time each base spends in the pore constriction (the ``dwell time'') follows a stochastic distribution. For a homopolymer of true length $L$, the total dwell time $T$ is the sum of $L$ independent dwell times:
+
+\begin{equation}
+T = \sum_{i=1}^{L} t_i, \quad t_i \sim \text{Gamma}(\alpha, \beta)
+\label{eq:longread:dwell-sum}
+\end{equation}
+
+The basecaller must infer $L$ from $T$, which is a \textbf{deconvolution problem}. The coefficient of variation of the total dwell time decreases as $1/\sqrt{L}$, but the absolute uncertainty in the estimated length grows. In practice:
+
+\begin{table}[htbp]
+\centering
+\caption[Homopolymer length accuracy.]{Approximate accuracy of homopolymer length calling for nanopore R10.4.1 + SUP basecalling.}
+\label{tab:longread:homopolymer-accuracy}
+\small
+\begin{tabular}{ccc}
+\toprule
+\textbf{True length} & \textbf{Accuracy (\% correct)} & \textbf{Common error} \\
+\midrule
+1--3 & $>$99\% & Rarely miscalled \\
+4--5 & 95--99\% & $\pm$1 base \\
+6--8 & 85--95\% & $\pm$1 base \\
+9--12 & 70--85\% & $\pm$1--2 bases \\
+$>$12 & $<$70\% & $\pm$2+ bases \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tipbox}
+For applications where homopolymer accuracy is critical (e.g., bacterial gene annotation, frameshift detection), consider using PacBio HiFi reads or supplementing nanopore data with short reads for polishing. Duplex nanopore reads (see below) also significantly improve homopolymer accuracy by providing two independent measurements of each base.
+\end{tipbox}
+
+
+\subsection{Library Preparation}
+
+ONT library preparation is notably simpler than that of most other platforms. Two main approaches are offered:
+
+\begin{description}[style=nextline, font=\bfseries]
+  \item[Ligation Sequencing Kit (LSK).] The standard high-quality preparation. DNA is end-repaired, A-tailed, and then ligated to ONT sequencing adapters containing the motor protein. This kit preserves the longest fragments and gives the highest throughput. Typical hands-on time: 60--90 minutes.
+
+  \item[Rapid Sequencing Kit (RAD/RBK).] A transposase-based method that fragments the DNA and simultaneously attaches adapters in a single tagmentation step. Library preparation takes approximately 10 minutes, but the transposase cuts the DNA, limiting the maximum read length to the fragment size produced by the enzyme.
+\end{description}
+
+\begin{protocolbox}[title={ONT Rapid Library Prep}]
+\begin{enumerate}[nosep]
+  \item Add transposase to 400~ng of genomic DNA.
+  \item Incubate at 30\textdegree C for 1~min, then 80\textdegree C for 1~min.
+  \item Add rapid adapter.
+  \item Incubate at room temperature for 5~min.
+  \item Load onto flow cell.
+\end{enumerate}
+\textbf{Total time:} $<$15 minutes from extracted DNA to sequencing.
+\end{protocolbox}
+
+\subsection{Basecalling: From Signal to Sequence}
+
+Raw nanopore data is not a sequence of bases but a time series of electrical current measurements---the ``squiggle.'' Converting this signal to a DNA sequence is a computationally intensive process called \textbf{basecalling}.
+
+\begin{itemize}
+  \item \textbf{Early basecallers} (e.g., Metrichor, Albacore) used hidden Markov models (HMMs) with relatively modest accuracy.
+
+  \item \textbf{Modern basecallers} use deep neural networks. ONT's current production basecaller is \textbf{Dorado}, which succeeded the earlier \textbf{Guppy} and \textbf{Bonito} basecallers. Dorado uses recurrent neural networks (RNNs) and transformer architectures trained on millions of known-sequence reads.
+
+  \item \textbf{Accuracy modes:} Dorado offers multiple models trading speed for accuracy:
+    \begin{itemize}[nosep]
+      \item \textbf{Fast (SUP-fast):} lowest accuracy, highest speed; suitable for real-time applications.
+      \item \textbf{High accuracy (HAC):} good balance of accuracy and speed; the default for most applications.
+      \item \textbf{Super accuracy (SUP):} highest accuracy; requires GPU acceleration and is 5--10$\times$ slower than fast mode.
+    \end{itemize}
+
+  \item \textbf{Hardware:} production basecalling requires GPU acceleration. A modern NVIDIA GPU (e.g., A100, V100, RTX~4090) can basecall a PromethION flow cell's data in approximately the same time as the run itself.
+\end{itemize}
+
+\subsection{Pore Chemistry Evolution: R9 to R10 and Duplex}
+
+\subsubsection{R9.4.1 Pore}
+
+The R9.4.1 pore was ONT's workhorse for many years. It features a single constriction point that reads approximately 5 nucleotides (a 5-mer) simultaneously. This produces a highly compressed signal that made homopolymer detection challenging. Typical simplex (single-strand) accuracy with SUP basecalling was approximately 97--98\% (Q15--Q17).
+
+\subsubsection{R10.4.1 Pore}
+
+The R10.4.1 pore, which has become the standard pore as of 2024--2025, features a \textbf{dual constriction} that reads a longer k-mer context (${\sim}9$ bases). This provides:
+
+\begin{itemize}[nosep]
+  \item Significantly improved homopolymer resolution.
+  \item Raw simplex accuracy of approximately 99\% (Q20) with SUP basecalling.
+  \item Better discrimination of modified bases.
+\end{itemize}
+
+\subsubsection{Duplex Reads}
+
+ONT's \textbf{duplex sequencing} exploits the fact that when both strands of a DNA duplex are sequenced in succession through the same pore, the complementary information can be combined to produce a consensus. Duplex reads achieve accuracy exceeding Q30 (99.9\%), approaching PacBio HiFi quality while retaining the potential for very long reads.
+
+\begin{keyconcept}[title={Duplex Reads: ONT's Answer to HiFi}]
+Duplex reads are formed when the complement strand immediately follows the template strand through the same nanopore. The two reads of the same molecule provide independent error profiles that, when combined, yield $>$Q30 accuracy. The fraction of reads that are duplex depends on library preparation and loading conditions, typically 30--60\% of reads.
+\end{keyconcept}
+
+\subsection{ONT Platform Hierarchy}
+
+Oxford Nanopore offers a range of devices, from portable field instruments to production-scale platforms:
+
+\subsubsection{Flongle}
+
+\begin{itemize}[nosep]
+  \item \textbf{Format:} a small, single-use flow cell adapter that plugs into a MinION or GridION.
+  \item \textbf{Channels:} 126 (vs.\ 512 on a standard MinION flow cell).
+  \item \textbf{Output:} up to 2.8~Gb per flow cell.
+  \item \textbf{Cost:} approximately \$90 per flow cell---the lowest entry point for nanopore sequencing.
+  \item \textbf{Use cases:} quick experiments, quality checks, small amplicon panels, species identification, teaching.
+\end{itemize}
+
+\subsubsection{MinION and MinION Mk1C}
+
+\begin{itemize}[nosep]
+  \item \textbf{Format:} the MinION is a USB-powered device roughly the size of a stapler. The Mk1C integrates a touchscreen computer and GPU for on-device basecalling.
+  \item \textbf{Channels:} 512.
+  \item \textbf{Output:} up to 50~Gb per flow cell (R10.4.1, 72-hour run).
+  \item \textbf{Cost:} MinION starter packs begin at approximately \$1{,}000. Flow cells cost approximately \$500--900.
+  \item \textbf{Use cases:} field sequencing (pathogen surveillance, biodiversity), small labs, educational settings, rapid diagnostics, proof-of-concept studies.
+\end{itemize}
+
+\begin{tipbox}[title={Field Sequencing with MinION}]
+The MinION has been used for sequencing in remarkably challenging environments: during the 2014--2016 Ebola outbreak in West Africa, on the International Space Station, in Antarctic field camps, and in tropical forests for real-time biodiversity assessment. Its portability and minimal infrastructure requirements (a laptop and a power source) make it uniquely suited for point-of-need applications.
+\end{tipbox}
+
+\subsubsection{GridION}
+
+\begin{itemize}[nosep]
+  \item \textbf{Format:} a benchtop device that runs up to 5 MinION-format flow cells simultaneously.
+  \item \textbf{Channels:} up to 2{,}560 (5 $\times$ 512).
+  \item \textbf{Output:} up to 250~Gb (5 flow cells).
+  \item \textbf{Integrated compute:} includes an NVIDIA GPU for real-time basecalling.
+  \item \textbf{Use cases:} mid-throughput labs needing flexibility; multiple small projects running in parallel.
+\end{itemize}
+
+\subsubsection{PromethION P24 and P48}
+
+\begin{itemize}[nosep]
+  \item \textbf{Format:} production-scale instruments running 24 (P24) or 48 (P48) high-capacity flow cells.
+  \item \textbf{Channels per flow cell:} approximately 2{,}675 (roughly 5$\times$ a MinION flow cell).
+  \item \textbf{Output per flow cell:} up to 290~Gb.
+  \item \textbf{Total output:} up to approximately 14~Tb (P48, all flow cells).
+  \item \textbf{Run time:} typically 72 hours per flow cell.
+  \item \textbf{Cost:} approximately \$600--900 per flow cell; approximately \$1{,}000--2{,}000 for a 30$\times$ human \gls{WGS}.
+  \item \textbf{Use cases:} population-scale \gls{WGS}, large cohort studies, production metagenomics, clinical genome sequencing.
+\end{itemize}
+
+\subsection{Ultra-Long Reads}
+
+One of ONT's most remarkable capabilities is the generation of \textbf{ultra-long reads} exceeding 1~Mb (one million bases). Achieving ultra-long reads requires:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Ultra-high molecular weight (UHMW) DNA extraction.} Standard extraction methods shear DNA to 20--50\kilobase. For ultra-long reads, specialised gentle lysis protocols (e.g., agarose plug extraction, Circulomics/PacBio Nanobind kits) are used to preserve megabase-length DNA.
+  \item \textbf{Careful library preparation.} Wide-bore pipette tips, minimal vortexing, and gravity-driven mixing to avoid shearing.
+  \item \textbf{Ligation-based library prep.} Transposase-based (rapid) kits are avoided as they fragment the DNA.
+  \item \textbf{Patience.} Ultra-long molecules take hours to translocate through the pore. A 1~Mb read at 400 bases/second takes approximately 42 minutes.
+\end{enumerate}
+
+\begin{warningbox}[title={Ultra-Long Read Caveats}]
+Ultra-long reads ($>$100\kilobase) are low-throughput by nature: each long molecule occupies a pore for an extended time, reducing the total number of reads. Ultra-long libraries also have lower yields and are technically demanding to prepare. Use ultra-long protocols when the application demands it (e.g., resolving very large repeats or centromeric regions), not as a default.
+\end{warningbox}
+
+\subsection{Direct RNA Sequencing}
+
+ONT is currently the only platform capable of sequencing \textbf{native RNA molecules directly}, without reverse transcription to cDNA.
+
+\begin{itemize}
+  \item \textbf{Principle.} A poly(A)-tailed RNA molecule is ligated to a sequencing adapter and threaded through the nanopore 3\textquotesingle\ to 5\textquotesingle. The current signal is decoded by RNA-specific basecalling models.
+
+  \item \textbf{Advantages.} Direct RNA sequencing preserves RNA modifications (m6A, pseudouridine, m5C, and others) as detectable signal perturbations. It also eliminates reverse transcription biases and PCR amplification artefacts.
+
+  \item \textbf{Limitations.} Throughput is lower than cDNA-based approaches (the RNA motor protein translocates more slowly). Accuracy is currently lower than DNA basecalling. Input requirements are high (typically 500~ng--1~\textmu g of poly(A)+ RNA).
+
+  \item \textbf{Applications.} Epitranscriptomics research, full-length transcript isoform detection, viral RNA sequencing.
+\end{itemize}
+
+\subsection{Adaptive Sampling (Read Until)}
+
+One of ONT's most innovative software features is \textbf{adaptive sampling} (formerly called ``Read Until''). Because nanopore sequencing produces data in real time, the instrument can make decisions about each read while it is being sequenced:
+
+\begin{enumerate}[nosep]
+  \item As a DNA molecule begins translocating through the pore, the first few hundred bases are basecalled in real time.
+  \item This partial sequence is aligned against a reference or target list.
+  \item If the molecule is \textbf{on-target} (matches a region of interest), sequencing continues normally.
+  \item If the molecule is \textbf{off-target}, the voltage across that channel is reversed, ejecting the molecule from the pore. The pore is then free to capture a new molecule.
+\end{enumerate}
+
+This enables computational enrichment without physical capture or amplification---effectively a ``software pulldown.'' Adaptive sampling can enrich for entire chromosomes, specific genes, or panels of genomic regions, achieving 5--10$\times$ enrichment over random sequencing.
+
+\begin{keyconcept}[title={Adaptive Sampling}]
+Adaptive sampling enables selective sequencing of target regions \emph{without any special library preparation}. A whole-genome library is loaded, and the software selectively sequences regions of interest while rejecting off-target molecules in real time. This is unique to nanopore sequencing and has no equivalent on any other platform.
+\end{keyconcept}
+
+\subsection{Base Modification Detection}
+
+Like PacBio, ONT can detect base modifications directly from the raw sequencing signal:
+
+\begin{itemize}[nosep]
+  \item \textbf{5-methylcytosine (5mC)} at CpG and non-CpG contexts.
+  \item \textbf{N6-methyladenine (6mA).}
+  \item \textbf{5-hydroxymethylcytosine (5hmC).}
+  \item \textbf{RNA modifications} (m6A, pseudouridine) from direct RNA sequencing.
+\end{itemize}
+
+Modern ONT basecallers (Dorado) include integrated modification calling models that output modification probabilities alongside the base sequence, producing a ``modBAM'' file containing both sequence and modification information.
+
+
+\section{PacBio HiFi vs Oxford Nanopore: A Detailed Comparison}
+\label{sec:hifi_vs_ont}
+
+\Cref{tab:longread_comparison} provides a comprehensive comparison of the two dominant long-read platforms.
+
+\begin{table}[htbp]
+\centering
+\caption[PacBio HiFi vs ONT comparison]{Detailed comparison of PacBio HiFi and Oxford Nanopore Technologies for long-read sequencing. Values represent typical performance as of early 2026.}
+\label{tab:longread_comparison}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\bfseries}p{3.5cm} X X@{}}
+\toprule
+\textbf{Feature} & \textbf{PacBio HiFi (Revio)} & \textbf{ONT (PromethION, R10.4.1)} \\
+\midrule
+Read length (typical) & 10--25\kilobase & 10--100\kilobase\ (simplex); ultra-long $>$1\megabase \\
+Read length (max) & ${\sim}$25\kilobase\ (HiFi); $>$300\kilobase\ (CLR) & $>$4\megabase\ (record) \\
+Per-read accuracy & $>$Q30 (99.9\%) & Q20 simplex (99\%); $>$Q30 duplex \\
+Consensus accuracy & $>$Q50 at 30$\times$ & $>$Q50 at 30$\times$ (with R10.4.1) \\
+Error type & Balanced (sub, ins, del) & Indels, especially in homopolymers \\
+Throughput/cell & ${\sim}$90\gigabase\ HiFi & ${\sim}$290\gigabase\ (PromethION) \\
+Throughput/instrument & 360\gigabase/day (4 cells) & up to 14\,Tb (P48) \\
+Run time & 24\,h per cell & 72\,h per flow cell \\
+Cost per Gb & \$10--15 (HiFi) & \$3--8 \\
+Cost per 30$\times$ genome & \$1{,}000--1{,}500 & \$1{,}000--2{,}000 \\
+Instrument cost & ${\sim}$\$600K (Revio) & ${\sim}$\$250K (P24); ${\sim}$\$450K (P48) \\
+Portability & Benchtop only & MinION: fully portable \\
+Real-time analysis & No (batch processing) & Yes (data streams during run) \\
+Adaptive sampling & No & Yes \\
+Direct RNA seq & No & Yes \\
+Methylation (5mC) & Yes (from kinetics) & Yes (from signal) \\
+Library prep time & 4--8 hours & 10 min (rapid) to 90 min (ligation) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{When to Choose PacBio HiFi}
+
+\begin{itemize}[nosep]
+  \item \textbf{Reference-quality genome assembly.} HiFi reads provide the best single-technology assemblies, with per-read accuracy high enough that polishing with short reads is often unnecessary.
+  \item \textbf{Clinical structural variant detection.} The high per-read accuracy minimises false positive SV calls.
+  \item \textbf{Variant calling in difficult regions.} HiFi accuracy in homopolymers and tandem repeats exceeds ONT simplex.
+  \item \textbf{Simultaneous methylation and sequence.} A single HiFi dataset provides sequence, SVs, and CpG methylation.
+  \item \textbf{Full-length isoform sequencing (Iso-Seq).} PacBio's Iso-Seq protocol produces full-length transcript sequences with high accuracy.
+\end{itemize}
+
+\subsection{When to Choose ONT}
+
+\begin{itemize}[nosep]
+  \item \textbf{Ultra-long reads are needed.} Only ONT can routinely produce reads $>$100\kilobase.
+  \item \textbf{Field or point-of-care sequencing.} The MinION is the only truly portable sequencer.
+  \item \textbf{Real-time results.} Data is available during the run; adaptive sampling enables dynamic targeting.
+  \item \textbf{Direct RNA sequencing.} ONT is the only platform that sequences native RNA.
+  \item \textbf{Rapid turnaround.} From sample to sequence in under an hour is achievable with rapid library prep.
+  \item \textbf{Cost-sensitive large-scale projects.} ONT's cost per Gb can be lower, especially on PromethION.
+  \item \textbf{Complex epigenomic profiling.} Detection of diverse modification types (5mC, 5hmC, 6mA) from a single dataset.
+\end{itemize}
+
+\begin{tipbox}[title={Complementary Technologies}]
+PacBio and ONT are not mutually exclusive. Many cutting-edge genome projects use both: ONT ultra-long reads for scaffolding and spanning the largest repeats, combined with PacBio HiFi for base-level accuracy and variant calling. The T2T human genome used both technologies extensively.
+\end{tipbox}
+
+
+\section{Hybrid Sequencing Approaches}
+\label{sec:hybrid}
+
+Combining short and long reads leverages the strengths of both technologies:
+
+\begin{description}[style=nextline, font=\bfseries]
+  \item[Short reads for accuracy, long reads for contiguity.] A common assembly strategy uses long reads for the initial contig assembly and short reads for error correction (polishing). With PacBio HiFi achieving $>$Q30 natively, the need for short-read polishing has diminished for PacBio-based assemblies, but it remains valuable for ONT-only assemblies.
+
+  \item[Short reads for coverage, long reads for phasing.] A cost-effective clinical strategy uses deep short-read \gls{WGS} for comprehensive variant calling, supplemented by moderate long-read coverage for SV detection and haplotype phasing.
+
+  \item[Linked reads as a middle ground.] Technologies such as 10x Genomics Chromium (now discontinued but widely used in existing datasets) and Universal Sequencing Technology's TELL-Seq add long-range information to short reads through molecular barcoding. While not true long reads, linked reads provide phase information and improve SV detection.
+
+  \item[Hi-C for scaffolding.] Chromosome conformation capture data (Hi-C, discussed in \cref{ch:libprep} and later chapters) provides chromosome-scale scaffolding information that complements both short and long reads.
+\end{description}
+
+\begin{table}[htbp]
+\centering
+\caption[Hybrid sequencing strategies]{Common hybrid sequencing strategies and their applications.}
+\label{tab:hybrid_strategies}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright}p{3.2cm} >{\raggedright}p{3.2cm} X@{}}
+\toprule
+\textbf{Strategy} & \textbf{Typical Coverage} & \textbf{Primary Application} \\
+\midrule
+HiFi only (30$\times$) & 30$\times$ HiFi & Reference-quality assembly, clinical WGS \\
+ONT + Illumina & 30$\times$ ONT + 30$\times$ Illumina & Cost-effective assembly with polishing \\
+ONT ultra-long + HiFi & 30$\times$ ONT-UL + 30$\times$ HiFi & T2T-grade assembly \\
+HiFi + Hi-C & 30$\times$ HiFi + Hi-C & Chromosome-scale phased assembly \\
+Illumina + low-pass ONT & 30$\times$ Illumina + 5--10$\times$ ONT & Clinical WGS with SV detection \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\section{Emerging Long-Read Developments}
+\label{sec:longread_emerging}
+
+The long-read sequencing landscape continues to evolve:
+
+\begin{itemize}
+  \item \textbf{PacBio Vega.} The Vega system aims to make HiFi sequencing more accessible to smaller laboratories with lower capital cost and simplified workflows.
+
+  \item \textbf{ONT pore improvements.} ONT continues to develop new pore proteins with improved resolution and accuracy. Future pores may achieve Q30+ simplex accuracy routinely, further closing the gap with HiFi.
+
+  \item \textbf{ONT P2 Solo.} A lower-cost PromethION variant running two flow cells, targeting labs that need PromethION-class data without the full P24/P48 instrument.
+
+  \item \textbf{Direct protein sequencing.} ONT has demonstrated proof-of-concept for reading amino acid sequences through nanopores, potentially extending the platform beyond nucleic acids.
+
+  \item \textbf{Electronic signal improvements.} Both platforms are investing in improved signal processing and AI-based basecalling, with each generation of basecaller software improving accuracy without hardware changes.
+
+  \item \textbf{Multi-modal data.} The ability of both platforms to simultaneously call bases and modifications is evolving toward richer ``multi-omic'' readouts from single molecules.
+\end{itemize}
+
+
+\section{Summary}
+
+Long-read sequencing has matured from an error-prone niche technology to a mainstream tool capable of producing highly accurate, phased genome assemblies and detecting the full spectrum of genetic variation. PacBio HiFi offers the highest per-read accuracy in a long-read format, making it ideal for reference-quality assembly and clinical applications. Oxford Nanopore provides unmatched read length, portability, real-time analysis, and unique capabilities such as direct RNA sequencing and adaptive sampling. The choice between platforms---or the decision to combine them---depends on the specific biological question, required read length and accuracy, budget, and infrastructure constraints. Together, these technologies are completing our picture of genome biology in ways that short reads alone could never achieve.

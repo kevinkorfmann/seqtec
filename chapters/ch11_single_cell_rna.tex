@@ -1,0 +1,1474 @@
+% ==============================================================================
+% Chapter 11: Single-Cell RNA Sequencing
+% ==============================================================================
+\chapter{Single-Cell RNA Sequencing}
+\label{ch:scrnaseq}
+
+\begin{keyconcept}
+Single-cell RNA sequencing (\acrshort{scRNA-seq}) measures the transcriptome
+of individual cells, revealing cellular heterogeneity that is invisible to bulk
+RNA-seq. It has transformed our understanding of development, immunology,
+neuroscience, and cancer by enabling the identification of rare cell types,
+continuous differentiation trajectories, and cell-state-specific gene
+regulatory programs.
+\end{keyconcept}
+
+% ---------------------------------------------------------------------------
+\section{Why Single-Cell Resolution?}
+\label{sec:scrnaseq:why}
+
+\subsection{The Limitation of Bulk RNA-seq}
+
+Bulk RNA-seq measures the \emph{average} gene expression across a population
+of $10^5$--$10^7$ cells. This averaging has profound consequences:
+
+\begin{itemize}[nosep]
+  \item \textbf{Masking of rare populations:} A cell type comprising 1\% of a
+    tissue may be functionally critical (e.g., stem cells, tumor-initiating
+    cells) but its transcriptional signature is diluted beyond detection in
+    bulk data.
+  \item \textbf{False intermediate states:} A mixture of two distinct cell
+    states (e.g., activated and resting T cells) appears in bulk as a single
+    ``intermediate'' state that does not actually exist in any individual cell.
+  \item \textbf{Ecological fallacy:} Correlations observed at the bulk level
+    may not hold at the single-cell level. Two genes may appear co-expressed
+    in bulk data simply because they are expressed in different subpopulations
+    that co-vary in proportion.
+  \item \textbf{No trajectory information:} Bulk RNA-seq provides a snapshot
+    but cannot reveal the order of events during dynamic processes such as
+    differentiation, reprogramming, or drug response.
+\end{itemize}
+
+\subsection{What Single-Cell Resolution Enables}
+
+\begin{enumerate}[nosep]
+  \item \textbf{Cell type discovery:} Unbiased identification of cell types
+    and subtypes without prior marker knowledge.
+  \item \textbf{Developmental trajectories:} Reconstruction of differentiation
+    paths and branching decisions using pseudotime analysis.
+  \item \textbf{Gene regulatory networks:} Inference of transcription factor
+    activity and regulatory relationships within specific cell types.
+  \item \textbf{Disease heterogeneity:} Characterization of tumor
+    subclones, immune microenvironment composition, and treatment-resistant
+    cell populations.
+  \item \textbf{Cell atlases:} Comprehensive catalogues of all cell types in
+    an organism (Human Cell Atlas, Tabula Sapiens).
+\end{enumerate}
+
+
+% ---------------------------------------------------------------------------
+\section{A Brief History of scRNA-seq}
+\label{sec:scrnaseq:history}
+
+\begin{description}[style=nextline]
+  \item[2009 --- Tang et al.] First scRNA-seq experiment. Manual isolation of
+    single mouse blastomeres, poly-A-tailed cDNA amplification, sequencing on
+    the SOLiD platform. Detected $\sim$5,000 genes per cell.
+  \item[2011 --- Islam et al.] Introduced STRT-seq with template-switching for
+    5$'$ end capture and early multiplexing using cell barcodes.
+  \item[2012 --- Hashimoto et al. / Ramsk\"{o}ld et al.] Smart-seq protocol: full-length
+    transcript coverage from single cells, greatly improving gene body coverage
+    and isoform detection.
+  \item[2014 --- Smart-seq2 (Picelli et al.)] Improved sensitivity and reduced
+    cost compared to Smart-seq. Became the gold standard for plate-based
+    scRNA-seq.
+  \item[2015 --- Drop-seq \& inDrop] Droplet-based microfluidics enabled
+    profiling of thousands of cells in a single experiment. Drop-seq (Macosko
+    et al.) used barcoded beads in nanoliter droplets. inDrop (Klein et al.)
+    used hydrogel beads. Both introduced the concept of \acrshort{UMI}-based
+    counting.
+  \item[2016 --- 10x Genomics Chromium] Commercialized droplet-based scRNA-seq
+    with the GemCode/Chromium platform. Standardized reagents, automated
+    workflow, and the \software{Cell Ranger} analysis pipeline made scRNA-seq
+    accessible to any lab with a sequencer.
+  \item[2017--2019 --- Scale-up era] sci-RNA-seq (combinatorial indexing),
+    SPLiT-seq, SHARE-seq, and Slide-seq extended throughput to millions of
+    cells and added spatial and multi-omic dimensions.
+  \item[2020--present --- Atlas and multi-omic era] The Human Cell Atlas
+    project, COVID-19 single-cell studies, and multi-omic platforms (10x
+    Multiome, CITE-seq, ASAP-seq) have made scRNA-seq a routine component of
+    modern biology.
+\end{description}
+
+
+% ---------------------------------------------------------------------------
+\section{Cell Isolation Methods}
+\label{sec:scrnaseq:isolation}
+
+The first step in any scRNA-seq experiment is isolating individual cells and
+capturing their RNA. The choice of isolation method determines throughput,
+sensitivity, and cost.
+
+\subsection{FACS Sorting}
+
+Fluorescence-activated cell sorting (FACS) uses fluorescent antibodies to sort
+cells one-by-one into wells of a 96- or 384-well plate. Each well contains
+lysis buffer and can be processed with a plate-based scRNA-seq protocol
+(Smart-seq2, Smart-seq3).
+
+\textbf{Advantages:} Protein-level selection of specific populations (e.g.,
+CD8$^+$ T cells); index sorting records surface marker levels for each cell.
+\textbf{Limitations:} Low throughput (hundreds to low thousands of cells);
+requires viable single-cell suspensions and surface markers.
+
+\subsection{Microfluidics}
+
+The Fluidigm C1 system captures cells in microfluidic chambers using
+integrated fluidic circuits. Each chip captures 96 or 800 cells.
+
+\textbf{Advantages:} Automated cell capture and lysis; full-length protocols
+(Smart-seq).
+\textbf{Limitations:} Low throughput; size-dependent capture (requires cells of
+uniform size); high cost per cell; largely superseded by droplet-based methods.
+
+\subsection{Droplet-Based Methods}
+\label{sec:scrnaseq:droplet}
+
+Droplet microfluidics encapsulates individual cells with barcoded beads in
+nanoliter oil droplets, enabling massively parallel scRNA-seq.
+
+\begin{description}[style=nextline]
+  \item[10x Genomics Chromium] The dominant commercial platform (see
+    \cref{sec:scrnaseq:10x} for details). Uses Gel Bead-in-Emulsions (GEMs).
+    Throughput: 500--10,000+ cells per reaction.
+  \item[Drop-seq] Academic protocol using barcoded microparticles and a simple
+    PDMS microfluidic device. Lower cost per cell than 10x but higher doublet
+    rate and lower capture efficiency.
+  \item[inDrop] Uses deformable hydrogel beads for more uniform barcode
+    delivery. Open-source design.
+\end{description}
+
+\subsection{Combinatorial Indexing}
+
+These methods achieve single-cell resolution without physically isolating
+individual cells. Instead, cells are split across wells, indexed with
+well-specific barcodes in multiple rounds, and then pooled. The extremely
+low probability that two cells receive the same combination of barcodes across
+all rounds provides unique identification.
+
+\begin{description}[style=nextline]
+  \item[sci-RNA-seq / sci-RNA-seq3] Achieves profiling of millions of cells in
+    a single experiment. Uses two or three rounds of combinatorial indexing
+    (reverse transcription barcoding $\rightarrow$ ligation barcoding
+    $\rightarrow$ PCR barcoding).
+  \item[SPLiT-seq] Split-pool ligation-based transcriptome sequencing. Uses
+    successive rounds of in-cell barcoding by ligation. No specialized
+    equipment required beyond standard liquid handling.
+\end{description}
+
+\begin{tipbox}
+Combinatorial indexing methods excel for very large experiments (e.g.,
+organism-scale cell atlases). They are cost-effective per cell but have lower
+sensitivity (fewer genes per cell) compared to droplet-based or plate-based
+methods.
+\end{tipbox}
+
+\subsection{Plate-Based Methods}
+
+\begin{description}[style=nextline]
+  \item[Smart-seq2] Full-length transcript coverage from single cells sorted
+    into wells. Uses oligo-dT priming, template switching, and limited PCR
+    amplification. Highest sensitivity ($\sim$5,000--10,000 genes per cell) and
+    gene body coverage of any scRNA-seq method. Enables isoform-level analysis
+    and SNV detection. Throughput: 96--384 cells per run.
+  \item[Smart-seq3 / Smart-seq3xpress] Adds UMIs to Smart-seq2 while retaining
+    full-length information. Combines the quantitative accuracy of UMI counting
+    with the isoform resolution of full-length coverage.
+\end{description}
+
+
+% ---------------------------------------------------------------------------
+\section{10x Genomics Chromium in Detail}
+\label{sec:scrnaseq:10x}
+
+The 10x Genomics Chromium platform is the most widely used scRNA-seq system
+worldwide. Understanding its mechanics is essential for interpreting scRNA-seq
+data.
+
+% TikZ diagram: 10x Chromium droplet-based workflow
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.6cm and 0.3cm,
+  every node/.style={font=\small},
+  boxstep/.style={draw, rounded corners, minimum width=2.8cm, minimum height=1.0cm, align=center, font=\small},
+  gem/.style={draw, circle, minimum size=1.8cm, fill=yellow!15, font=\scriptsize, align=center},
+  arrow/.style={-{Stealth[length=5pt]}, thick, MidnightBlue!70},
+  label/.style={font=\scriptsize\itshape, text=gray!60!black},
+]
+
+% Step 1: Cell suspension + Gel Beads + Oil
+\node[boxstep, fill=blue!10] (cells) {Cell\\suspension};
+\node[boxstep, fill=orange!10, right=1.5cm of cells] (beads) {Gel Beads\\(barcoded)};
+\node[boxstep, fill=gray!10, below=0.8cm of cells] (oil) {Partitioning\\oil};
+
+% GEM formation
+\node[gem, right=1.5cm of oil] (gem) {GEM\\Cell + Bead\\+ RT reagents};
+
+% Arrow to GEM
+\draw[arrow] (cells.south east) -- (gem.north west);
+\draw[arrow] (beads.south west) -- (gem.north east);
+\draw[arrow] (oil.east) -- (gem.west);
+
+% Inside GEM: cell lysis + RT
+\node[boxstep, fill=green!10, right=2.0cm of gem] (rt) {Cell lysis\\+ Reverse\\transcription};
+\draw[arrow] (gem.east) -- (rt.west);
+
+% cDNA with barcodes
+\node[boxstep, fill=red!10, right=1.5cm of rt] (cdna) {Barcoded\\cDNA};
+\draw[arrow] (rt.east) -- (cdna.west);
+
+% Library prep
+\node[boxstep, fill=purple!10, below=1.2cm of cdna] (lib) {Library\\construction\\+ Sequencing};
+\draw[arrow] (cdna.south) -- (lib.north);
+
+% Barcode structure annotation
+\node[below=1.5cm of gem, draw, rounded corners, fill=white, minimum width=9cm, minimum height=1.2cm] (barcode) {};
+\node[font=\scriptsize\ttfamily, anchor=center] at (barcode.center) {
+  \textcolor{BrickRed}{Illumina R1} ---
+  \textcolor{blue}{Cell Barcode (16\,nt)} ---
+  \textcolor{OliveGreen}{UMI (12\,nt)} ---
+  \textcolor{black}{cDNA insert} ---
+  \textcolor{BrickRed}{R2}
+};
+\node[label, above=0.05cm of barcode] {Structure of a barcoded cDNA molecule:};
+
+\end{tikzpicture}
+\caption{Schematic of the 10x Genomics Chromium droplet-based scRNA-seq
+workflow. Single cells and gel beads are co-encapsulated in Gel Bead-in-Emulsions
+(GEMs), where cell lysis and reverse transcription occur. Each gel bead carries
+millions of oligonucleotide copies with a shared cell barcode and diverse UMIs.
+The resulting cDNA is uniquely labeled with a cell barcode and a UMI for each
+original mRNA molecule.}
+\label{fig:scrnaseq:10x}
+\end{figure}
+
+\subsection{Gel Bead-in-Emulsions (GEMs)}
+
+The core of the 10x Chromium system is the partitioning of single cells with
+gel beads into nanoliter aqueous droplets suspended in oil (GEMs):
+
+\begin{enumerate}[nosep]
+  \item A microfluidic chip combines three streams: cell suspension, gel bead
+    suspension, and partitioning oil.
+  \item Each GEM ideally contains one cell and one gel bead. The vast majority
+    of GEMs ($>$90\%) contain zero cells (empty) to minimize doublets (GEMs
+    with two or more cells).
+  \item The gel bead dissolves, releasing oligonucleotides into the droplet.
+  \item Cell lysis releases mRNA, which is captured by oligo-dT sequences on
+    the bead-derived oligonucleotides.
+  \item Reverse transcription occurs within the GEM, producing first-strand
+    cDNA tagged with the cell barcode and a unique molecular identifier (UMI).
+\end{enumerate}
+
+\subsection{Cell Barcodes and UMIs}
+
+\begin{keyconcept}[title={Cell Barcodes and UMIs}]
+\begin{description}[nosep]
+  \item[Cell barcode (16\,nt):] Identifies which cell a cDNA molecule came from.
+    All oligonucleotides on a single gel bead share the same cell barcode.
+    Different gel beads have different barcodes. The 10x barcode whitelist
+    contains $\sim$737,000 valid sequences (for 3$'$ v3/v3.1 chemistry).
+  \item[UMI (12\,nt):] Unique Molecular Identifier. Each oligonucleotide on a
+    bead has a random 12-mer UMI, enabling distinction between PCR duplicates
+    and distinct original mRNA molecules. After PCR amplification, reads sharing
+    the same cell barcode, UMI, and gene are collapsed to a single count,
+    eliminating amplification bias.
+\end{description}
+\end{keyconcept}
+
+\subsection{3$'$ vs.\ 5$'$ Gene Expression Chemistry}
+
+\begin{description}[style=nextline]
+  \item[3$'$ Gene Expression (GEX)] Captures the 3$'$ end of polyadenylated
+    transcripts (within $\sim$500\,bp of the poly-A tail). Most commonly used
+    chemistry. Sufficient for gene-level quantification and cell type
+    identification. Cannot provide full-length transcript or isoform information.
+  \item[5$'$ Gene Expression (GEX)] Captures the 5$'$ end of transcripts using
+    template-switching. Enables simultaneous profiling of gene expression and
+    immune receptor sequences (TCR/BCR V(D)J repertoires) from the same cells.
+    Preferred for immunology studies.
+\end{description}
+
+\subsection{Cell Ranger Pipeline}
+
+\software{Cell Ranger} is the standard 10x Genomics analysis pipeline that
+processes raw Illumina BCL files into a gene-by-cell count matrix:
+
+\begin{enumerate}[nosep]
+  \item \texttt{cellranger mkfastq}: Demultiplexes BCL files into FASTQ files.
+  \item \texttt{cellranger count}: Performs alignment (STAR), barcode counting,
+    UMI deduplication, and generates the filtered feature-barcode matrix.
+  \item \texttt{cellranger aggr}: Aggregates multiple \texttt{count} runs and
+    normalizes across samples.
+\end{enumerate}
+
+The key output is the \textbf{filtered feature-barcode matrix}: a sparse
+matrix where rows are genes ($\sim$33,000 for human) and columns are cell
+barcodes that passed the cell-calling algorithm (EmptyDrops-like knee/inflection
+point detection).
+
+\subsection{Typical Throughput and Sequencing Recommendations}
+
+\begin{itemize}[nosep]
+  \item \textbf{Cells per reaction:} 500--10,000 (recommended loading for
+    $\sim$0.8\% multiplet rate per 1,000 cells).
+  \item \textbf{Sequencing depth:} 20,000--50,000 reads per cell for 3$'$ GEX.
+    Higher depth yields diminishing returns for gene detection beyond
+    $\sim$50,000 reads/cell.
+  \item \textbf{Read configuration:} Read 1: 28\,bp (16\,bp cell barcode +
+    12\,bp UMI); Index 1: 10\,bp (sample index); Read 2: 90\,bp (cDNA insert).
+  \item \textbf{Expected genes per cell:} 2,000--6,000 median genes/cell,
+    depending on cell type and sequencing depth.
+\end{itemize}
+
+\subsection{10x Chromium Flex (Fixed RNA Profiling)}
+
+The Flex assay uses a probe-based approach to capture gene expression from
+\emph{fixed} cells:
+
+\begin{itemize}[nosep]
+  \item Cells are fixed with paraformaldehyde, enabling sample banking and
+    batch processing.
+  \item Probe pairs hybridize to target mRNAs inside fixed cells; probes are
+    ligated and then captured during GEM partitioning.
+  \item Compatible with FFPE tissue sections (after deparaffinization).
+  \item Supports sample multiplexing: up to 128 samples pooled in one Chromium
+    run using probe-barcode-based demultiplexing.
+  \item Lower background noise compared to 3$'$ GEX because probe-based
+    detection avoids ambient RNA contamination.
+\end{itemize}
+
+
+% ---------------------------------------------------------------------------
+\section{Key Computational Challenges}
+\label{sec:scrnaseq:challenges}
+
+\subsection{Sparsity and Dropout}
+
+scRNA-seq data is extremely sparse: the median gene detection rate per cell is
+only 15--30\% of expressed genes. Many genes that are truly expressed in a cell
+are recorded as zero counts---a phenomenon called \textbf{dropout}. Dropout
+arises from:
+
+\begin{itemize}[nosep]
+  \item Low mRNA capture efficiency ($\sim$5--15\% of transcripts in a cell for
+    droplet-based methods).
+  \item Stochastic sampling: with only $\sim$5,000--10,000 unique mRNA molecules
+    detected per cell, lowly expressed genes are frequently missed.
+  \item Shallow sequencing: not all cDNA molecules in the library are sequenced.
+\end{itemize}
+
+\begin{warningbox}
+Dropout means that a zero count in scRNA-seq does not necessarily mean the gene
+is not expressed. This has profound implications for analysis: methods that
+treat zeros as true absence can produce misleading results. Many specialized
+scRNA-seq statistical methods (e.g., MAST, scVI) explicitly model dropout or
+use zero-inflated distributions.
+\end{warningbox}
+
+\subsection{Doublet Detection}
+
+Doublets (or multiplets) occur when two or more cells are captured in the same
+droplet or well. They appear as single ``cells'' with hybrid transcriptomes
+that can create spurious intermediate populations or bridge clusters
+artifactually.
+
+The expected doublet rate for 10x Chromium is $\sim$0.8\% per 1,000 cells
+loaded (e.g., loading 10,000 cells yields $\sim$8\% doublets).
+
+\begin{description}[style=nextline]
+  \item[\software{Scrublet}] Simulates doublets by combining random pairs of
+    observed cell profiles and scores each real cell by its similarity to
+    simulated doublets. Python-based.
+  \item[\software{DoubletFinder}] Similar simulation-based approach implemented
+    in R/Seurat. Requires parameter optimization (pK, expected doublet rate).
+  \item[\software{scDblFinder}] Fast and accurate doublet detection using a
+    gradient-boosted classifier trained on simulated doublets.
+    R/Bioconductor-based.
+\end{description}
+
+\subsubsection{Doublet Detection: Principles and Expected Rates}
+\label{subsec:scrnaseq:doublet_principles}
+
+The fundamental principle behind simulation-based doublet detectors such as
+\software{Scrublet} is straightforward:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Simulate artificial doublets.} Randomly select pairs of observed
+    cell profiles from the count matrix and sum their expression vectors. This
+    creates synthetic doublets that mimic the transcriptomes of two co-captured
+    cells.
+  \item \textbf{Embed jointly.} Combine the real cells and simulated doublets,
+    then perform dimensionality reduction (PCA followed by KNN graph
+    construction) on the merged dataset.
+  \item \textbf{Score each real cell.} For each observed cell, compute a
+    \emph{doublet score} based on the local density of simulated doublets in
+    its neighborhood. Cells surrounded by many simulated doublets are likely
+    real doublets.
+  \item \textbf{Threshold.} Apply a bimodal threshold (or a user-specified
+    cutoff) to classify cells as singlets or doublets.
+\end{enumerate}
+
+The expected doublet rate for droplet-based platforms follows an approximately
+linear relationship with loading density:
+\begin{equation}
+  \label{eq:scrnaseq:doubletrate}
+  r_d \approx 0.008 \times \frac{n_{\text{cells}}}{1000}
+\end{equation}
+where $n_{\text{cells}}$ is the number of recovered cells per reaction. For
+example, loading 5,000 cells yields an expected doublet rate of $\sim$4\%, while
+10,000 cells gives $\sim$8\%. This formula assumes Poisson loading statistics
+and is calibrated for the 10x Chromium platform.
+
+\begin{warningbox}
+Simulation-based doublet detectors excel at identifying \textbf{heterotypic
+doublets} (two cells of different types, e.g., a T cell + a monocyte) because
+these produce distinctive hybrid profiles. \textbf{Homotypic doublets} (two
+cells of the same type) are nearly impossible to detect computationally because
+their transcriptomes resemble a single cell with higher UMI counts. Homotypic
+doublets inflate the apparent cell counts but typically do not create artifactual
+clusters. When reporting cell numbers, account for both detected and undetected
+(homotypic) doublets.
+\end{warningbox}
+
+\subsection{Ambient RNA Contamination}
+
+During droplet generation, free-floating mRNA from lysed or damaged cells
+(``soup'') is present in the cell suspension. This ambient RNA is captured in
+every GEM, contaminating the transcriptomes of all cells with a background
+signature (often enriched for highly expressed genes like hemoglobin in blood
+or mitochondrial genes from damaged cells).
+
+\begin{description}[style=nextline]
+  \item[\software{SoupX}] Estimates the contamination fraction using the
+    expression of genes expected to be cell-type-specific (e.g., hemoglobin in
+    non-erythrocyte clusters). Subtracts estimated ambient counts.
+  \item[\software{CellBender} (\texttt{remove-background})] Deep
+    generative model that distinguishes cell-containing droplets from empty
+    droplets and removes ambient RNA signal. Computationally intensive but
+    highly effective.
+  \item[\software{DecontX}] Bayesian method for ambient RNA decontamination
+    that models each cell's expression as a mixture of its native profile and
+    the ambient contamination profile.
+\end{description}
+
+
+% ---------------------------------------------------------------------------
+\section{scRNA-seq Analysis Workflow}
+\label{sec:scrnaseq:workflow}
+
+The computational analysis of scRNA-seq data involves a well-established
+sequence of steps, from raw data processing to biological interpretation.
+
+% TikZ diagram: scRNA-seq analysis workflow
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.65cm,
+  every node/.style={font=\small},
+  boxstep/.style={draw, rounded corners, fill=MidnightBlue!10, minimum width=4.5cm, minimum height=0.7cm, align=center},
+  tool/.style={font=\scriptsize\ttfamily, text=OliveGreen!80!black},
+  arrow/.style={-{Stealth[length=5pt]}, thick, MidnightBlue!60},
+]
+
+\node[boxstep] (raw) {Raw BCL / FASTQ};
+\node[boxstep, below=of raw] (count) {Cell barcode demux + alignment + UMI counting};
+\node[boxstep, below=of count] (qc) {QC filtering (nGene, nUMI, \%MT, doublets)};
+\node[boxstep, below=of qc] (norm) {Normalization + HVG selection};
+\node[boxstep, below=of norm] (pca) {PCA (dimensionality reduction)};
+\node[boxstep, below=of pca] (cluster) {KNN graph + Leiden clustering};
+\node[boxstep, below=of cluster] (umap) {UMAP / t-SNE visualization};
+\node[boxstep, below=of umap] (annot) {Cell type annotation};
+
+% Downstream branches
+\node[boxstep, below left=1.0cm and 0.5cm of annot, minimum width=3.2cm] (de) {Differential\\expression};
+\node[boxstep, below=1.0cm of annot, minimum width=3.2cm] (traj) {Trajectory /\\pseudotime};
+\node[boxstep, below right=1.0cm and 0.5cm of annot, minimum width=3.2cm] (comm) {Cell--cell\\communication};
+
+% Arrows
+\draw[arrow] (raw) -- (count);
+\draw[arrow] (count) -- (qc);
+\draw[arrow] (qc) -- (norm);
+\draw[arrow] (norm) -- (pca);
+\draw[arrow] (pca) -- (cluster);
+\draw[arrow] (cluster) -- (umap);
+\draw[arrow] (umap) -- (annot);
+\draw[arrow] (annot) -| (de);
+\draw[arrow] (annot) -- (traj);
+\draw[arrow] (annot) -| (comm);
+
+% Tool annotations
+\node[tool, right=0.15cm of count] {Cell Ranger, STARsolo, alevin-fry};
+\node[tool, right=0.15cm of qc] {Scrublet, SoupX, CellBender};
+\node[tool, right=0.15cm of norm] {SCTransform, scran, scVI};
+\node[tool, right=0.15cm of cluster] {Scanpy, Seurat};
+\node[tool, right=0.15cm of annot] {SingleR, CellTypist, Azimuth};
+\node[tool, below=0.05cm of de] {\scriptsize\ttfamily DESeq2 (pseudobulk)};
+\node[tool, below=0.05cm of traj] {\scriptsize\ttfamily Monocle3, scVelo};
+\node[tool, below=0.05cm of comm] {\scriptsize\ttfamily CellChat, NicheNet};
+
+\end{tikzpicture}
+\caption{Standard computational workflow for scRNA-seq analysis. After
+generating a cell-by-gene count matrix, cells are filtered, normalized,
+dimensionality-reduced, clustered, and annotated. Downstream analyses include
+differential expression, trajectory inference, and cell--cell communication.}
+\label{fig:scrnaseq:workflow}
+\end{figure}
+
+\subsection{Raw Data Processing}
+
+\begin{description}[style=nextline]
+  \item[\software{Cell Ranger}] The default pipeline for 10x Chromium data (see
+    \cref{sec:scrnaseq:10x}). Closed-source but free. Produces the filtered
+    count matrix and a web summary report.
+  \item[\software{STARsolo}] Open-source alternative to Cell Ranger, built into
+    the STAR aligner. Produces equivalent results with greater flexibility and
+    often faster run time. Supports 10x, Drop-seq, and other barcode schemes.
+  \item[\software{alevin-fry} (Salmon)] Lightweight mapping-based quantification
+    for scRNA-seq. Uses the Salmon quasi-mapping engine with barcode-aware
+    processing. Produces a count matrix compatible with downstream tools. The
+    \software{simpleaf} wrapper simplifies execution.
+\end{description}
+
+\subsection{Quality Control and Filtering}
+
+After generating the raw count matrix, per-cell QC metrics are computed and
+cells failing quality thresholds are removed:
+
+\begin{itemize}[nosep]
+  \item \textbf{Number of genes detected (nGene):} Cells with very few genes
+    ($< 200$--500) are likely empty droplets or debris.
+  \item \textbf{Number of UMIs (nUMI / nCount):} Total counts per cell.
+    Extremely high values may indicate doublets.
+  \item \textbf{Percentage of mitochondrial reads (\%MT):} High mitochondrial
+    fraction ($> 10$--20\%, depending on tissue) indicates dying or damaged
+    cells whose cytoplasmic mRNA has leaked out while mitochondrial mRNA
+    (enclosed in a double membrane) is retained.
+  \item \textbf{Percentage of ribosomal protein genes (\%Ribo):} Can help
+    identify low-quality cells or specific cell types.
+  \item \textbf{Doublet scores:} From Scrublet, DoubletFinder, or scDblFinder.
+\end{itemize}
+
+\begin{tipbox}
+QC thresholds should be adapted to the tissue and experiment. Brain tissue
+typically has higher mitochondrial content than PBMCs. Use distribution-based
+thresholds (e.g., $> 3$ median absolute deviations from the median) rather
+than fixed cutoffs when possible. The \software{scater} package in R provides
+automated outlier detection with \texttt{isOutlier()}.
+\end{tipbox}
+
+\subsection{Normalization}
+
+Raw UMI counts must be normalized to account for differences in sequencing
+depth (total UMIs) across cells.
+
+\begin{description}[style=nextline]
+  \item[Log-normalization (Seurat default)] Divide each cell's counts by total
+    UMIs, multiply by a scale factor (default 10,000), and log-transform:
+    $\log_2(\text{counts}/\text{total} \times 10{,}000 + 1)$. Simple and
+    widely used.
+  \item[\software{scran} pooling-based normalization] Pools cells into groups,
+    estimates pool-based size factors, and deconvolves to per-cell size factors.
+    More robust than simple library-size normalization because it handles the
+    sparsity of single-cell data.
+  \item[\software{SCTransform} (Seurat v3+)] Fits a regularized negative
+    binomial regression model to each gene as a function of total UMIs. Replaces
+    both normalization and variance stabilization in a single step. Handles
+    the mean-variance relationship better than log-normalization for downstream
+    analyses (PCA, clustering).
+  \item[\software{scVI} (scvi-tools)] Deep generative model (variational
+    autoencoder) that models the count generation process, implicitly handling
+    normalization, batch effects, and dropout simultaneously.
+\end{description}
+
+\subsection{Feature Selection: Highly Variable Genes}
+
+Not all $\sim$20,000+ detected genes are informative for distinguishing cell
+types. Feature selection identifies \textbf{highly variable genes (HVGs)}---those
+with expression variation exceeding what is expected from sampling noise.
+
+\begin{itemize}[nosep]
+  \item Seurat: fits a variance-stabilizing transformation and selects the top
+    2,000--5,000 genes by residual variance.
+  \item Scanpy: uses the method of Zheng et al.\ or the Seurat-style approach
+    to identify HVGs.
+  \item Only HVGs are used for dimensionality reduction and clustering,
+    reducing noise and computation.
+\end{itemize}
+
+\subsection{Dimensionality Reduction}
+
+\begin{description}[style=nextline]
+  \item[PCA (Principal Component Analysis)] Linear dimensionality reduction.
+    Typically the first 20--50 principal components are retained, capturing
+    the major axes of variation. PCA is performed on the HVG expression matrix.
+  \item[t-SNE (t-distributed Stochastic Neighbor Embedding)] Non-linear
+    dimensionality reduction that preserves local structure. Produces 2D
+    embeddings widely used for visualization. Sensitive to hyperparameters
+    (perplexity). Does not preserve global distances.
+  \item[UMAP (Uniform Manifold Approximation and Projection)] Non-linear
+    method that preserves both local and (approximately) global structure.
+    Faster than t-SNE and currently the most popular visualization method
+    for scRNA-seq. Operates on the PCA-reduced space (not raw expression).
+\end{description}
+
+\begin{warningbox}
+t-SNE and UMAP are visualization tools, not analytical methods. Do not perform
+clustering on t-SNE/UMAP coordinates. Cluster on the PCA space or the shared
+nearest neighbor (SNN) graph. Distances and apparent cluster sizes in t-SNE/UMAP
+plots can be misleading.
+\end{warningbox}
+
+\subsection{Mathematical Foundations of t-SNE and UMAP}
+\label{subsec:scrnaseq:tsne_umap_math}
+
+Although t-SNE and UMAP are often treated as black-box visualization tools,
+understanding their mathematical principles is essential for interpreting their
+output correctly and tuning hyperparameters.
+
+\subsubsection{t-SNE: t-distributed Stochastic Neighbor Embedding}
+
+t-SNE operates in two stages. First, in the high-dimensional PCA space, pairwise
+similarities are converted into conditional probabilities. The similarity of
+point $x_j$ to point $x_i$ is defined as:
+\begin{equation}
+  \label{eq:scrnaseq:tsne_pij}
+  p_{j|i} = \frac{\exp\!\bigl(-\|x_i - x_j\|^2 / 2\sigma_i^2\bigr)}
+    {\sum_{k \neq i} \exp\!\bigl(-\|x_i - x_k\|^2 / 2\sigma_i^2\bigr)}
+\end{equation}
+where $\sigma_i$ is chosen such that the perplexity of the conditional
+distribution matches a user-specified value (typically 30). The perplexity
+controls the effective number of neighbors considered for each point.
+
+The joint probability matrix is symmetrized as
+$p_{ij} = (p_{j|i} + p_{i|j}) / (2n)$. In the low-dimensional embedding
+(2D), similarities are modeled using a Student's $t$-distribution with one
+degree of freedom (Cauchy distribution):
+\begin{equation}
+  \label{eq:scrnaseq:tsne_qij}
+  q_{ij} = \frac{(1 + \|y_i - y_j\|^2)^{-1}}
+    {\sum_{k \neq l} (1 + \|y_k - y_l\|^2)^{-1}}
+\end{equation}
+where $y_i, y_j$ are the low-dimensional coordinates. The heavy tails of the
+$t$-distribution allow nearby points to be modeled faithfully while pushing
+dissimilar points further apart, alleviating the ``crowding problem'' that
+affects Gaussian-based methods like classical SNE.
+
+t-SNE minimizes the Kullback--Leibler divergence between $P$ and $Q$:
+\begin{equation}
+  \label{eq:scrnaseq:tsne_kl}
+  KL(P \| Q) = \sum_i \sum_{j \neq i} p_{ij}
+    \log \frac{p_{ij}}{q_{ij}}
+\end{equation}
+via gradient descent. The asymmetry of KL divergence means that t-SNE penalizes
+placing similar points far apart (``tearing'' neighborhoods) more heavily than
+placing dissimilar points close together. This is why t-SNE excels at preserving
+local structure but can distort global distances.
+
+\subsubsection{UMAP: Uniform Manifold Approximation and Projection}
+
+UMAP is grounded in topological data analysis and Riemannian geometry. Its key
+steps are:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Fuzzy simplicial set construction.} For each point $x_i$, UMAP
+    finds its $k$ nearest neighbors and converts distances into membership
+    strengths using a smooth kernel:
+    \begin{equation}
+      \label{eq:scrnaseq:umap_weight}
+      w_{ij} = \exp\!\left(-\frac{d(x_i, x_j) - \rho_i}{\sigma_i}\right)
+    \end{equation}
+    where $\rho_i$ is the distance to the nearest neighbor of $x_i$ (ensuring
+    local connectivity) and $\sigma_i$ is scaled to match the desired number of
+    neighbors. These weights are symmetrized to form a fuzzy simplicial set
+    (weighted graph) representing the topological structure of the data.
+  \item \textbf{Low-dimensional optimization.} UMAP initializes a low-dimensional
+    embedding (typically using spectral initialization on the fuzzy graph
+    Laplacian) and optimizes it by minimizing a \textbf{cross-entropy loss}
+    between the high-dimensional and low-dimensional fuzzy sets:
+    \begin{equation}
+      \label{eq:scrnaseq:umap_loss}
+      \mathcal{L} = \sum_{(i,j)} \Bigl[
+        w_{ij} \log\!\frac{w_{ij}}{v_{ij}}
+        + (1 - w_{ij}) \log\!\frac{1 - w_{ij}}{1 - v_{ij}}
+      \Bigr]
+    \end{equation}
+    where $v_{ij} = (1 + a \|y_i - y_j\|^{2b})^{-1}$ is the low-dimensional
+    similarity, with $a$ and $b$ determined by the \texttt{min\_dist} parameter.
+  \item \textbf{Stochastic gradient descent with negative sampling.} Rather than
+    computing all pairwise interactions, UMAP uses negative sampling to
+    approximate the repulsive term, making it substantially faster than t-SNE
+    for large datasets ($\mathcal{O}(n)$ per epoch vs.\ $\mathcal{O}(n^2)$ for
+    exact t-SNE).
+\end{enumerate}
+
+\begin{keyconcept}[title={t-SNE vs.\ UMAP: Key Differences}]
+\begin{itemize}[nosep]
+  \item \textbf{Global structure:} UMAP's cross-entropy loss includes a
+    repulsive term for dissimilar points, better preserving global relationships
+    (relative cluster positions) compared to t-SNE's KL divergence.
+  \item \textbf{Speed:} UMAP is typically 5--50$\times$ faster than t-SNE for
+    datasets with $>$50,000 cells, due to negative sampling and graph-based
+    initialization.
+  \item \textbf{Reproducibility:} UMAP with fixed random seed produces
+    consistent embeddings; t-SNE results can vary substantially between runs.
+  \item \textbf{Key hyperparameters:} For t-SNE, perplexity (30--50 typical);
+    for UMAP, \texttt{n\_neighbors} (15--30) and \texttt{min\_dist}
+    (0.1--0.5). Both should be explored rather than left at defaults.
+\end{itemize}
+\end{keyconcept}
+
+\subsection{Clustering}
+
+Graph-based clustering is the standard approach for scRNA-seq:
+
+\begin{enumerate}[nosep]
+  \item Construct a k-nearest neighbor (KNN) graph in PCA space. Each cell is a
+    node; edges connect cells to their $k$ nearest neighbors.
+  \item Refine edge weights using shared nearest neighbors (SNN graph) or
+    Jaccard similarity.
+  \item Apply a community detection algorithm:
+    \begin{itemize}[nosep]
+      \item \textbf{Louvain algorithm:} Optimizes modularity; fast but can
+        produce poorly connected clusters.
+      \item \textbf{Leiden algorithm:} Improved version of Louvain that
+        guarantees well-connected communities. Generally preferred.
+    \end{itemize}
+  \item The \texttt{resolution} parameter controls the granularity of
+    clustering: higher values produce more clusters. There is no single
+    ``correct'' resolution; it should be guided by biological knowledge.
+\end{enumerate}
+
+\subsection{Cell Type Annotation}
+
+Assigning biological identity to clusters is one of the most critical---and
+most subjective---steps in scRNA-seq analysis.
+
+\begin{description}[style=nextline]
+  \item[Manual annotation] Examine marker genes for each cluster (e.g.,
+    \gene{CD3D}/\gene{CD3E} for T cells, \gene{MS4A1}/\gene{CD79A} for B
+    cells, \gene{LYZ}/\gene{CD14} for monocytes). Requires domain expertise.
+    The \texttt{FindAllMarkers} function in Seurat and
+    \texttt{sc.tl.rank\_genes\_groups} in Scanpy identify cluster-specific
+    marker genes.
+  \item[\software{SingleR}] Automated annotation by correlating each cell's
+    expression profile to reference transcriptomic datasets (e.g., Human Primary
+    Cell Atlas, Monaco Immune Data, Blueprint Encode). R-based.
+  \item[\software{CellTypist}] Machine-learning-based classifier trained on
+    large reference datasets. Pre-trained models for immune cells, brain cells,
+    and pan-tissue atlases. Python-based.
+  \item[\software{scType}] Fully automated cell type annotation using
+    curated marker gene databases. R-based; no reference dataset required.
+  \item[\software{Azimuth}] Web-based and R-based tool from the Seurat
+    developers. Uses reference mapping to project query cells onto well-curated
+    reference atlases (PBMC, lung, motor cortex, etc.). Provides both coarse
+    and fine-grained cell type labels with confidence scores.
+\end{description}
+
+\subsection{Differential Expression}
+
+Identifying genes that are differentially expressed between clusters or
+conditions requires methods appropriate for the distributional properties of
+scRNA-seq data:
+
+\begin{description}[style=nextline]
+  \item[Wilcoxon rank-sum test] Non-parametric; the default in both Seurat and
+    Scanpy. Fast and performs reasonably well for cluster markers but does not
+    account for the hierarchical structure of cells within samples.
+  \item[\software{MAST}] Hurdle model that jointly models the rate of
+    expression (logistic regression for zero vs.\ non-zero) and the expression
+    level (linear model for non-zero values). Accounts for cellular detection
+    rate as a confounding variable.
+  \item[Pseudobulk approaches] Aggregate counts per cell type per biological
+    replicate, then apply bulk DE tools (DESeq2, edgeR). This approach correctly
+    treats biological replicates as the unit of inference (not individual
+    cells) and has been shown to have the best calibrated false discovery rates
+    in recent benchmarks. \textbf{Recommended for comparing conditions (e.g.,
+    treatment vs.\ control) when biological replicates are available.}
+\end{description}
+
+\begin{keyconcept}[title={The Pseudobulk Principle}]
+In a scRNA-seq experiment with multiple biological samples, individual cells
+are not independent observations---cells from the same sample share the same
+biological variation. Treating each cell as an independent replicate inflates
+the sample size artificially and leads to extreme $p$-value inflation. The
+solution is pseudobulk aggregation: sum counts across cells of the same type
+within each biological replicate, then use bulk DE methods on the resulting
+replicate-level counts.
+\end{keyconcept}
+
+\subsection{Trajectory Analysis and Pseudotime}
+
+Many biological processes (differentiation, activation, disease progression)
+involve continuous changes in gene expression rather than discrete states.
+Trajectory analysis orders cells along a ``pseudotime'' axis that recapitulates
+the dynamic process.
+
+\begin{description}[style=nextline]
+  \item[\software{Monocle3}] Learns a principal graph (trajectory) through the
+    UMAP embedding using reversed graph embedding. Assigns each cell a
+    pseudotime value representing its position along the trajectory. Supports
+    branching trajectories for divergent differentiation paths.
+  \item[\software{Slingshot}] Fits smooth curves through PCA or diffusion map
+    space. Uses cluster information to define trajectory start and end points.
+    Well-suited for simpler, tree-like trajectories.
+  \item[\software{scVelo}] Infers RNA velocity---the time derivative of gene
+    expression---from the ratio of spliced to unspliced mRNA counts in each
+    cell. RNA velocity vectors indicate the future transcriptional state of
+    each cell, providing directionality to trajectories.
+  \item[\software{CellRank}] Combines RNA velocity with expression similarity
+    to compute transition probabilities between cells. Identifies initial and
+    terminal states and the most likely differentiation fates using Markov chain
+    analysis.
+\end{description}
+
+\subsubsection{RNA Velocity: Mathematical Framework}
+\label{subsec:scrnaseq:rna_velocity}
+
+RNA velocity exploits the fact that standard scRNA-seq protocols capture both
+spliced (mature) and unspliced (intron-containing) mRNA molecules. The ratio
+between unspliced and spliced counts provides information about the
+\emph{direction} of transcriptional change for each gene in each cell.
+
+The core dynamical model for a single gene describes the time evolution of
+unspliced ($u$) and spliced ($s$) mRNA abundances:
+\begin{align}
+  \label{eq:scrnaseq:velocity_unspliced}
+  \frac{du}{dt} &= \alpha(t) - \beta\, u \\
+  \label{eq:scrnaseq:velocity_spliced}
+  \frac{ds}{dt} &= \beta\, u - \gamma\, s
+\end{align}
+where $\alpha(t)$ is the transcription rate, $\beta$ is the splicing rate
+(conversion of unspliced to spliced mRNA), and $\gamma$ is the degradation rate
+of spliced mRNA. The RNA \emph{velocity} for each gene is defined as $ds/dt$,
+representing the expected rate of change of the mature mRNA.
+
+\begin{description}[style=nextline]
+  \item[Steady-state model (\software{velocyto})] Assumes that genes are in
+    either an induction or repression phase, each at approximate steady state.
+    At steady state, $ds/dt = 0$ implies $\beta u = \gamma s$, so the expected
+    ratio is $u/s = \gamma/\beta$. Cells deviating above this ratio (excess
+    unspliced) are actively upregulating the gene; cells below are downregulating
+    it. The velocity is estimated as:
+    \begin{equation}
+      \label{eq:scrnaseq:velocity_ss}
+      v_g = \beta\, u_g - \gamma_g\, s_g
+    \end{equation}
+    where $\gamma_g$ is estimated from the slope of the upper quantile of the
+    $u$ vs.\ $s$ phase portrait.
+  \item[Dynamical model (\software{scVelo})] Relaxes the steady-state assumption
+    by solving the full system of ODEs (Equations
+    \ref{eq:scrnaseq:velocity_unspliced}--\ref{eq:scrnaseq:velocity_spliced})
+    using an expectation-maximization algorithm. This jointly infers the kinetic
+    parameters $\alpha$, $\beta$, $\gamma$, and a latent time for each cell,
+    providing a more accurate velocity field for genes that are not at steady
+    state (e.g., during rapid transitions).
+  \item[Multi-omic velocity (\software{MultiVelo})] Extends the velocity
+    framework to incorporate chromatin accessibility (from multi-omic
+    ATAC + RNA data), modeling the cascade from chromatin opening to unspliced
+    to spliced mRNA.
+\end{description}
+
+\begin{tipbox}
+RNA velocity estimates are gene-specific vectors in expression space. To
+visualize them on a UMAP or t-SNE embedding, the high-dimensional velocity
+vectors are projected onto the 2D embedding by computing the correlation between
+each cell's velocity and the expression difference to its neighbors. Arrows on
+the embedding indicate the predicted direction of transcriptional change, not
+physical movement.
+\end{tipbox}
+
+\subsection{Cell--Cell Communication}
+
+\begin{description}[style=nextline]
+  \item[\software{CellChat}] Infers intercellular communication networks from
+    scRNA-seq data using a curated database of ligand--receptor interactions
+    (including multimeric complexes). Models communication probability based on
+    the law of mass action and identifies significant signaling pathways between
+    cell types.
+  \item[\software{NicheNet}] Predicts which ligands from sender cells best
+    explain gene expression changes in receiver cells, integrating prior
+    knowledge of signaling and gene regulatory networks.
+  \item[\software{LIANA}] A framework that benchmarks and combines multiple
+    cell--cell communication tools (CellPhoneDB, CellChat, NATMI,
+    SingleCellSignalR, etc.) to produce consensus interaction scores.
+\end{description}
+
+\subsection{Gene Regulatory Network Inference}
+
+\begin{description}[style=nextline]
+  \item[\software{SCENIC / pySCENIC}] \textbf{S}ingle-\textbf{C}ell r\textbf{E}gulatory
+    \textbf{N}etwork \textbf{I}nference and \textbf{C}lustering. A three-step
+    pipeline:
+    \begin{enumerate}[nosep]
+      \item Co-expression modules: identify genes co-expressed with each
+        transcription factor (TF) using GRNBoost2 or GENIE3.
+      \item Regulon pruning: retain only target genes with TF binding motifs
+        in their regulatory regions (cis-regulatory analysis using RcisTarget
+        or pycisTarget).
+      \item Regulon activity scoring: quantify the activity of each regulon
+        (TF + targets) in each cell using AUCell.
+    \end{enumerate}
+    SCENIC regulon activity provides a biologically interpretable dimensionality
+    reduction and can reveal TF-driven cell states invisible in gene expression
+    alone.
+\end{description}
+
+
+% ---------------------------------------------------------------------------
+\section{Analysis Frameworks: Scanpy vs.\ Seurat}
+\label{sec:scrnaseq:frameworks}
+
+Two comprehensive frameworks dominate the scRNA-seq analysis ecosystem:
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of the Scanpy (Python) and Seurat (R) scRNA-seq analysis
+frameworks.}
+\label{tab:scrnaseq:frameworks}
+\small
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+\textbf{Feature} & \textbf{Scanpy (Python)} & \textbf{Seurat (R)} \\
+\midrule
+Language & Python & R \\
+Current version & Scanpy 1.10+ & Seurat v5 \\
+Data structure & AnnData (\texttt{.h5ad}) & SeuratObject / BPCells \\
+Core functions & Preprocessing, clustering, DE, visualization & Preprocessing, clustering, DE, visualization \\
+Normalization & Log-norm, scran (via rpy2) & Log-norm, SCTransform, sketch-based \\
+Integration & scVI, scANVI, BBKNN, Harmony & CCA, RPCA, Harmony, scVI bridge \\
+Scalability & Excellent (sparse arrays, GPU via rapids-singlecell) & Improved in v5 (BPCells on-disk), sketch-based \\
+Visualization & Matplotlib-based (highly customizable) & ggplot2-based (publication-ready) \\
+Ecosystem & scvi-tools, squidpy, CellRank, decoupler & Signac, Azimuth, BPCells \\
+Community & Strong in computational biology / ML & Strong in biomedical research \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}
+Both frameworks are excellent and actively maintained. Choose based on your
+language proficiency and collaborators' preferences. Many analyses use both:
+Scanpy for preprocessing and Seurat for visualization (or vice versa).
+Conversion between AnnData (\texttt{.h5ad}) and SeuratObject formats is
+straightforward using the \software{SeuratDisk} or \software{MuDataSeurat}
+packages.
+\end{tipbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Integration of Multiple Datasets}
+\label{sec:scrnaseq:integration}
+
+Combining scRNA-seq datasets from different experiments, batches, or
+technologies is essential for large-scale analyses but is complicated by
+batch effects. Integration methods aim to place cells from different batches
+into a common embedding while preserving biological variation.
+
+\begin{description}[style=nextline]
+  \item[\software{Harmony}] Fast linear integration that iteratively adjusts
+    PCA embeddings to remove batch effects while preserving biological clusters.
+    Extremely popular due to speed and simplicity. Works as a post-PCA
+    correction.
+  \item[\software{scVI} (Variational Inference)] Deep generative model
+    (variational autoencoder) that learns a batch-corrected latent space.
+    Handles complex batch effects and provides uncertainty estimates. The gold
+    standard for large, complex integration tasks.
+  \item[\software{BBKNN} (Batch Balanced KNN)] Modifies the KNN graph
+    construction to balance neighbors across batches. Simple and effective;
+    does not modify the expression matrix.
+  \item[Seurat integration (CCA/RPCA)] Identifies ``anchors'' (mutual nearest
+    neighbors) between datasets using canonical correlation analysis (CCA) or
+    reciprocal PCA (RPCA). Anchors guide the alignment of datasets into a
+    common space. RPCA is faster and recommended for datasets with partially
+    overlapping cell types.
+\end{description}
+
+\begin{warningbox}
+Over-integration can remove genuine biological differences between datasets.
+Always verify that integration preserved known biological signals (e.g., marker
+gene expression for expected cell types). Compare integrated and non-integrated
+results critically, and use integration metrics (kBET, LISI, silhouette width)
+to quantify batch mixing and biological conservation.
+\end{warningbox}
+
+\subsection{Batch Correction Methods: A Detailed Comparison}
+\label{subsec:scrnaseq:batch_correction}
+
+Choosing the right integration method depends on dataset size, batch complexity,
+and the importance of preserving subtle biological variation. The following table
+summarizes the key properties of the most widely used methods:
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of batch correction and integration methods for scRNA-seq.}
+\label{tab:scrnaseq:batch_correction}
+\small
+\begin{tabularx}{\textwidth}{lXXXX}
+\toprule
+\textbf{Method} & \textbf{Approach} & \textbf{Speed} & \textbf{Preservation of biology} & \textbf{Notes} \\
+\midrule
+\software{Harmony} & Iterative soft clustering on PCA embeddings; adjusts cluster centroids across batches & Very fast ($<$1 min for 500k cells) & Good; may over-correct rare populations & Post-PCA; does not modify expression matrix; easy to use \\
+MNN (Mutual Nearest Neighbors) & Identifies mutual nearest neighbor pairs across batches; computes correction vectors & Moderate & Good for conserved populations & Implemented in \software{batchelor} (R); foundational method \\
+\software{scVI} & Variational autoencoder with batch as a covariate in the generative model & Slow (GPU recommended; minutes--hours) & Excellent; learns complex non-linear corrections & Produces a latent space, not corrected counts; best for complex multi-batch designs \\
+\software{BBKNN} & Constructs a batch-balanced KNN graph by trimming neighbors per batch & Very fast & Good; minimal distortion of rare types & Corrects the graph, not the embedding or expression; use with Scanpy \\
+\software{Scanorama} & Panoramic stitching inspired by image alignment; finds mutual nearest neighbors in SVD space & Fast (scales to millions of cells) & Good; robust to partially overlapping datasets & Can correct expression matrix directly; useful when datasets share only some cell types \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{keyconcept}[title={Metrics for Evaluating Integration Quality}]
+Integration quality should be assessed along two orthogonal axes:
+\begin{itemize}[nosep]
+  \item \textbf{Batch mixing} (technical correction): Do cells of the same type
+    from different batches intermingle? Measured by kBET (k-nearest neighbor
+    batch effect test) and the iLISI (integration Local Inverse Simpson Index).
+    Higher values indicate better batch mixing.
+  \item \textbf{Biological conservation}: Are genuine cell types still
+    distinguishable after integration? Measured by cLISI (cell-type LISI),
+    silhouette width, and ARI (Adjusted Rand Index) against known labels.
+    Over-integration reduces these metrics.
+\end{itemize}
+The \software{scIB} (single-cell Integration Benchmarking) framework provides a
+standardized pipeline for computing these metrics and ranking integration methods
+for a given dataset.
+\end{keyconcept}
+
+
+% ---------------------------------------------------------------------------
+\section{Large-Scale Cell Atlases}
+\label{sec:scrnaseq:atlases}
+
+The field has moved from profiling individual tissues to constructing
+organism-wide cell atlases:
+
+\begin{description}[style=nextline]
+  \item[Human Cell Atlas (HCA)] An international consortium aiming to create a
+    comprehensive reference map of every human cell type. Spans dozens of organs
+    and developmental stages. Data accessible via the HCA Data Portal.
+  \item[Tabula Sapiens] A multi-organ, single-cell transcriptomic atlas of
+    \species{Homo sapiens}. Profiled $\sim$500,000 cells from 24 organs of
+    individual donors, enabling cross-tissue cell type comparisons.
+  \item[Tabula Muris / Tabula Muris Senis] Mouse cell atlases covering 20+
+    organs using both 10x Chromium (3$'$) and Smart-seq2 (full-length) protocols.
+    Senis extends to aging, covering mice from 1 to 30 months.
+  \item[CellxGene Census] Aggregated and harmonized single-cell data from
+    multiple studies, providing programmatic access (Python/R APIs) to tens
+    of millions of cells with standardized metadata and cell type annotations.
+\end{description}
+
+
+% ---------------------------------------------------------------------------
+\section{Practical Considerations}
+\label{sec:scrnaseq:practical}
+
+\subsection{How Many Cells to Sequence?}
+
+\begin{itemize}[nosep]
+  \item \textbf{For common cell types:} 3,000--5,000 cells per sample is often
+    sufficient.
+  \item \textbf{For rare populations:} If a target cell type is $\sim$1\% of
+    the sample, profiling 10,000--20,000 cells ensures $\sim$100--200 cells of
+    that type.
+  \item \textbf{For differential abundance testing:} Multiple biological
+    replicates (n $\geq$ 3) are far more important than the number of cells per
+    sample.
+  \item \textbf{Trade-off:} More cells at lower depth vs.\ fewer cells at
+    higher depth. For cell type identification, breadth (more cells) generally
+    wins; for gene-level analyses within a cell type, depth matters more.
+\end{itemize}
+
+\subsection{Sequencing Depth Per Cell}
+
+\begin{itemize}[nosep]
+  \item \textbf{3$'$ 10x Chromium:} 20,000--50,000 reads per cell is standard.
+    Beyond 50,000 reads, the number of newly detected genes saturates rapidly.
+  \item \textbf{5$'$ 10x Chromium:} Similar depth for GEX; additional depth for
+    V(D)J libraries ($\sim$5,000 reads/cell).
+  \item \textbf{Smart-seq2:} 0.5--1 million reads per cell (full-length,
+    no UMIs; deeper sequencing improves isoform detection).
+  \item \textbf{Multiplexed experiments:} Calculate total reads as
+    (cells $\times$ reads/cell) and ensure the sequencing run provides
+    sufficient output.
+\end{itemize}
+
+\subsection{Tissue Dissociation Considerations}
+
+Preparing a high-quality single-cell suspension is often the most challenging
+step in a scRNA-seq experiment:
+
+\begin{itemize}[nosep]
+  \item \textbf{Enzymatic digestion:} Collagenase, trypsin, Liberase, or
+    tissue-specific cocktails. Over-digestion kills cells; under-digestion
+    yields clumps and debris.
+  \item \textbf{Mechanical dissociation:} Gentle trituration or the
+    Miltenyi gentleMACS for standardized processing.
+  \item \textbf{Dead cell removal:} MACS dead cell removal kit or FACS-based
+    viability gating (DAPI, 7-AAD, calcein AM).
+  \item \textbf{Dissociation-induced artifacts:} Enzymatic digestion can
+    activate stress-response genes (e.g., \gene{FOS}, \gene{JUN},
+    \gene{HSPA1A}). Cold-active protease protocols or fixation-based approaches
+    (10x Flex, FANS for nuclei) mitigate this.
+  \item \textbf{Single-nucleus RNA-seq (snRNA-seq):} For tissues that cannot be
+    dissociated into viable single cells (e.g., brain, adipose, archived frozen
+    tissue), nuclei are isolated and profiled. Uses the same 10x Chromium
+    platform with nuclei-specific protocols. Detects both cytoplasmic and
+    nuclear RNA (more intronic reads).
+\end{itemize}
+
+\begin{warningbox}
+Always check for dissociation-induced gene expression artifacts by examining
+immediate-early gene expression across clusters. If stress genes (e.g.,
+\gene{FOS}, \gene{JUN}, \gene{ATF3}) dominate the first principal components
+or separate clusters, consider regressing them out or switching to a
+cold-dissociation or nucleus-based protocol.
+\end{warningbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Comparison of scRNA-seq Platforms}
+\label{sec:scrnaseq:comparison}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of major scRNA-seq platforms and methods.}
+\label{tab:scrnaseq:platforms}
+\small
+\begin{tabularx}{\textwidth}{lXXXX}
+\toprule
+\textbf{Feature} & \textbf{10x Chromium 3$'$} & \textbf{Smart-seq2/3} & \textbf{Drop-seq} & \textbf{sci-RNA-seq3} \\
+\midrule
+Isolation & Droplet & FACS to plate & Droplet & Combinatorial indexing \\
+Throughput & 500--10,000 cells & 96--384 cells & 2,000--10,000 cells & $>$100,000 cells \\
+Sensitivity & 3,000--6,000 genes/cell & 5,000--10,000 genes/cell & 1,500--3,000 genes/cell & 1,000--2,000 genes/cell \\
+Coverage & 3$'$ end & Full-length & 3$'$ end & 3$'$ end \\
+UMIs & Yes (12\,nt) & No (SS2) / Yes (SS3) & Yes & Yes \\
+Cost per cell & \$0.10--0.50 & \$5--20 & \$0.05--0.20 & \$0.01--0.05 \\
+Equipment & Chromium Controller & FACS + thermocycler & Custom microfluidics & Standard lab equipment \\
+Isoform info & No & Yes & No & No \\
+Multiplexing & CellPlex, Flex & Limited & Limited & Built-in \\
+Best use case & Standard profiling & Deep per-cell profiling & Budget-friendly scaling & Organism-scale atlases \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+% ---------------------------------------------------------------------------
+\section{Snakemake Workflow for scRNA-seq}
+\label{sec:scrnaseq:snakemake}
+
+\begin{lstlisting}[language=Python, caption={Snakemake workflow for 10x
+Chromium scRNA-seq analysis using STARsolo and Scanpy.},
+label={lst:scrnaseq:snakemake}, float=htbp]
+# Snakefile for scRNA-seq Analysis (10x Chromium)
+# ================================================
+# Pipeline: STARsolo -> Scanpy (QC, norm, cluster, annotate)
+
+import pandas as pd
+
+configfile: "config/config.yaml"
+
+samples = pd.read_csv(config["samples"], sep="\t")
+SAMPLES = samples["sample"].tolist()
+
+STAR_INDEX = config["star_index"]
+WHITELIST  = config["barcode_whitelist"]
+
+rule all:
+    input:
+        expand("results/starsolo/{sample}/Solo.out/"
+               "Gene/filtered/matrix.mtx",
+               sample=SAMPLES),
+        "results/scanpy/integrated_analysis.h5ad",
+        "results/scanpy/umap_celltypes.pdf",
+        "results/multiqc/multiqc_report.html"
+
+rule starsolo:
+    input:
+        r1="data/raw/{sample}_R1.fastq.gz",
+        r2="data/raw/{sample}_R2.fastq.gz",
+        index=STAR_INDEX,
+        whitelist=WHITELIST
+    output:
+        bam="results/starsolo/{sample}/"
+            "Aligned.sortedByCoord.out.bam",
+        matrix="results/starsolo/{sample}/Solo.out/"
+               "Gene/filtered/matrix.mtx",
+        barcodes="results/starsolo/{sample}/Solo.out/"
+                 "Gene/filtered/barcodes.tsv",
+        features="results/starsolo/{sample}/Solo.out/"
+                 "Gene/filtered/features.tsv",
+        log="results/starsolo/{sample}/Log.final.out"
+    threads: 12
+    resources:
+        mem_mb=40000
+    params:
+        prefix="results/starsolo/{sample}/",
+        cb_len=16,
+        umi_len=12
+    conda: "envs/starsolo.yaml"
+    shell:
+        """
+        STAR --runMode alignReads \
+          --genomeDir {input.index} \
+          --readFilesIn {input.r2} {input.r1} \
+          --readFilesCommand zcat \
+          --soloType CB_UMI_Simple \
+          --soloCBwhitelist {input.whitelist} \
+          --soloCBlen {params.cb_len} \
+          --soloUMIlen {params.umi_len} \
+          --soloFeatures Gene \
+          --soloMultiMappers EM \
+          --soloCellFilter EmptyDrops_CR \
+          --outSAMtype BAM SortedByCoordinate \
+          --outSAMattributes NH HI nM AS CR UR CB UB \
+            GX GN \
+          --outFileNamePrefix {params.prefix} \
+          --runThreadN {threads} \
+          --limitBAMsortRAM 30000000000
+        """
+
+rule doublet_detection:
+    input:
+        matrix="results/starsolo/{sample}/Solo.out/"
+               "Gene/filtered/matrix.mtx"
+    output:
+        scores="results/doublets/{sample}_scores.csv"
+    conda: "envs/scanpy.yaml"
+    script:
+        "scripts/run_scrublet.py"
+
+rule scanpy_analysis:
+    input:
+        matrices=expand(
+            "results/starsolo/{sample}/Solo.out/"
+            "Gene/filtered/matrix.mtx",
+            sample=SAMPLES),
+        doublets=expand(
+            "results/doublets/{sample}_scores.csv",
+            sample=SAMPLES),
+        sample_sheet=config["samples"]
+    output:
+        h5ad="results/scanpy/integrated_analysis.h5ad",
+        umap="results/scanpy/umap_celltypes.pdf",
+        markers="results/scanpy/marker_genes.csv",
+        qc_report="results/scanpy/qc_violin_plots.pdf"
+    conda: "envs/scanpy.yaml"
+    script:
+        "scripts/run_scanpy.py"
+
+rule multiqc:
+    input:
+        expand("results/starsolo/{sample}/Log.final.out",
+               sample=SAMPLES)
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "envs/qc.yaml"
+    shell:
+        "multiqc results/ -o results/multiqc/ --force"
+\end{lstlisting}
+
+
+% ---------------------------------------------------------------------------
+\section{Nextflow Workflow for scRNA-seq}
+\label{sec:scrnaseq:nextflow}
+
+\begin{lstlisting}[language=Java, caption={Nextflow DSL2 workflow for 10x
+Chromium scRNA-seq analysis using STARsolo and Scanpy.},
+label={lst:scrnaseq:nextflow}, float=htbp]
+#!/usr/bin/env nextflow
+// scRNA-seq Analysis Pipeline (Nextflow DSL2)
+// =============================================
+// Pipeline: STARsolo -> Scrublet -> Scanpy
+
+nextflow.enable.dsl = 2
+
+params.reads        = "data/raw/*_{R1,R2}.fastq.gz"
+params.star_index   = "resources/star_index"
+params.whitelist    = "resources/3M-february-2018.txt"
+params.sample_sheet = "config/samples.tsv"
+params.outdir       = "results"
+
+log.info """
+=================================
+ scRNA-seq Analysis Pipeline
+=================================
+ reads        : ${params.reads}
+ STAR index   : ${params.star_index}
+ whitelist    : ${params.whitelist}
+ outdir       : ${params.outdir}
+=================================
+"""
+
+process STARSOLO {
+    tag "$sample_id"
+    publishDir "${params.outdir}/starsolo/${sample_id}",
+        mode: 'copy'
+    cpus 12
+    memory '40 GB'
+
+    input:
+    tuple val(sample_id), path(reads)
+    path(star_index)
+    path(whitelist)
+
+    output:
+    tuple val(sample_id),
+        path("Solo.out/Gene/filtered/"),
+        emit: filtered
+    path("Log.final.out"), emit: log
+    tuple val(sample_id),
+        path("Aligned.sortedByCoord.out.bam"),
+        emit: bam
+
+    script:
+    def (r1, r2) = reads
+    """
+    STAR --runMode alignReads \
+      --genomeDir ${star_index} \
+      --readFilesIn ${r2} ${r1} \
+      --readFilesCommand zcat \
+      --soloType CB_UMI_Simple \
+      --soloCBwhitelist ${whitelist} \
+      --soloCBlen 16 \
+      --soloUMIlen 12 \
+      --soloFeatures Gene \
+      --soloMultiMappers EM \
+      --soloCellFilter EmptyDrops_CR \
+      --outSAMtype BAM SortedByCoordinate \
+      --outSAMattributes NH HI nM AS CR UR CB UB \
+        GX GN \
+      --runThreadN ${task.cpus}
+    """
+}
+
+process SCRUBLET {
+    tag "$sample_id"
+    publishDir "${params.outdir}/doublets", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(filtered_dir)
+
+    output:
+    tuple val(sample_id),
+        path("${sample_id}_doublet_scores.csv"),
+        emit: scores
+
+    script:
+    """
+    python ${projectDir}/bin/run_scrublet.py \
+      --input ${filtered_dir} \
+      --output ${sample_id}_doublet_scores.csv
+    """
+}
+
+process SCANPY_ANALYSIS {
+    publishDir "${params.outdir}/scanpy", mode: 'copy'
+    cpus 4
+    memory '16 GB'
+
+    input:
+    path(filtered_dirs)
+    path(doublet_scores)
+    path(sample_sheet)
+
+    output:
+    path("integrated_analysis.h5ad"), emit: h5ad
+    path("umap_celltypes.pdf"),       emit: umap
+    path("marker_genes.csv"),         emit: markers
+    path("qc_violin_plots.pdf"),      emit: qc
+
+    script:
+    """
+    python ${projectDir}/bin/run_scanpy.py \
+      --input_dirs ${filtered_dirs} \
+      --doublets ${doublet_scores} \
+      --samples ${sample_sheet} \
+      --outdir .
+    """
+}
+
+process MULTIQC {
+    publishDir "${params.outdir}/multiqc", mode: 'copy'
+
+    input:
+    path('*')
+
+    output:
+    path("multiqc_report.html")
+
+    script:
+    """
+    multiqc . -o . --force
+    """
+}
+
+workflow {
+    reads_ch = Channel
+        .fromFilePairs(params.reads, checkIfExists: true)
+
+    star_index = Channel.fromPath(params.star_index)
+    whitelist  = Channel.fromPath(params.whitelist)
+
+    // Align and quantify
+    STARSOLO(reads_ch, star_index.collect(),
+             whitelist.collect())
+
+    // Detect doublets per sample
+    SCRUBLET(STARSOLO.out.filtered)
+
+    // Integrated analysis
+    SCANPY_ANALYSIS(
+        STARSOLO.out.filtered
+            .map { it[1] }.collect(),
+        SCRUBLET.out.scores
+            .map { it[1] }.collect(),
+        Channel.fromPath(params.sample_sheet)
+    )
+
+    // QC report
+    MULTIQC(STARSOLO.out.log.collect())
+}
+\end{lstlisting}
+
+\begin{tipbox}
+For production scRNA-seq analysis, the \software{nf-core/scrnaseq} pipeline
+provides a comprehensive Nextflow workflow supporting Cell Ranger, STARsolo,
+alevin-fry (Salmon), and kallisto-bustools as quantification backends, with
+automatic whitelist selection and extensive QC reporting.
+\end{tipbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Chapter Summary}
+\label{sec:scrnaseq:summary}
+
+Single-cell RNA sequencing has revolutionized our ability to dissect cellular
+heterogeneity and has become an indispensable tool in modern biology. In this
+chapter we covered:
+
+\begin{itemize}[nosep]
+  \item Why single-cell resolution is necessary and what bulk RNA-seq misses.
+  \item The historical development of scRNA-seq technologies from 2009 to the
+    present.
+  \item Cell isolation methods: FACS, microfluidics, droplet-based (10x
+    Chromium, Drop-seq, inDrop), combinatorial indexing (sci-RNA-seq, SPLiT-seq),
+    and plate-based (Smart-seq2/3).
+  \item The 10x Genomics Chromium system in detail: GEM formation, cell barcodes,
+    UMIs, 3$'$ vs.\ 5$'$ chemistry, Cell Ranger, and the Flex assay.
+  \item Computational challenges: sparsity/dropout, doublet detection, and
+    ambient RNA contamination.
+  \item The complete analysis workflow: raw data processing (Cell Ranger, STARsolo,
+    alevin-fry), QC filtering, normalization (scran, SCTransform), feature
+    selection (HVGs), dimensionality reduction (PCA, t-SNE, UMAP), graph-based
+    clustering (Leiden/Louvain), cell type annotation, differential expression
+    (pseudobulk recommended), trajectory analysis (Monocle3, scVelo),
+    cell--cell communication (CellChat, NicheNet), and gene regulatory networks
+    (SCENIC).
+  \item Scanpy vs.\ Seurat frameworks, and dataset integration methods.
+  \item Large-scale cell atlases: Human Cell Atlas, Tabula Sapiens, Tabula Muris.
+  \item Practical workflows in both Snakemake and Nextflow.
+\end{itemize}
+
+The next chapter extends our view from dissociated single cells to cells in
+their native tissue context with spatial transcriptomics (\cref{ch:spatial}).

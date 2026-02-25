@@ -1,0 +1,890 @@
+\chapter{Specialized Sequencing Applications}
+\label{ch:specialized}
+
+\begin{keyconcept}
+Beyond the ``core'' applications of genome sequencing, transcriptomics, and epigenomics, a growing constellation of specialized sequencing assays addresses specific biological questions that standard methods cannot answer. These include ribosome profiling for measuring translation in real time, CRISPR screens for systematic gene function mapping, liquid biopsy for non-invasive cancer detection, epitranscriptomics for profiling RNA modifications, and adaptive nanopore sequencing for software-defined target enrichment. Each represents a creative repurposing of sequencing technology to read a distinct layer of biology.
+\end{keyconcept}
+
+\section{Ribosome Profiling (Ribo-seq)}
+\label{sec:specialized:riboseq}
+
+\subsection{Principle: Measuring Translation in Real Time}
+\label{subsec:specialized:riboseq-principle}
+
+While \acrshort{RNA-seq} measures which genes are transcribed and at what level, it does not reveal which mRNAs are actively being translated into protein. The correlation between mRNA abundance and protein output is notoriously imperfect---post-transcriptional regulation, mRNA stability, and translational control introduce substantial discrepancies. \textbf{Ribosome profiling} (Ribo-seq), developed by Jonathan Weissman and Nicholas Ingolia in 2009, directly measures translation by sequencing the mRNA fragments that are physically protected by actively translating ribosomes.
+
+\begin{protocolbox}[title={Ribo-seq Protocol}]
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Translation arrest:} Treat cells with a translation elongation inhibitor (classically cycloheximide, CHX) to freeze ribosomes in place on their mRNA templates. Alternative inhibitors include lactimidomycin (which captures initiating ribosomes) and harringtonine (which also captures initiation).
+  \item \textbf{Cell lysis:} Lyse cells under conditions that preserve ribosome--mRNA complexes.
+  \item \textbf{RNase digestion:} Treat the lysate with RNase I (or micrococcal nuclease). This digests all mRNA \textit{not} physically protected by a ribosome, leaving $\sim$28--30 nucleotide (nt) ``footprints'' corresponding to the mRNA segment enclosed within the ribosome's mRNA channel.
+  \item \textbf{Ribosome isolation:} Purify monosome-protected fragments by sucrose gradient centrifugation or size-exclusion chromatography.
+  \item \textbf{Fragment isolation and library preparation:} Extract the $\sim$28--30\,nt RNA fragments, ligate adapters, reverse-transcribe, and prepare a sequencing library (similar to small RNA library prep).
+  \item \textbf{Sequencing:} Single-end sequencing on Illumina (typically SE50 or SE75) yields the identity and position of each ribosome footprint.
+  \item \textbf{Parallel RNA-seq:} A matched total RNA or mRNA-seq library is prepared from the same sample to enable calculation of translational efficiency.
+\end{enumerate}
+\end{protocolbox}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  ribosome/.style={draw=MidnightBlue, fill=MidnightBlue!15,
+    rounded corners=6pt, minimum width=1.4cm, minimum height=0.9cm,
+    font=\tiny\bfseries},
+  mrna/.style={ultra thick, OliveGreen!80!black},
+  footprint/.style={ultra thick, BrickRed},
+  label/.style={font=\scriptsize, align=center}
+]
+
+% mRNA strand
+\draw[mrna] (0,0) -- (14,0);
+\node[label, OliveGreen!80!black] at (0,-0.4) {5'};
+\node[label, OliveGreen!80!black] at (14,-0.4) {3'};
+\node[label, above] at (7,2.2) {\textbf{Step 1: Ribosomes translating mRNA}};
+
+% Ribosomes
+\node[ribosome] at (2.5,0.7) {60S};
+\node[ribosome, minimum height=0.6cm] at (2.5,0.1) {40S};
+\node[ribosome] at (6,0.7) {60S};
+\node[ribosome, minimum height=0.6cm] at (6,0.1) {40S};
+\node[ribosome] at (10,0.7) {60S};
+\node[ribosome, minimum height=0.6cm] at (10,0.1) {40S};
+
+% Arrow to Step 2
+\draw[->, thick, gray] (7,-0.8) -- (7,-1.6);
+\node[label, gray, right] at (7.2,-1.2) {RNase digestion};
+
+% Step 2: After RNase digestion
+\node[label, above] at (7,-2) {\textbf{Step 2: Unprotected RNA digested}};
+
+% Protected footprints only
+\draw[footprint] (1.8,-2.8) -- (3.2,-2.8);
+\node[ribosome, minimum height=0.5cm, scale=0.8] at (2.5,-2.3) {Ribosome};
+
+\draw[footprint] (5.3,-2.8) -- (6.7,-2.8);
+\node[ribosome, minimum height=0.5cm, scale=0.8] at (6,-2.3) {Ribosome};
+
+\draw[footprint] (9.3,-2.8) -- (10.7,-2.8);
+\node[ribosome, minimum height=0.5cm, scale=0.8] at (10,-2.3) {Ribosome};
+
+% Digested fragments (dashed)
+\draw[gray, dashed, thin] (0,-2.8) -- (1.6,-2.8);
+\draw[gray, dashed, thin] (3.4,-2.8) -- (5.1,-2.8);
+\draw[gray, dashed, thin] (6.9,-2.8) -- (9.1,-2.8);
+\draw[gray, dashed, thin] (10.9,-2.8) -- (14,-2.8);
+
+% Arrow to Step 3
+\draw[->, thick, gray] (7,-3.5) -- (7,-4.3);
+\node[label, gray, right] at (7.2,-3.9) {Purify footprints};
+
+% Step 3: Footprint fragments
+\node[label, above] at (7,-4.5) {\textbf{Step 3: Ribosome-protected fragments ($\sim$28--30\,nt)}};
+\draw[footprint] (2,-5.3) -- (3.5,-5.3) node[midway, below, font=\tiny] {28\,nt};
+\draw[footprint] (5.5,-5.3) -- (7,-5.3) node[midway, below, font=\tiny] {28\,nt};
+\draw[footprint] (9,-5.3) -- (10.5,-5.3) node[midway, below, font=\tiny] {28\,nt};
+
+% Arrow to sequencing
+\draw[->, thick, gray] (7,-5.9) -- (7,-6.5);
+\node[label, gray, right] at (7.2,-6.2) {Library prep \& sequencing};
+
+% Step 4: Read mapping
+\node[label, above] at (7,-6.7) {\textbf{Step 4: Map reads $\rightarrow$ codon-resolution translation profile}};
+\draw[gray, thick] (0.5,-7.6) -- (13.5,-7.6);
+\foreach \x in {1.8, 2.0, 2.2, 2.4, 2.5, 2.5, 2.6, 5.5, 5.7, 5.9, 6.0, 6.1, 9.5, 9.7, 9.8, 10.0} {
+  \draw[BrickRed!70, thick] (\x,-7.6) -- (\x,-7.1);
+}
+\node[label] at (7,-8.1) {Genomic position along transcript};
+
+\end{tikzpicture}
+\caption[Principle of ribosome profiling (Ribo-seq).]{Ribosome profiling (Ribo-seq) captures the $\sim$28--30\,nucleotide mRNA fragments protected by actively translating ribosomes after RNase digestion, providing a snapshot of translation at codon-level resolution.}
+\label{fig:specialized:riboseq}
+\end{figure}
+
+\subsection{P-site Mapping and Translational Efficiency}
+\label{subsec:specialized:riboseq-analysis}
+
+After sequencing, Ribo-seq reads are mapped to the transcriptome. The key analytical concepts are:
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[P-site assignment] Each ribosome footprint corresponds to a specific codon being decoded. The ``P-site offset'' (typically 12--13\,nt from the 5' end of the footprint for 28-mers) maps each read to the precise codon in the ribosome's peptidyl (P) site. This provides \textbf{codon-level resolution} of translation.
+
+  \item[Three-nucleotide periodicity] Because the ribosome advances three nucleotides (one codon) per step, Ribo-seq data show a characteristic 3-nt periodicity when reads are mapped at single-nucleotide resolution. This periodicity is a hallmark of genuine translation signal and is used as a quality metric.
+
+  \item[Translational efficiency (TE)] Defined as the ratio of ribosome footprint density (RPF) to mRNA abundance:
+  \[
+  \text{TE}_{\text{gene}} = \frac{\text{RPF}_{\text{gene}} / \text{RPF}_{\text{total}}}{\text{mRNA}_{\text{gene}} / \text{mRNA}_{\text{total}}}
+  \]
+  Genes with TE $> 1$ are translated more efficiently than average; genes with TE $< 1$ are translationally repressed.
+\end{description}
+
+\subsection{P-site Offset Determination and Metagene Analysis}
+\label{subsec:specialized:psite-offset}
+
+Accurate assignment of ribosome-protected fragments (RPFs) to the codon being decoded requires careful determination of the \textbf{P-site offset}---the distance from the 5\textquotesingle{} end of the RPF to the codon positioned in the ribosome's peptidyl-transfer (P) site. This offset is not a single fixed value but varies systematically with fragment length.
+
+\begin{keyconcept}[title={Fragment-Length-Dependent P-site Offsets}]
+The standard RPF length distribution from eukaryotic ribosomes centres on 28--30\,nt, with minor populations at 20--22\,nt (corresponding to ribosomes in a rotated state). The P-site offset for each fragment length is determined empirically by metagene analysis:
+
+\begin{itemize}[itemsep=2pt]
+  \item For \textbf{28-mers}: the P-site offset is typically 12\,nt from the 5\textquotesingle{} end.
+  \item For \textbf{29-mers}: the offset is typically 12\,nt.
+  \item For \textbf{30-mers}: the offset is typically 13\,nt.
+  \item For \textbf{shorter fragments} (20--22\,nt): the offset is typically 9--10\,nt.
+\end{itemize}
+
+These values are organism- and protocol-specific and must be calibrated for each experiment.
+\end{keyconcept}
+
+The calibration procedure uses \textbf{metagene analysis around annotated start codons}. For a given fragment length $L$, all RPFs of length $L$ whose 5\textquotesingle{} end maps within a window of $\pm 50$\,nt around annotated AUG start codons are aggregated. The P-site offset $\delta_L$ is the displacement from the 5\textquotesingle{} end to the AUG position that produces the sharpest peak. Formally:
+\begin{equation}
+  \delta_L = \underset{d}{\text{argmax}} \sum_{g \in \mathcal{G}} \text{count}_{L}\bigl(\text{TSS}_g - d\bigr),
+  \label{eq:specialized:psite-offset}
+\end{equation}
+where $\mathcal{G}$ is the set of annotated coding genes, $\text{TSS}_g$ is the position of the AUG start codon for gene $g$, and $\text{count}_{L}(p)$ is the number of RPFs of length $L$ with their 5\textquotesingle{} end at position $p$. The offset $\delta_L$ that maximizes this signal corresponds to the correct P-site assignment for fragments of length $L$.
+
+A complementary analysis uses \textbf{stop codons}: when the P-site offset is correctly assigned, the metagene profile around stop codons should show a sharp drop in RPF density immediately after the stop codon (as ribosomes terminate translation and dissociate). The presence of clear three-nucleotide periodicity throughout the coding sequence, with the majority of P-site-assigned reads falling in the first reading frame (frame 0), serves as the primary quality metric:
+\begin{equation}
+  F_0 = \frac{\text{RPFs in frame 0}}{\text{RPFs in frame 0} + \text{RPFs in frame 1} + \text{RPFs in frame 2}}.
+  \label{eq:specialized:frame-fraction}
+\end{equation}
+High-quality Ribo-seq datasets typically achieve $F_0 > 0.7$, with the best datasets exceeding 0.9. Tools such as \software{RiboWaltz} and \software{Plastid} automate this calibration process, producing fragment-length-specific offset tables and periodicity plots.
+
+\begin{warningbox}
+The choice of translation inhibitor affects the fragment length distribution and P-site offset. Cycloheximide (CHX) pre-treatment produces a broader footprint distribution and can introduce artefacts near start codons due to ribosome run-off during the drug treatment period. Flash-freezing protocols (no drug pre-treatment) or the use of initiation-specific inhibitors (lactimidomycin, harringtonine) produce different footprint profiles. Always calibrate P-site offsets independently for each experimental condition rather than using default values from the literature.
+\end{warningbox}
+
+\subsection{Tools for Ribo-seq Analysis}
+\label{subsec:specialized:riboseq-tools}
+
+\begin{description}[style=nextline, itemsep=2pt]
+  \item[\software{RiboCode}] A Python tool for de novo identification of translated open reading frames (ORFs) based on the 3-nt periodicity signal. Can detect canonical ORFs, upstream ORFs (uORFs), downstream ORFs, and ORFs in long non-coding RNAs.
+  \item[\software{ORFquant}] An R package for quantifying translation at the ORF level, distinguishing between multiple ORFs on the same transcript.
+  \item[\software{Ribotricer}] Uses a Bayesian changepoint model to detect actively translated ORFs, with particularly good performance on noisy datasets.
+  \item[\software{RiboWaltz}] Optimizes P-site offset assignment and provides quality metrics for Ribo-seq data.
+\end{description}
+
+\subsection{Discovering Novel Translated ORFs}
+\label{subsec:specialized:novel-orfs}
+
+One of the most exciting applications of Ribo-seq is the discovery of previously unannotated translated regions:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Upstream ORFs (uORFs):} Short ORFs in the 5'UTR that are translated before the main coding sequence. uORFs regulate translation of the downstream CDS and are often responsive to stress conditions.
+  \item \textbf{Small ORFs (smORFs):} ORFs encoding micropeptides shorter than 100 amino acids, which were historically overlooked by gene annotation pipelines. Ribo-seq has revealed thousands of actively translated smORFs.
+  \item \textbf{Alternative reading frames:} Ribo-seq can detect ribosomes translating in unexpected reading frames, including frameshifts.
+  \item \textbf{Non-coding RNA translation:} Some annotated ``long non-coding RNAs'' (lncRNAs) show Ribo-seq signal, suggesting they encode short peptides.
+\end{itemize}
+
+\begin{warningbox}
+Ribo-seq data interpretation requires caution. Cycloheximide pre-treatment can cause run-off of some ribosomes before arrest, introducing artefacts near translation initiation and termination sites. Flash-freezing cells without drug treatment (``flash-freeze'' Ribo-seq) can mitigate this but may introduce other biases. Additionally, the RNase digestion step does not always produce perfectly uniform footprints, and contaminating non-ribosomal RNA fragments (e.g., from RNA-binding protein complexes) can create false signals.
+\end{warningbox}
+
+
+\section{CRISPR Screens}
+\label{sec:specialized:crispr-screens}
+
+\subsection{Pooled CRISPR Knockout Screens}
+\label{subsec:specialized:crispr-ko}
+
+Pooled CRISPR screens enable systematic loss-of-function studies at genome scale. The principle is to introduce a library of guide RNAs (sgRNAs) targeting every gene in the genome, apply selective pressure, and identify which gene knockouts confer a fitness advantage or disadvantage.
+
+\begin{protocolbox}[title={Pooled CRISPR Knockout Screen Workflow}]
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Library design:} Select a genome-wide sgRNA library (e.g., Brunello library for human, Brie for mouse, each targeting $\sim$20,000 genes with 4 sgRNAs per gene plus $\sim$1,000 non-targeting controls).
+  \item \textbf{Library production:} Clone the sgRNA library into a lentiviral backbone containing a selection marker (e.g., puromycin resistance).
+  \item \textbf{Cell transduction:} Transduce Cas9-expressing cells at low MOI ($\sim$0.3) to ensure $\sim$90\% of transduced cells carry only one sgRNA. Aim for $\geq$500$\times$ representation (at least 500 cells per sgRNA).
+  \item \textbf{Selection:} Apply the selective condition of interest. For a drug resistance screen, treat with the drug; for a fitness screen, simply passage cells for multiple population doublings.
+  \item \textbf{Genomic DNA extraction and sgRNA amplification:} Extract gDNA from the surviving cell population and a reference (early timepoint or untreated) population. PCR-amplify the sgRNA cassette from gDNA.
+  \item \textbf{Sequencing:} Sequence the sgRNA amplicons on Illumina (typically SE75 or PE75). Only $\sim$20 million reads are needed for a genome-wide library.
+  \item \textbf{Analysis:} Count sgRNA reads and compare guide representation between treated and control samples.
+\end{enumerate}
+\end{protocolbox}
+
+\subsection{CRISPRi and CRISPRa Screens}
+\label{subsec:specialized:crispri-crispra}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[CRISPRi (CRISPR interference)] Uses a catalytically dead Cas9 (dCas9) fused to a transcriptional repressor domain (KRAB). The sgRNA directs dCas9 to the target gene's promoter, where KRAB silences transcription without cutting DNA. Advantages over CRISPRko: no DNA damage response, titratable repression, reversible.
+
+  \item[CRISPRa (CRISPR activation)] Uses dCas9 fused to transcriptional activator domains (e.g., VP64, p65, Rta in the ``VPR'' system, or the synergistic activation mediator SAM system). This enables gain-of-function screens that complement loss-of-function approaches. CRISPRa guides target promoter regions to upregulate endogenous gene expression.
+\end{description}
+
+\subsection{Guide RNA Library Design}
+\label{subsec:specialized:sgrna-design}
+
+Effective sgRNA design is critical for screen success. Key considerations include:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{On-target efficiency:} Algorithms such as Rule Set 2 (Doench et al.) and DeepCas9 predict sgRNA cutting efficiency based on sequence features.
+  \item \textbf{Off-target effects:} Tools such as CRISPRscan, Cas-OFFinder, and GuideScan rank guides by predicted specificity.
+  \item \textbf{Target location:} For CRISPRko, guides targeting early constitutive exons are most effective. For CRISPRi/a, guides near the transcription start site (TSS) are optimal ($-$50 to $+$300\basepair{} for CRISPRi; $-$400 to $-$50\basepair{} for CRISPRa).
+  \item \textbf{Controls:} Include non-targeting controls (guides with no match in the genome), safe-harbour targeting controls (guides targeting inert genomic loci), and positive controls (guides targeting known essential or drug-target genes).
+\end{itemize}
+
+\subsection{Analysis Tools for CRISPR Screens}
+\label{subsec:specialized:crispr-tools}
+
+\begin{description}[style=nextline, itemsep=2pt]
+  \item[\software{MAGeCK} (Model-based Analysis of Genome-wide CRISPR-Cas9 Knockout)] The most widely used tool. MAGeCK uses a negative binomial model to identify sgRNAs with significantly altered abundance, then aggregates sgRNA-level results to gene-level scores using robust rank aggregation (RRA) or maximum likelihood estimation (MLE). MAGeCK-VISPR provides a visualization platform.
+
+  \item[\software{BAGEL2} (Bayesian Analysis of Gene Essentiality with Location)] Calculates a Bayes Factor for each gene, representing the likelihood that the gene is essential vs.\ non-essential, using reference sets of known essential and non-essential genes.
+
+  \item[\software{CRISPRcleanR}] Corrects for copy-number-dependent sgRNA depletion bias that can confound screen results in aneuploid cell lines (common in cancer cells).
+\end{description}
+
+\subsection{MAGeCK Statistical Framework}
+\label{subsec:specialized:mageck-model}
+
+\software{MAGeCK} (Model-based Analysis of Genome-wide CRISPR-Cas9 Knockout) is the most widely used statistical framework for analysing pooled CRISPR screen data. Its two-stage approach---sgRNA-level modelling followed by gene-level aggregation---provides robust identification of screen hits even in the presence of variable sgRNA efficiency and noisy count data.
+
+\subsubsection{sgRNA-Level Negative Binomial Model}
+
+For each sgRNA $j$, MAGeCK models the read count $Y_{jc}$ in condition $c$ (treatment or control) using a \textbf{negative binomial} (NB) distribution:
+\begin{equation}
+  Y_{jc} \sim \text{NB}(\mu_{jc},\; \alpha_j),
+  \label{eq:specialized:mageck-nb}
+\end{equation}
+where $\mu_{jc}$ is the expected count for sgRNA $j$ in condition $c$, and $\alpha_j$ is the sgRNA-specific dispersion parameter. The mean $\mu_{jc}$ is modelled as:
+\begin{equation}
+  \mu_{jc} = s_c \cdot \mu_{j0} \cdot 2^{\beta_j},
+  \label{eq:specialized:mageck-mean}
+\end{equation}
+where $s_c$ is a sample-specific size factor (estimated by median-ratio normalization), $\mu_{j0}$ is the baseline mean count for sgRNA $j$, and $\beta_j$ is the log$_2$ fold change for sgRNA $j$ between treatment and control. The negative binomial model accounts for both Poisson sampling noise and biological overdispersion---the latter arising from stochastic variation in lentiviral integration, cell growth, and PCR amplification.
+
+The dispersion parameter $\alpha_j$ is estimated using a mean-variance relationship: MAGeCK fits a smooth curve $\hat{\alpha}(\mu)$ relating the variance to the mean across all sgRNAs, then uses this curve as an empirical Bayes prior to regularize per-sgRNA dispersion estimates. This borrowing of information across sgRNAs stabilizes estimation for low-count guides.
+
+A $p$-value for each sgRNA is obtained by testing $H_0: \beta_j = 0$ against the appropriate one-sided alternative (depletion or enrichment), using the NB likelihood ratio test or Wald test.
+
+\subsubsection{Gene-Level Aggregation via Robust Rank Aggregation}
+
+Because each gene is targeted by multiple sgRNAs (typically 4--10), MAGeCK aggregates sgRNA-level evidence to the gene level using \textbf{Robust Rank Aggregation} (RRA). For each gene $g$ targeted by sgRNAs $\{j_1, j_2, \ldots, j_{n_g}\}$:
+
+\begin{enumerate}[itemsep=2pt]
+  \item Rank all sgRNAs in the library by their $p$-values (from the NB test).
+  \item Extract the normalized ranks $r_{j_1}, r_{j_2}, \ldots, r_{j_{n_g}}$ for the sgRNAs targeting gene $g$, where each rank is divided by the total number of sgRNAs to obtain a value in $[0, 1]$.
+  \item Under the null hypothesis (gene $g$ has no effect), these normalized ranks are uniformly distributed on $[0,1]$. The RRA score for gene $g$ is based on the minimum-order-statistic $p$-value:
+  \begin{equation}
+    \rho_g = \min_{k=1,\ldots,n_g} \; \beta_{\text{min}}\bigl(r_{g(k)};\, k,\, n_g - k + 1\bigr),
+    \label{eq:specialized:rra}
+  \end{equation}
+  where $r_{g(k)}$ is the $k$-th smallest normalized rank among the sgRNAs targeting gene $g$, and $\beta_{\text{min}}(\cdot; a, b)$ is the CDF of the $k$-th order statistic from a $\text{Uniform}(0,1)$ sample, which follows a Beta$(k, n_g - k + 1)$ distribution.
+  \item The RRA score $\rho_g$ represents the probability of observing ranks as extreme as those of gene $g$'s sgRNAs by chance. Lower scores indicate stronger evidence that the gene is a screen hit.
+\end{enumerate}
+
+\begin{keyconcept}[title={Why RRA Is Robust}]
+The power of RRA lies in its robustness to individual sgRNA failure. A gene is called significant even if one or two of its sgRNAs show no effect (due to poor cutting efficiency or off-target integration), as long as the remaining sgRNAs show consistent enrichment or depletion. This is critical because sgRNA efficiency varies substantially, and requiring all guides to show an effect would dramatically reduce sensitivity. The $\alpha$-RRA variant (used by default in MAGeCK) further improves robustness by only considering the top $\alpha$ fraction of sgRNAs per gene, discarding obvious non-functional guides.
+\end{keyconcept}
+
+MAGeCK also provides a \textbf{maximum likelihood estimation} (MLE) module for more complex experimental designs (e.g., multiple conditions, time series, paired samples), which jointly estimates gene-level effect sizes within a generalized linear model framework. The MLE module models the mean count for sgRNA $j$ in sample $c$ as:
+\begin{equation}
+  \log \mu_{jc} = \log s_c + \beta_0 + \beta_{g(j)} \cdot d_c,
+  \label{eq:specialized:mageck-mle}
+\end{equation}
+where $\beta_0$ is the baseline, $\beta_{g(j)}$ is the gene-level effect size for the gene targeted by sgRNA $j$, and $d_c$ is the design matrix entry for sample $c$. This formulation allows multi-factor designs including drug treatment, time course, and interaction effects.
+
+\begin{table}[htbp]
+\centering
+\caption[Comparison of CRISPR screen analysis tools.]{Comparison of statistical frameworks for pooled CRISPR screen analysis.}
+\label{tab:specialized:crispr-tools-comparison}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright}p{2.0cm} X c c}
+\toprule
+\textbf{Tool} & \textbf{Statistical Model} & \textbf{Multi-condition} & \textbf{Copy-number correction} \\
+\midrule
+MAGeCK-RRA & Negative binomial + Robust Rank Aggregation & No & No \\
+\addlinespace
+MAGeCK-MLE & Negative binomial GLM with gene-level effects & Yes & No \\
+\addlinespace
+BAGEL2 & Bayes Factor using essential/non-essential reference sets & No & No \\
+\addlinespace
+CRISPRcleanR & Unsupervised segmentation to correct CN bias & No & Yes \\
+\addlinespace
+JACKS & Joint Analysis of CRISPR/Cas9 Knockout Screens & Yes (multi-replicate) & No \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Genome-wide vs.\ Focused Screens}]
+Genome-wide screens ($\sim$80,000--100,000 sgRNAs for human) require large cell numbers ($>$50 million cells for 500$\times$ representation at MOI 0.3) and are best suited for unbiased discovery. Focused screens targeting specific gene sets (e.g., kinases, transcription factors, drug targets) can be performed with fewer cells, more sgRNAs per gene, and deeper sequencing, yielding higher statistical power for the genes included. Consider your biological question when choosing between the two approaches.
+\end{tipbox}
+
+
+\section{Cell-Free DNA and Liquid Biopsy}
+\label{sec:specialized:cfdna}
+
+\subsection{Circulating Tumor DNA (ctDNA)}
+\label{subsec:specialized:ctdna}
+
+Cell-free DNA (cfDNA) consists of short DNA fragments circulating in the bloodstream, released primarily by apoptotic and necrotic cells. In healthy individuals, cfDNA is predominantly derived from hematopoietic cells. In cancer patients, a fraction of cfDNA originates from tumour cells---this fraction is called \textbf{circulating tumour DNA (ctDNA)}.
+
+Key characteristics of cfDNA:
+\begin{itemize}[itemsep=2pt]
+  \item Fragment size peaks at $\sim$167\basepair{}, corresponding to one nucleosome of wrapped DNA ($\sim$147\basepair{}) plus linker DNA ($\sim$20\basepair{}). A secondary peak at $\sim$334\basepair{} (dinucleosomal) is often observed.
+  \item ctDNA fraction varies enormously: from $>$50\% in advanced metastatic cancers to $<$0.01\% in early-stage cancers.
+  \item ctDNA carries the same somatic mutations, copy number alterations, and methylation patterns as the tumour of origin.
+\end{itemize}
+
+\subsection{Non-Invasive Prenatal Testing (NIPT)}
+\label{subsec:specialized:nipt}
+
+NIPT was the first clinical application of cfDNA sequencing. Cell-free fetal DNA (cffDNA), shed from the placenta into the maternal bloodstream, represents $\sim$5--20\% of total maternal cfDNA from approximately 10 weeks of gestation. By shallow whole-genome sequencing ($\sim$0.1--0.5$\times$ coverage) of maternal plasma cfDNA, chromosomal aneuploidies in the fetus (trisomy 21, 18, 13) can be detected as subtle shifts in the proportion of reads mapping to the affected chromosome.
+
+\begin{keyconcept}[title={NIPT Statistical Principle}]
+If the fetus has trisomy 21, chromosome 21 constitutes a slightly larger fraction of total cfDNA than expected (because the placenta sheds three copies instead of two). With sufficient sequencing depth, this excess---on the order of a few percent of the fetal fraction---can be detected statistically. The higher the fetal fraction, the more reliable the test. This is why NIPT is typically performed after 10 weeks of gestation, when fetal fraction is sufficient.
+\end{keyconcept}
+
+\subsection{Cancer Detection Applications}
+\label{subsec:specialized:cancer-detection}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Multi-cancer early detection (MCED)] The GRAIL Galleri test uses cfDNA methylation patterns (rather than mutations) to detect over 50 cancer types from a single blood draw, with the ability to predict the tissue of origin. The test sequences cfDNA after methylation-sensitive enrichment and uses a machine learning classifier trained on thousands of cancer and non-cancer samples.
+
+  \item[Minimal residual disease (MRD)] After cancer treatment (surgery, chemotherapy), ctDNA monitoring can detect residual disease months before imaging detects recurrence. Tumor-informed assays (e.g., Signatera by Natera) design patient-specific panels based on the tumour's mutation profile, achieving sensitivity to detect ctDNA fractions as low as $\sim$0.001\%.
+
+  \item[Treatment monitoring] Serial ctDNA quantification tracks treatment response in real time. Rising ctDNA levels during therapy indicate treatment failure before clinical or imaging progression.
+\end{description}
+
+\subsection{Fragmentomics}
+\label{subsec:specialized:fragmentomics}
+
+The fragmentation pattern of cfDNA carries biological information beyond the sequence itself:
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Fragment size distribution] Tumour-derived cfDNA fragments tend to be slightly shorter than normal cfDNA. Fragment size profiling can enhance ctDNA detection.
+
+  \item[DELFI (DNA Evaluation of Fragments for early Interception)] Analyses genome-wide fragmentation patterns (the ratio of short to long fragments in 5\megabase{} bins) to detect cancer. The rationale is that altered chromatin organization in cancer cells produces distinct fragmentation patterns when DNA is released into the blood.
+
+  \item[Nucleosome positioning] cfDNA fragments reflect the nucleosome landscape of their cell of origin. Regions protected by nucleosomes produce fragments, while nucleosome-free regions (e.g., active promoters) are depleted. This can be used to infer gene expression and cell-of-origin from cfDNA.
+\end{description}
+
+\subsection{cfDNA Fragmentomics: From Size Distributions to Nucleosome Footprinting}
+\label{subsec:specialized:fragmentomics-detail}
+
+The fragmentation pattern of cfDNA encodes substantial biological information that extends far beyond simple tumour detection. Understanding the biophysical basis of cfDNA fragmentation is essential for interpreting fragmentomic data.
+
+\subsubsection{Nucleosomal Fragment Size Distribution}
+
+cfDNA fragments are not randomly sized. Their length distribution reflects the nucleosomal organization of the chromatin in the cells of origin. The dominant peak at $\sim$167\basepair{} corresponds to the \textbf{mono-nucleosomal unit}: 147\basepair{} of DNA wrapped around a histone octamer plus $\sim$20\basepair{} of linker DNA protected by histone H1. Subsequent peaks at $\sim$334\basepair{} (di-nucleosomal) and $\sim$501\basepair{} (tri-nucleosomal) represent fragments spanning two and three nucleosomes, respectively.
+
+Within the mono-nucleosomal peak, finer structure is apparent in high-depth sequencing data:
+\begin{itemize}[itemsep=2pt]
+  \item A \textbf{sub-nucleosomal peak at $\sim$145\basepair{}} corresponds to the nucleosome core particle without linker DNA, observed when H1 is absent or displaced.
+  \item Fragments shorter than 145\basepair{} ($\sim$80--120\basepair{}) likely arise from nucleosome remodelling events or represent DNA protected by non-histone protein complexes (e.g., transcription factors).
+  \item A 10\basepair{} periodicity within the mono-nucleosomal peak reflects the helical pitch of DNA on the nucleosome surface, with preferential cleavage occurring where the minor groove faces outward.
+\end{itemize}
+
+\subsubsection{Nucleosome Footprinting of Transcription Factor Binding}
+
+At genomic regions bound by transcription factors in the cells of origin, cfDNA shows characteristic \textbf{nucleosome depletion}---a reduction in fragment coverage centred on the TF binding site, flanked by well-positioned nucleosomes that produce phased fragment ends. This pattern enables inference of TF binding activity and, by extension, the cell type of origin from cfDNA data alone.
+
+The nucleosome footprinting approach works as follows:
+\begin{enumerate}[itemsep=2pt]
+  \item Align cfDNA reads to the reference genome and extract fragment start/end positions.
+  \item For each known TF binding site (from databases such as ENCODE or JASPAR), aggregate the coverage of cfDNA fragment midpoints in a window around the site.
+  \item Sites actively bound by TFs in the cells of origin show a characteristic ``V-shaped'' depletion profile, while unbound sites show uniform nucleosomal coverage.
+  \item By comparing the depth of the nucleosome-free region across thousands of TF binding sites, one can infer which TFs are active in the cells contributing cfDNA to the plasma.
+\end{enumerate}
+
+\subsubsection{ctDNA Detection Sensitivity}
+
+The sensitivity of ctDNA detection depends on two key parameters: the \textbf{tumour fraction} $f$ (the proportion of cfDNA molecules derived from the tumour) and the \textbf{sequencing depth} $N$ (the number of unique cfDNA molecules sampled). For a given somatic mutation present in the tumour, the expected number of mutant molecules in a cfDNA sample is $n_{\text{mut}} = f \cdot N$. To detect a mutation with confidence, one requires $n_{\text{mut}}$ to exceed the background error rate of the assay.
+
+For standard Illumina sequencing (error rate $\epsilon \approx 10^{-3}$), the limit of detection is approximately $f \geq 1\%$. With UMI-based error correction ($\epsilon \approx 10^{-5}$), detection extends to $f \geq 0.01\%$. With duplex sequencing ($\epsilon \approx 10^{-7}$), even lower tumour fractions become theoretically accessible, though the number of unique molecules sampled becomes the limiting factor.
+
+The probability of detecting at least one mutant molecule follows a binomial model:
+\begin{equation}
+  P(\text{detect}) = 1 - (1 - f)^{N} \approx 1 - e^{-fN}, \quad \text{for small } f,
+  \label{eq:specialized:ctdna-sensitivity}
+\end{equation}
+which shows that for a tumour fraction of $f = 0.01\%$, one needs to sample $N \geq 30{,}000$ unique molecules to achieve $>$95\% probability of observing at least one mutant molecule. In practice, achieving this many unique molecules requires deep sequencing (typically $>$50{,}000$\times$ raw coverage, reduced to $\sim$30{,}000$\times$ unique coverage after UMI deduplication) or enrichment for the target locus using hybrid capture panels.
+
+\begin{tipbox}[title={Tumour-Informed vs.\ Tumour-Agnostic Assays}]
+Tumour-informed assays (e.g., Signatera, Archer) design patient-specific panels targeting mutations identified from the primary tumour, achieving higher sensitivity by interrogating known variants. Tumour-agnostic assays (e.g., Guardant360, FoundationOne Liquid CDx) use fixed panels of cancer-associated genes, sacrificing some sensitivity for broader applicability when tumour tissue is unavailable. For minimal residual disease (MRD) monitoring, tumour-informed assays can detect ctDNA at fractions as low as $\sim$0.001\%, while tumour-agnostic panels typically require $\geq$0.1\% tumour fraction.
+\end{tipbox}
+
+\subsection{Methylation-Based Cancer Detection}
+\label{subsec:specialized:cfmedip}
+
+\textbf{cfMeDIP-seq} (cell-free Methylated DNA ImmunoPrecipitation sequencing) uses an antibody against 5-methylcytosine to enrich methylated cfDNA fragments, followed by sequencing. Because DNA methylation patterns are highly cell-type-specific and extensively reprogrammed in cancer, methylation-based approaches can both detect cancer and identify the tissue of origin.
+
+\subsection{Technical Challenges and Error Correction}
+\label{subsec:specialized:error-correction}
+
+Detecting rare ctDNA variants (at allele fractions below 1\%) requires error rates far below standard Illumina sequencing ($\sim$0.1\% per base). Two key strategies address this:
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[\acrshort{UMI}-based error correction] Unique molecular identifiers (UMIs) are ligated to each original DNA molecule before amplification. After sequencing, reads sharing the same UMI are grouped into ``families'' derived from the same original molecule. Errors introduced during PCR or sequencing will appear in only some family members, while true variants will be present in all. Consensus calling across UMI families suppresses errors by several orders of magnitude.
+
+  \item[Duplex sequencing] Tags both strands of the original DNA duplex with complementary UMIs, so that reads from the Watson and Crick strands can be identified. A true mutation must be present on \textit{both} strands; PCR errors or sequencing errors will appear on only one strand. This achieves error rates approaching $10^{-7}$ per base---the lowest of any sequencing method.
+\end{description}
+
+\begin{keyconcept}[title={Duplex Sequencing}]
+Duplex sequencing achieves the lowest error rate of any sequencing approach ($\sim$$10^{-7}$ per base) by requiring that a variant be present on both complementary strands of the original DNA molecule. This is mathematically equivalent to requiring two independent mutations at the same position---an extraordinarily unlikely event. Applications include ultra-rare variant detection, somatic mutagenesis studies (measuring mutation rates in normal tissues), and forensic DNA analysis.
+\end{keyconcept}
+
+
+\section{Adaptive Sampling (Oxford Nanopore)}
+\label{sec:specialized:adaptive}
+
+\subsection{Real-Time Selective Sequencing}
+\label{subsec:specialized:adaptive-principle}
+
+One of the most distinctive capabilities of Oxford Nanopore sequencing is \textbf{adaptive sampling} (also called ``Read Until''): the ability to selectively sequence specific genomic regions in real time, \textit{without any physical enrichment or capture step}. The principle is elegantly simple:
+
+\begin{enumerate}[itemsep=2pt]
+  \item A DNA molecule enters a nanopore and begins translocating.
+  \item The first few hundred bases of the molecule are sequenced and mapped in real time against a reference genome.
+  \item If the molecule maps to a region of interest, translocation continues and the full read is collected.
+  \item If the molecule maps to an off-target region, the pore voltage is reversed, ejecting the molecule and making the pore available for a new molecule.
+\end{enumerate}
+
+This software-defined enrichment achieves $\sim$2--5$\times$ enrichment for target regions relative to random sequencing, without any wet-lab modification to the library preparation.
+
+\subsection{Software and Applications}
+\label{subsec:specialized:adaptive-software}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[\software{ReadFish}] A Python framework for real-time adaptive sampling that integrates with the MinKNOW acquisition software. Users specify target regions as BED files, and ReadFish handles the real-time basecalling, mapping, and accept/reject decisions.
+
+  \item[\software{MinKNOW adaptive sampling}] ONT's built-in adaptive sampling feature, available directly in the MinKNOW software without additional tools.
+
+  \item[Applications] Adaptive sampling is particularly valuable for:
+  \begin{itemize}[itemsep=2pt]
+    \item Targeted sequencing of specific genes or regions without capture probes.
+    \item Pathogen enrichment from clinical metagenomic samples (accept pathogen reads, reject host reads).
+    \item Human host depletion (reject human reads to enrich for microbial sequences).
+    \item Selective sequencing of specific chromosomes or genomic regions of interest.
+  \end{itemize}
+\end{description}
+
+\begin{tipbox}
+Adaptive sampling works best for applications where the target represents a minority of the total DNA. If the target is $>$50\% of the genome, there is no enrichment benefit. The enrichment factor also depends on read length: longer molecules have higher mapping confidence from the initial fragment, enabling more accurate accept/reject decisions. Use long DNA extraction protocols ($>$10\kilobase{} fragment length) for optimal adaptive sampling performance.
+\end{tipbox}
+
+
+\section{Optical Genome Mapping (Bionano Saphyr)}
+\label{sec:specialized:ogm}
+
+Optical genome mapping (OGM) is not sequencing in the traditional sense, but it is an increasingly important complement to sequencing for structural variant (SV) detection. The Bionano Saphyr platform works by:
+
+\begin{enumerate}[itemsep=2pt]
+  \item Extracting ultra-high molecular weight DNA (molecules $>$150\kilobase{}, ideally $>$250\kilobase{}).
+  \item Labelling the DNA at specific sequence motifs (typically the 6-bp motif CTTAAG) with fluorescent tags using the DLE-1 enzyme.
+  \item Linearizing the labelled molecules in nanochannel arrays and imaging the fluorescent label pattern.
+  \item Comparing the observed label pattern to the expected pattern from a reference genome to detect structural variants.
+\end{enumerate}
+
+OGM is particularly powerful for detecting:
+\begin{itemize}[itemsep=2pt]
+  \item Large structural variants ($>$500\basepair{}) including deletions, duplications, inversions, and translocations.
+  \item Complex rearrangements in cancer genomes and constitutional chromosomal abnormalities.
+  \item Repeat expansions (e.g., in trinucleotide repeat disorders such as Friedreich's ataxia, Fragile X syndrome).
+  \item Balanced translocations that are invisible to short-read sequencing and copy-number arrays.
+\end{itemize}
+
+\begin{warningbox}
+OGM does not provide nucleotide-level sequence information. It detects structural variants based on label pattern disruption, but it cannot resolve the exact breakpoint sequence. For full characterization, OGM findings should be confirmed and refined by long-read sequencing or targeted PCR and Sanger sequencing of breakpoint junctions.
+\end{warningbox}
+
+
+\section{Epitranscriptomics: RNA Modifications}
+\label{sec:specialized:epitranscriptomics}
+
+\subsection{The RNA Modification Landscape}
+\label{subsec:specialized:rna-mods}
+
+Just as DNA is chemically modified (methylation, hydroxymethylation), RNA carries over 170 known chemical modifications that regulate its function. The most abundant and well-studied modifications in mRNA include:
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[N$^6$-methyladenosine (m$^6$A)] The most abundant internal modification in eukaryotic mRNA. Found predominantly near stop codons and in 3'UTRs. Regulated by ``writer'' enzymes (METTL3/METTL14 complex), ``eraser'' enzymes (FTO, ALKBH5), and ``reader'' proteins (YTHDF1/2/3, YTHDC1/2). Influences mRNA stability, splicing, translation efficiency, and nuclear export.
+
+  \item[5-methylcytosine (m$^5$C)] Found in both mRNA and tRNA. Written by NSUN2 and DNMT2. Implicated in mRNA stability and nuclear--cytoplasmic export.
+
+  \item[Pseudouridine ($\Psi$)] The most abundant RNA modification overall (highly prevalent in rRNA and tRNA). In mRNA, $\Psi$ can affect translation fidelity and mRNA stability. Detected by $\Psi$-seq or bisulfite-based methods.
+
+  \item[N$^1$-methyladenosine (m$^1$A)] Found in tRNA and rRNA; less common in mRNA. m$^1$A in the 5'UTR may promote cap-independent translation under stress conditions.
+\end{description}
+
+\subsection{Sequencing-Based Detection of RNA Modifications}
+\label{subsec:specialized:rna-mod-detection}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[MeRIP-seq / m$^6$A-seq] The most widely used method for transcriptome-wide m$^6$A mapping. mRNA is fragmented ($\sim$100\,nt), immunoprecipitated with an anti-m$^6$A antibody, and sequenced. Enriched regions (``m$^6$A peaks'') are identified by comparing IP to input libraries. Resolution is limited to $\sim$100--200\,nt (the fragment size).
+
+  \item[miCLIP (m$^6$A individual-nucleotide-resolution cross-linking and immunoprecipitation)] Achieves single-nucleotide resolution by UV cross-linking the anti-m$^6$A antibody to the RNA, creating characteristic mutation signatures at the cross-link site.
+
+  \item[DART-seq (Deamination Adjacent to RNA modification Targets)] An antibody-free approach that fuses the m$^6$A-binding YTH domain to the cytidine deaminase APOBEC1. The fusion protein binds m$^6$A sites and deaminates nearby cytidines to uridines, creating C-to-U mutations detectable by standard RNA-seq. DART-seq requires much less input RNA than MeRIP-seq.
+
+  \item[MAZTER-seq] Exploits the m$^6$A-sensitive RNase MazF, which cleaves at unmethylated ACA motifs but not at methylated m$^6$AACA motifs. Methylated sites appear as uncleaved positions in the sequencing data.
+
+  \item[Direct nanopore detection] Oxford Nanopore direct RNA sequencing can detect RNA modifications in native RNA without any chemical treatment. The modifications alter the electrical signal as the RNA translocates through the pore. Computational tools (\software{m6Anet}, \software{ELIGOS}, \software{Nanom6A}) use neural networks to classify modified vs.\ unmodified bases from the raw signal. This is the only method that preserves the full-length transcript context and avoids all biochemical biases.
+\end{description}
+
+\begin{warningbox}
+MeRIP-seq/m$^6$A-seq has significant limitations: low resolution ($\sim$100--200\,nt), high input requirements ($>$5\,$\mu$g poly-A+ RNA), antibody cross-reactivity (the anti-m$^6$A antibody can also bind m$^6$Am, the cap-adjacent modification), and batch-dependent variability. Results should be validated with orthogonal methods (e.g., miCLIP, DART-seq, or site-specific qPCR after SELECT) before drawing strong biological conclusions.
+\end{warningbox}
+
+
+\section{Telomere and Centromere Sequencing: T2T Approaches}
+\label{sec:specialized:t2t}
+
+The Telomere-to-Telomere (T2T) Consortium completed the first truly complete human genome assembly in 2022, filling in the $\sim$8\% of the genome (nearly 200\megabase{}) that was missing from the GRCh38 reference. This achievement was enabled by:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Ultra-long nanopore reads} ($>$100\kilobase{}) that spanned centromeric satellite repeats.
+  \item \textbf{PacBio HiFi reads} that provided the high accuracy needed for consensus polishing.
+  \item The use of a complete hydatidiform mole cell line (CHM13), which is effectively haploid, eliminating the challenge of separating homologous chromosomes.
+\end{itemize}
+
+The T2T-CHM13 assembly revealed complete centromere structures (megabases of alpha-satellite repeats), full-length ribosomal DNA arrays, segmental duplications, and hundreds of previously missing protein-coding genes. Assembling telomeric and centromeric regions remains challenging even with current long-read technology, requiring specialized assembly algorithms (e.g., \software{verkko}) and careful manual curation.
+
+
+\section{Chromosome Conformation in Clinical Settings}
+\label{sec:specialized:clinical-hic}
+
+While Hi-C and related chromosome conformation capture methods were originally research tools, they are increasingly entering clinical settings, particularly for:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Structural variant detection:} Hi-C data intrinsically detect inter-chromosomal translocations (visible as off-diagonal contact signal) and large-scale inversions (visible as altered contact patterns), including balanced rearrangements that are invisible to copy-number arrays.
+  \item \textbf{Haplotype phasing:} Hi-C links distant genomic loci that reside on the same chromosome, enabling chromosome-scale haplotype phasing.
+  \item \textbf{Cancer karyotyping:} Hi-C-based approaches (e.g., from Arima Genomics or Phase Genomics) can replace traditional cytogenetic karyotyping for detecting chromosomal rearrangements in haematological malignancies.
+\end{itemize}
+
+
+\section{Practical Workflow: Ribo-seq Processing}
+\label{sec:specialized:riboseq-workflow}
+
+\subsection{Snakemake Workflow}
+\label{subsec:specialized:riboseq-snakemake}
+
+\begin{lstlisting}[language=Python, caption={Snakemake workflow for Ribo-seq analysis.}, label={lst:specialized:riboseq-snakemake}]
+# Snakefile for Ribo-seq Analysis Pipeline
+configfile: "config/riboseq_config.yaml"
+
+SAMPLES = config["samples"]
+GENOME = config["genome_fasta"]
+ANNOTATION = config["gtf"]
+RRNA_INDEX = config["rrna_bowtie2_index"]
+STAR_INDEX = config["star_index"]
+
+rule all:
+    input:
+        expand("results/{sample}/ribocode/"
+               "ORF_result.txt", sample=SAMPLES),
+        expand("results/{sample}/translational_efficiency.tsv",
+               sample=SAMPLES),
+        "results/qc/multiqc_report.html"
+
+rule trim_adapters:
+    """Trim adapters from Ribo-seq reads."""
+    input:
+        fastq="data/{sample}.fastq.gz"
+    output:
+        trimmed="results/{sample}/trimmed/{sample}.fastq.gz"
+    threads: 4
+    shell:
+        """
+        cutadapt -a AGATCGGAAGAGCACACGTCT \
+            --minimum-length 20 --maximum-length 35 \
+            -j {threads} \
+            -o {output.trimmed} {input.fastq}
+        """
+
+rule remove_rrna:
+    """Remove rRNA contamination with Bowtie2."""
+    input:
+        fastq="results/{sample}/trimmed/{sample}.fastq.gz"
+    output:
+        non_rrna="results/{sample}/filtered/"
+                 "{sample}_no_rrna.fastq.gz",
+        rrna_log="results/{sample}/filtered/rrna_stats.txt"
+    params:
+        index=RRNA_INDEX
+    threads: 8
+    shell:
+        """
+        bowtie2 -x {params.index} \
+            -U {input.fastq} \
+            --un-gz {output.non_rrna} \
+            -p {threads} --very-sensitive \
+            -S /dev/null \
+            2> {output.rrna_log}
+        """
+
+rule star_align:
+    """Align to genome/transcriptome with STAR."""
+    input:
+        fastq="results/{sample}/filtered/"
+              "{sample}_no_rrna.fastq.gz"
+    output:
+        bam="results/{sample}/aligned/"
+            "{sample}_Aligned.toTranscriptome.out.bam",
+        genome_bam="results/{sample}/aligned/"
+                   "{sample}_Aligned.sortedByCoord.out.bam"
+    params:
+        index=STAR_INDEX,
+        prefix="results/{sample}/aligned/{sample}_"
+    threads: 12
+    resources:
+        mem_mb=40000
+    shell:
+        """
+        STAR --runThreadN {threads} \
+            --genomeDir {params.index} \
+            --readFilesIn {input.fastq} \
+            --readFilesCommand zcat \
+            --outSAMtype BAM SortedByCoordinate \
+            --quantMode TranscriptomeSAM \
+            --outFilterMultimapNmax 1 \
+            --outFilterMismatchNmax 2 \
+            --alignEndsType EndToEnd \
+            --outFileNamePrefix {params.prefix}
+        """
+
+rule psite_offset:
+    """Determine P-site offset from read length."""
+    input:
+        bam="results/{sample}/aligned/"
+            "{sample}_Aligned.toTranscriptome.out.bam"
+    output:
+        offsets="results/{sample}/psite/"
+                "psite_offsets.txt",
+        plots="results/{sample}/psite/periodicity.pdf"
+    params:
+        annotation=ANNOTATION
+    script:
+        "scripts/calculate_psite_offset.R"
+
+rule ribocode:
+    """Identify translated ORFs with RiboCode."""
+    input:
+        bam="results/{sample}/aligned/"
+            "{sample}_Aligned.toTranscriptome.out.bam"
+    output:
+        orfs="results/{sample}/ribocode/ORF_result.txt"
+    params:
+        annotation=ANNOTATION,
+        outdir="results/{sample}/ribocode"
+    conda:
+        "envs/ribocode.yaml"
+    shell:
+        """
+        prepare_transcripts -g {params.annotation} \
+            -o {params.outdir}/annot
+        RiboCode -a {params.outdir}/annot \
+            -c {params.outdir}/config.txt \
+            -l no -g -o {params.outdir}/ORF_result.txt
+        """
+
+rule translational_efficiency:
+    """Calculate TE as RPF density / mRNA density."""
+    input:
+        rpf_bam="results/{sample}/aligned/"
+                "{sample}_Aligned.sortedByCoord.out.bam",
+        mrna_counts="data/{sample}_rnaseq_counts.tsv"
+    output:
+        te="results/{sample}/translational_efficiency.tsv"
+    params:
+        annotation=ANNOTATION
+    script:
+        "scripts/calc_te.R"
+
+rule multiqc:
+    """Aggregate QC reports."""
+    input:
+        expand("results/{sample}/aligned/"
+               "{sample}_Aligned.sortedByCoord.out.bam",
+               sample=SAMPLES)
+    output:
+        "results/qc/multiqc_report.html"
+    shell:
+        "multiqc results/ -o results/qc/"
+\end{lstlisting}
+
+\subsection{Nextflow Workflow}
+\label{subsec:specialized:riboseq-nextflow}
+
+\begin{lstlisting}[language=Java, caption={Nextflow workflow for Ribo-seq analysis.}, label={lst:specialized:riboseq-nextflow}]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl=2
+
+params.reads        = "data/*.fastq.gz"
+params.rrna_index   = "/ref/rrna_bowtie2"
+params.star_index   = "/ref/star_index"
+params.gtf          = "/ref/gencode.v44.annotation.gtf"
+params.outdir       = "results"
+params.adapter      = "AGATCGGAAGAGCACACGTCT"
+params.min_length   = 20
+params.max_length   = 35
+
+Channel
+    .fromPath(params.reads)
+    .map { file ->
+        def sample = file.simpleName
+        tuple(sample, file)
+    }
+    .set { reads_ch }
+
+process TRIM_ADAPTERS {
+    tag "$sample"
+    cpus 4
+    container 'quay.io/biocontainers/cutadapt:4.4'
+    publishDir "${params.outdir}/${sample}/trimmed"
+
+    input:
+    tuple val(sample), path(reads)
+
+    output:
+    tuple val(sample), path("${sample}_trimmed.fq.gz"),
+          emit: trimmed
+
+    script:
+    """
+    cutadapt -a ${params.adapter} \
+        --minimum-length ${params.min_length} \
+        --maximum-length ${params.max_length} \
+        -j ${task.cpus} \
+        -o ${sample}_trimmed.fq.gz ${reads}
+    """
+}
+
+process REMOVE_RRNA {
+    tag "$sample"
+    cpus 8
+    memory '16 GB'
+    container 'quay.io/biocontainers/bowtie2:2.5.2'
+
+    input:
+    tuple val(sample), path(trimmed)
+
+    output:
+    tuple val(sample),
+          path("${sample}_no_rrna.fq.gz"),
+          emit: filtered
+
+    script:
+    """
+    bowtie2 -x ${params.rrna_index} \
+        -U ${trimmed} \
+        --un-gz ${sample}_no_rrna.fq.gz \
+        -p ${task.cpus} --very-sensitive \
+        -S /dev/null
+    """
+}
+
+process STAR_ALIGN {
+    tag "$sample"
+    cpus 12
+    memory '40 GB'
+    container 'quay.io/biocontainers/star:2.7.11b'
+    publishDir "${params.outdir}/${sample}/aligned",
+               mode: 'copy'
+
+    input:
+    tuple val(sample), path(filtered)
+
+    output:
+    tuple val(sample),
+        path("${sample}_Aligned.toTranscriptome.out.bam"),
+        emit: transcriptome_bam
+    tuple val(sample),
+        path("${sample}_Aligned.sortedByCoord.out.bam"),
+        emit: genome_bam
+
+    script:
+    """
+    STAR --runThreadN ${task.cpus} \
+        --genomeDir ${params.star_index} \
+        --readFilesIn ${filtered} \
+        --readFilesCommand zcat \
+        --outSAMtype BAM SortedByCoordinate \
+        --quantMode TranscriptomeSAM \
+        --outFilterMultimapNmax 1 \
+        --outFilterMismatchNmax 2 \
+        --alignEndsType EndToEnd \
+        --outFileNamePrefix ${sample}_
+    """
+}
+
+process RIBOCODE {
+    tag "$sample"
+    cpus 4
+    memory '16 GB'
+    container 'ribocode:latest'
+    publishDir "${params.outdir}/${sample}/ribocode",
+               mode: 'copy'
+
+    input:
+    tuple val(sample), path(trans_bam)
+
+    output:
+    tuple val(sample), path("ORF_result.txt"),
+          emit: orfs
+
+    script:
+    """
+    prepare_transcripts -g ${params.gtf} -o annot
+    RiboCode -a annot \
+        -c config.txt -l no -g \
+        -o ORF_result.txt
+    """
+}
+
+workflow {
+    TRIM_ADAPTERS(reads_ch)
+    REMOVE_RRNA(TRIM_ADAPTERS.out.trimmed)
+    STAR_ALIGN(REMOVE_RRNA.out.filtered)
+    RIBOCODE(STAR_ALIGN.out.transcriptome_bam)
+}
+\end{lstlisting}
+
+
+\section{Comparison of Specialized Applications}
+\label{sec:specialized:comparison-table}
+
+\begin{table}[htbp]
+\centering
+\caption[Comparison of specialized sequencing applications.]{Comparison of specialized sequencing applications covered in this chapter, summarizing what each measures, typical sequencing platform, and key analytical tools.}
+\label{tab:specialized:comparison}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright}p{2.2cm} X X c}
+\toprule
+\textbf{Application} & \textbf{What It Measures} & \textbf{Key Tools} & \textbf{Platform} \\
+\midrule
+Ribo-seq & Active translation at codon resolution & RiboCode, ORFquant, Ribotricer & Illumina SE50 \\
+\addlinespace
+CRISPR screens & Gene fitness / function via guide enrichment & MAGeCK, BAGEL2, CRISPRcleanR & Illumina SE/PE75 \\
+\addlinespace
+cfDNA / liquid biopsy & Tumour mutations, methylation from blood & UMI tools, DELFI, Galleri & Illumina (deep) \\
+\addlinespace
+Duplex seq. & Ultra-rare variants ($10^{-7}$ error rate) & fgbio, AGeNT & Illumina (deep) \\
+\addlinespace
+Adaptive sampling & Targeted regions (software-defined) & ReadFish, MinKNOW & ONT \\
+\addlinespace
+Optical genome mapping & Structural variants, repeat expansions & Bionano Access/Solve & Bionano Saphyr \\
+\addlinespace
+MeRIP-seq & m$^6$A RNA methylation & MACS2, exomePeak2 & Illumina PE150 \\
+\addlinespace
+Nanopore RNA mods & RNA modifications (native RNA) & m6Anet, ELIGOS & ONT direct RNA \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\section{Summary}
+\label{sec:specialized:summary}
+
+This chapter has explored specialized sequencing applications that extend the reach of NGS into domains beyond standard genomics and transcriptomics. Key takeaways include:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Ribo-seq} captures the translational landscape at codon-level resolution, revealing novel ORFs and translational regulation that RNA-seq alone cannot detect. The characteristic three-nucleotide periodicity provides a unique quality control signature.
+  \item \textbf{Pooled CRISPR screens} enable systematic, genome-scale mapping of gene function by combining CRISPR perturbation with sequencing readout of guide representation. CRISPRi and CRISPRa extend this to repression and activation modalities, respectively.
+  \item \textbf{Cell-free DNA analysis} enables non-invasive cancer detection, prenatal testing, and treatment monitoring from a simple blood draw. Fragmentomics and methylation-based approaches add additional layers of information beyond mutation detection.
+  \item \textbf{Error-corrected sequencing} (UMI consensus, duplex sequencing) pushes error rates to $10^{-7}$, enabling detection of ultra-rare variants in applications ranging from cancer liquid biopsy to mutagenesis studies.
+  \item \textbf{Adaptive sampling} on Oxford Nanopore platforms provides software-defined enrichment, removing the need for physical capture in targeted sequencing applications.
+  \item \textbf{Epitranscriptomics} reveals the regulatory layer of RNA modifications, with methods ranging from antibody-based enrichment (MeRIP-seq) to direct nanopore detection of modifications in native RNA.
+  \item \textbf{T2T sequencing} and \textbf{optical genome mapping} address genomic regions---centromeres, telomeres, complex structural variants---that remain challenging for standard short-read approaches.
+\end{itemize}
+
+Each of these applications leverages the same fundamental sequencing platforms discussed in earlier chapters, illustrating the remarkable versatility of modern sequencing technology when combined with creative library preparation strategies and targeted analytical approaches.

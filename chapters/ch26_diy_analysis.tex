@@ -1,0 +1,2073 @@
+\chapter{DIY Analysis: From Raw Reads to Results}
+\label{ch:diyanalysis}
+
+\begin{keyconcept}
+This chapter is your hands-on laboratory notebook for long-read nanopore data analysis. We walk through every step---from configuring your computer and basecalling raw signal data to assembling bacterial genomes, identifying species from metagenomic samples, and calling variants in human genomes. Every command is given in full, every parameter is explained, and complete workflow implementations in both \textbf{Snakemake} and \textbf{Nextflow} are provided so that you can reproduce each analysis end-to-end. Whether you are a bench scientist running your first MinION experiment or a bioinformatician building production pipelines, this chapter gives you the tools to go from raw reads to publication-ready results on your own hardware.
+\end{keyconcept}
+
+Throughout this chapter we assume you are working with Oxford Nanopore Technologies (\acrshort{ONT}) data, although many of the downstream tools (assembly, annotation, variant calling) apply equally to PacBio long reads. Where commands differ between platforms, we note the alternatives. All tools are open-source and freely available through \software{conda}/\software{mamba}.
+
+%% ============================================================
+\section{Setting Up Your Environment}
+\label{sec:diyanalysis:setup}
+%% ============================================================
+
+Before you can analyse a single read, you need a properly configured computing environment. This section covers hardware requirements, software installation, and test datasets you can use to validate your setup.
+
+\subsection{Hardware Requirements}
+\label{subsec:diyanalysis:hardware}
+
+The computational demands of long-read analysis vary enormously depending on the task. \Cref{tab:diy_hardware} summarises minimum and recommended hardware for the analyses covered in this chapter.
+
+\begin{table}[htbp]
+\centering
+\caption{Hardware requirements for nanopore data analysis.}
+\label{tab:diy_hardware}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+\textbf{Component} & \textbf{Minimum} & \textbf{Recommended} \\
+\midrule
+CPU & 4 cores (Intel i5 / AMD Ryzen 5) & 8+ cores (Intel i7/i9 / AMD Ryzen 7/9) \\
+RAM & 8\,GB & 32\,GB (64\,GB for human genomes) \\
+Storage & 256\,GB SSD (SATA) & 1\,TB+ NVMe SSD \\
+GPU & None (CPU basecalling only) & NVIDIA RTX 3060+ (8\,GB VRAM) for Dorado \\
+OS & Ubuntu 20.04+ / macOS 12+ & Ubuntu 22.04 LTS \\
+Network & Broadband for tool downloads & High-speed for SRA downloads \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{warningbox}[title={Storage Fills Up Fast}]
+A single MinION flow cell produces 10--50\,GB of POD5 raw signal data. After basecalling, the resulting \acrshort{BAM} file can be 5--20\,GB. During assembly, temporary files can consume 3--5$\times$ the input size. Monitor disk usage with \texttt{df -h} and plan for at least 3$\times$ the raw data size in free space. NVMe SSDs are strongly recommended---assembly tools like \software{Flye} perform heavy random I/O that is painfully slow on spinning hard drives.
+\end{warningbox}
+
+\subsection{Installing Software with Conda}
+\label{subsec:diyanalysis:conda}
+
+We use \software{mamba} (a fast drop-in replacement for \software{conda}) and the \texttt{bioconda} channel to install all tools into isolated environments, preventing version conflicts.
+
+\begin{lstlisting}[language=bash,caption={Installing Miniforge and creating the analysis environment.},label=lst:diy-conda-setup]
+# Step 1: Install Miniforge (includes mamba)
+curl -L -O https://github.com/conda-forge/miniforge/releases/\
+latest/download/Miniforge3-Linux-x86_64.sh
+bash Miniforge3-Linux-x86_64.sh
+# Restart your shell or run: source ~/.bashrc
+
+# Step 2: Create the nanopore analysis environment
+mamba create -n nanopore -c conda-forge -c bioconda \
+  dorado=0.8.0 \
+  nanoplot=1.42.0 \
+  pycoqc=2.5.2 \
+  fastqc=0.12.1 \
+  multiqc=1.21 \
+  chopper=0.9.0 \
+  flye=2.9.5 \
+  medaka=2.0.1 \
+  quast=5.2.0 \
+  busco=5.7.1 \
+  bakta=1.9.4 \
+  kraken2=2.1.3 \
+  bracken=2.9 \
+  krona=2.8.1 \
+  minimap2=2.28 \
+  samtools=1.21 \
+  bcftools=1.21 \
+  snakemake=8.25.0 \
+  nextflow=24.04.0
+
+# Step 3: Activate the environment
+mamba activate nanopore
+
+# Step 4: Verify key tools
+dorado --version
+flye --version
+minimap2 --version
+samtools --version | head -1
+
+# Step 5: Export for reproducibility
+mamba env export > environment.yml
+\end{lstlisting}
+
+\begin{tipbox}[title={Separate Environments for Conflicting Tools}]
+Some tools have conflicting dependencies. If \software{mamba create} fails due to unsolvable conflicts, split tools into separate environments. For example, \software{Clair3} often requires its own environment. Use \texttt{mamba create -n clair3 -c bioconda clair3} separately. Snakemake and Nextflow can activate different environments per rule/process automatically.
+\end{tipbox}
+
+\subsection{Test Datasets}
+\label{subsec:diyanalysis:testdata}
+
+Practise with real-world datasets before analysing your own data. \Cref{tab:diy_testdata} lists publicly available nanopore datasets suitable for the walkthroughs in this chapter.
+
+\begin{table}[htbp]
+\centering
+\caption{Recommended test datasets from the \acrshort{SRA} and other public repositories.}
+\label{tab:diy_testdata}
+\begin{tabularx}{\textwidth}{@{}llXl@{}}
+\toprule
+\textbf{Walkthrough} & \textbf{Accession} & \textbf{Description} & \textbf{Size} \\
+\midrule
+Bacterial assembly & SRR28370649 & \species{E. coli} K-12 MG1655, R10.4.1, SUP basecall & $\sim$1.5\,GB \\
+Bacterial assembly & ERR3813594 & \species{E. coli} K-12, R9.4.1 & $\sim$2.0\,GB \\
+Metagenomics & SRR27498888 & ZymoBIOMICS mock community, R10.4.1 & $\sim$3.0\,GB \\
+Human variant calling & HG002 (GIAB) & Genome in a Bottle, ONT R10.4.1, chr20 subset & $\sim$5.0\,GB \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{lstlisting}[language=bash,caption={Downloading test data from the SRA.},label=lst:diy-download]
+# Install SRA Toolkit if not already present
+mamba install -c bioconda sra-tools
+
+# Download E. coli test dataset
+prefetch SRR28370649
+fasterq-dump --threads 4 SRR28370649 -O data/ecoli/
+
+# For BAM input (preferred for ONT data)
+# Many ONT datasets are deposited as uBAM; check the SRA entry
+wget -P data/ecoli/ \
+  https://sra-pub-src-1.s3.amazonaws.com/SRR28370649/reads.bam
+
+# Verify download integrity
+samtools quickcheck data/ecoli/reads.bam && echo "OK" || echo "CORRUPT"
+\end{lstlisting}
+
+%% ============================================================
+\section{Basecalling with Dorado}
+\label{sec:diyanalysis:basecalling}
+%% ============================================================
+
+Basecalling is the process of converting raw electrical signal data (POD5 files) into nucleotide sequences. \software{Dorado} is Oxford Nanopore's current production basecaller, replacing the older \software{Guppy}. It supports GPU acceleration and produces output directly in \acrshort{BAM} format.
+
+\subsection{Basecalling Models}
+\label{subsec:diyanalysis:models}
+
+Dorado offers three model tiers that trade speed for accuracy. \Cref{tab:diy_models} compares them.
+
+\begin{table}[htbp]
+\centering
+\caption{Dorado basecalling model comparison (R10.4.1 chemistry, v4.3.0 models).}
+\label{tab:diy_models}
+\begin{tabularx}{\textwidth}{@{}lccXc@{}}
+\toprule
+\textbf{Model} & \textbf{Simplex Accuracy} & \textbf{Speed (GPU)} & \textbf{Use Case} & \textbf{GPU Required?} \\
+\midrule
+\texttt{fast} & $\sim$Q15 (96.8\%) & $\sim$5$\times$10$^6$ bases/s & Real-time monitoring, quick previews & Recommended \\
+\texttt{hac} & $\sim$Q20 (99.0\%) & $\sim$2$\times$10$^6$ bases/s & Standard analyses, metagenomics & Recommended \\
+\texttt{sup} & $\sim$Q23 (99.5\%) & $\sim$0.5$\times$10$^6$ bases/s & Variant calling, assembly, publication-quality & Required \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{keyconcept}[title={Which Model Should I Use?}]
+For bacterial genome assembly and metagenomics, \texttt{hac} (high-accuracy) is usually sufficient and 4$\times$ faster than \texttt{sup}. For variant calling in human or complex genomes where every tenth of a percent of accuracy matters, always use \texttt{sup} (super-accuracy). Never use \texttt{fast} for any downstream analysis that requires accurate consensus---it is intended only for real-time monitoring during sequencing.
+\end{keyconcept}
+
+\subsection{Running Dorado}
+\label{subsec:diyanalysis:dorado_run}
+
+\begin{lstlisting}[language=bash,caption={Basecalling with Dorado.},label=lst:diy-dorado]
+# List available models
+dorado download --list
+
+# Download the SUP model for R10.4.1 chemistry
+dorado download --model dna_r10.4.1_e8.2_400bps_sup@v4.3.0
+
+# Basecall POD5 files to unaligned BAM
+dorado basecaller \
+  dna_r10.4.1_e8.2_400bps_sup@v4.3.0 \
+  pod5_dir/ \
+  --device cuda:0 \
+  --emit-moves \
+  > basecalled.bam
+
+# Check the output
+samtools view -c basecalled.bam   # total reads
+samtools stats basecalled.bam | grep "average length"
+
+# If you need FASTQ output instead (some tools require it)
+samtools fastq basecalled.bam | gzip > basecalled.fastq.gz
+\end{lstlisting}
+
+\begin{warningbox}[title={GPU vs CPU Basecalling}]
+CPU basecalling with the \texttt{sup} model is extremely slow---a single MinION flow cell can take \textbf{days to weeks} on a modern CPU. With an NVIDIA RTX 4090, the same data takes approximately 2--4 hours. If you do not have a GPU, consider: (1) using the \texttt{fast} or \texttt{hac} model, (2) using a cloud GPU instance (see \cref{sec:diyanalysis:cloud}), or (3) using the basecalled data already produced by MinKNOW during the sequencing run. The \texttt{--device cpu} flag forces CPU mode: \texttt{dorado basecaller model pod5/ --device cpu > out.bam}.
+\end{warningbox}
+
+\subsection{Understanding BAM Output}
+\label{subsec:diyanalysis:bam_output}
+
+Dorado produces \textbf{unaligned BAM} files (uBAM). Unlike traditional aligned BAM files, these contain sequence and quality scores but no alignment information. The key advantage of uBAM over \acrshort{FASTQ} is that it preserves rich metadata:
+
+\begin{itemize}[nosep]
+  \item \textbf{Move table}: Signal-to-base correspondence for re-basecalling or modified-base calling.
+  \item \textbf{Read group information}: Flow cell ID, run ID, basecall model version.
+  \item \textbf{Base modification tags}: If modified-base calling was enabled (\texttt{--modified-bases 5mCG\_5hmCG}).
+  \item \textbf{Duplex information}: If duplex basecalling was performed.
+\end{itemize}
+
+\begin{lstlisting}[language=bash,caption={Inspecting uBAM metadata.},label=lst:diy-bam-inspect]
+# View the header (contains read group and program info)
+samtools view -H basecalled.bam | head -20
+
+# View the first read with all tags
+samtools view basecalled.bam | head -1 | tr '\t' '\n'
+
+# Summary statistics
+samtools stats basecalled.bam > basecall_stats.txt
+grep ^SN basecall_stats.txt | head -15
+\end{lstlisting}
+
+%% ============================================================
+\section{Quality Control}
+\label{sec:diyanalysis:qc}
+%% ============================================================
+
+Quality control (\acrshort{QC}) is the critical checkpoint between raw data and analysis. Poor-quality data will produce poor-quality results regardless of how sophisticated your pipeline is. This section covers \acrshort{QC} tools for nanopore data and provides a decision framework for identifying problems.
+
+\subsection{NanoPlot: Nanopore-Specific QC}
+\label{subsec:diyanalysis:nanoplot}
+
+\software{NanoPlot} generates publication-quality plots and summary statistics tailored to long-read data.
+
+\begin{lstlisting}[language=bash,caption={Running NanoPlot on basecalled data.},label=lst:diy-nanoplot]
+# From BAM file (recommended)
+NanoPlot --bam basecalled.bam \
+  --outdir qc/nanoplot \
+  --threads 8 \
+  --loglength \
+  --plots dot kde \
+  --N50 \
+  --title "E. coli MinION Run"
+
+# From FASTQ file
+NanoPlot --fastq basecalled.fastq.gz \
+  --outdir qc/nanoplot_fq \
+  --threads 8
+
+# From sequencing_summary.txt (fastest, but less detail)
+NanoPlot --summary sequencing_summary.txt \
+  --outdir qc/nanoplot_summary \
+  --threads 4
+\end{lstlisting}
+
+Key metrics to examine in the NanoPlot output:
+\begin{itemize}[nosep]
+  \item \textbf{Mean/median read length}: Expect 5--20\kilobase{} for standard ligation libraries, 200--500\basepair{} for rapid barcoding.
+  \item \textbf{N50 read length}: The length at which 50\% of total bases are in reads of this length or longer. Higher is better; $>$10\kilobase{} is good for assembly.
+  \item \textbf{Mean/median quality score}: Q15+ for hac, Q20+ for sup models.
+  \item \textbf{Total bases}: Divide by genome size to estimate coverage (e.g., 500\megabase{} / 4.6\megabase{} $\approx$ 109$\times$ for \species{E. coli}).
+  \item \textbf{Read length distribution}: Look for a unimodal distribution. A spike at very short lengths may indicate DNA degradation or adapter artifacts.
+\end{itemize}
+
+\subsection{pycoQC: Sequencing Run QC}
+\label{subsec:diyanalysis:pycoqc}
+
+\software{pycoQC} uses the \texttt{sequencing\_summary.txt} file generated by MinKNOW to provide an interactive HTML report focused on the sequencing run itself (rather than the reads).
+
+\begin{lstlisting}[language=bash,caption={Running pycoQC for run-level quality control.},label=lst:diy-pycoqc]
+# Generate interactive HTML report
+pycoQC \
+  --summary_file sequencing_summary.txt \
+  --html_outfile qc/pycoqc_report.html \
+  --min_pass_qual 8
+
+# Generate JSON for programmatic parsing
+pycoQC \
+  --summary_file sequencing_summary.txt \
+  --json_outfile qc/pycoqc_report.json
+\end{lstlisting}
+
+pycoQC reports include pore activity over time, read length vs quality scatter plots, channel activity heatmaps, and throughput curves. These are particularly useful for diagnosing flow cell problems: a sudden drop in active pores may indicate a blockage or temperature issue, while a bimodal quality distribution could suggest a mixed library.
+
+\subsection{FastQC and MultiQC}
+\label{subsec:diyanalysis:fastqc}
+
+Although designed for short reads, \software{FastQC} provides useful per-base quality profiles and adapter content checks for any \acrshort{FASTQ} data. \software{MultiQC} aggregates reports from multiple tools into a single interactive dashboard.
+
+\begin{lstlisting}[language=bash,caption={Running FastQC and MultiQC.},label=lst:diy-fastqc]
+# Run FastQC on basecalled reads
+fastqc basecalled.fastq.gz \
+  --outdir qc/fastqc \
+  --threads 4
+
+# Aggregate all QC results with MultiQC
+multiqc qc/ \
+  --outdir qc/multiqc \
+  --title "Nanopore Run QC Summary" \
+  --force
+\end{lstlisting}
+
+\subsection{QC Decision Table}
+\label{subsec:diyanalysis:qc_decision}
+
+\Cref{tab:diy_qc_decision} provides a systematic framework for interpreting \acrshort{QC} results and deciding on corrective actions.
+
+\begin{table}[htbp]
+\centering
+\caption{QC metrics, acceptable ranges, and recommended actions for nanopore data.}
+\label{tab:diy_qc_decision}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+\textbf{Metric} & \textbf{Acceptable Range} & \textbf{Action if Outside Range} \\
+\midrule
+Mean read quality & $\geq$Q10 (hac), $\geq$Q18 (sup) & Re-basecall with correct model; check chemistry version \\
+Median read length & $>$1\kilobase{} (ligation library) & Check DNA extraction quality; fragment analysis may show degradation \\
+N50 read length & $>$5\kilobase{} (ligation) & Optimise DNA extraction (avoid vortexing); use HMW extraction protocol \\
+Total yield & $>$1\gigabase{} (MinION) & Check pore count; may need a new flow cell or longer run \\
+Active pores at start & $>$800 (MinION) & Flow cell quality issue; contact ONT support \\
+Pore occupancy & $>$50\% & Adjust library loading amount (too little DNA) \\
+Read length distribution & Unimodal, no spike at $<$200\basepair{} & Filter short reads with \software{chopper}; adapter trimming issue \\
+Adapter content & $<$5\% of reads with residual adapters & Re-run adapter trimming; check library prep protocol \\
+Chimeric reads & $<$2\% estimated chimeras & Filter with quality/length cutoffs; avoid rapid library prep for assembly \\
+Coverage uniformity & $<$3$\times$ coefficient of variation across genome & Increase total coverage; check for GC bias \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={When to Stop Sequencing}]
+For bacterial genome assembly, you typically need 50--100$\times$ coverage. For a 5\megabase{} genome, that is 250--500\megabase{} of data. Check your coverage during the run: if NanoPlot shows you have 300\megabase{} with a good N50, you can safely stop the run and wash the flow cell for reuse. For human variant calling, aim for 30$\times$ minimum ($\sim$90\gigabase{}).
+\end{tipbox}
+
+%% ============================================================
+\section{Walkthrough 1: Bacterial Genome Assembly}
+\label{sec:diyanalysis:bacterial}
+%% ============================================================
+
+In this walkthrough, we assemble an \species{Escherichia coli} genome from nanopore reads. The pipeline proceeds through six steps: read filtering, assembly, polishing, quality assessment, completeness checking, and annotation.
+
+\subsection{Step 1: Read Filtering with Chopper}
+\label{subsec:diyanalysis:chopper}
+
+\software{chopper} (part of the \software{Nanopack} suite) filters reads by quality and length. Removing very short and low-quality reads improves assembly contiguity and accuracy.
+
+\begin{lstlisting}[language=bash,caption={Filtering reads with chopper.},label=lst:diy-chopper]
+# Filter reads: minimum quality Q10, minimum length 1000 bp
+# Input from BAM, output as FASTQ
+samtools fastq basecalled.bam | \
+  chopper \
+    --quality 10 \
+    --minlength 1000 \
+    --threads 8 | \
+  gzip > filtered_reads.fastq.gz
+
+# Check how many reads survived filtering
+echo "Before filtering:"
+samtools view -c basecalled.bam
+echo "After filtering:"
+zcat filtered_reads.fastq.gz | awk 'NR%4==1' | wc -l
+\end{lstlisting}
+
+\begin{tipbox}[title={Choosing Filter Thresholds}]
+For bacterial genome assembly with SUP-basecalled data:
+\begin{itemize}[nosep]
+  \item \textbf{Quality $\geq$10}: Removes the lowest-quality 5--10\% of reads. For hac-basecalled data, use Q8.
+  \item \textbf{Length $\geq$1000\basepair{}}: Removes very short fragments that contribute noise but little contiguity.
+  \item Do \emph{not} over-filter: removing too many reads can reduce coverage below what the assembler needs. Aim to retain $>$50$\times$ coverage after filtering.
+\end{itemize}
+\end{tipbox}
+
+\subsection{Step 2: Assembly with Flye}
+\label{subsec:diyanalysis:flye}
+
+\software{Flye} is a de novo assembler designed for noisy long reads. It uses a repeat graph approach that handles the higher error rates of nanopore data gracefully.
+
+\begin{lstlisting}[language=bash,caption={De novo assembly with Flye.},label=lst:diy-flye]
+# Assemble with Flye
+flye \
+  --nano-hq filtered_reads.fastq.gz \
+  --out-dir assembly/flye \
+  --threads 8 \
+  --genome-size 4.6m \
+  --iterations 1
+
+# Key output files:
+# assembly/flye/assembly.fasta       - the assembled contigs
+# assembly/flye/assembly_info.txt    - contig statistics
+# assembly/flye/assembly_graph.gfa   - assembly graph (view in Bandage)
+
+# Quick check: how many contigs?
+grep -c ">" assembly/flye/assembly.fasta
+\end{lstlisting}
+
+Key \software{Flye} parameters:
+\begin{description}[nosep]
+  \item[\texttt{--nano-hq}] Use this for Q20+ (SUP or duplex) basecalled data. Use \texttt{--nano-raw} for Q10 data (older chemistry or hac basecalling).
+  \item[\texttt{--genome-size}] An approximate expected genome size. This helps Flye calibrate its coverage-based heuristics. Use \texttt{4.6m} for \species{E. coli}, \texttt{5m} for a typical bacterium, \texttt{3g} for human.
+  \item[\texttt{--iterations}] Number of polishing rounds internal to Flye (default 1). One iteration is usually sufficient when using high-accuracy reads and planning to polish with Medaka.
+\end{description}
+
+\subsection{Step 3: Polishing with Medaka}
+\label{subsec:diyanalysis:medaka}
+
+\software{Medaka} uses a neural network to correct remaining errors in the assembly consensus by re-examining the raw read alignments. This step typically improves accuracy from $\sim$Q30--Q40 to $\sim$Q50+ for SUP-basecalled data.
+
+\begin{lstlisting}[language=bash,caption={Polishing the assembly with Medaka.},label=lst:diy-medaka]
+# Polish with Medaka
+medaka_polisher \
+  --threads 8 \
+  --model r1041_e82_400bps_sup_v4.3.0 \
+  --bacteria \
+  -i filtered_reads.fastq.gz \
+  -d assembly/flye/assembly.fasta \
+  -o assembly/medaka
+
+# The polished assembly is:
+# assembly/medaka/consensus.fasta
+
+# Alternative: use medaka_polisher for more control
+# medaka_polisher aligns reads, runs inference, and stitches results
+\end{lstlisting}
+
+\begin{warningbox}[title={Medaka Model Must Match Basecalling Model}]
+Medaka's neural network was trained on data basecalled with a specific model. Using the wrong Medaka model can \emph{decrease} assembly quality. Always match the Medaka model to your basecalling chemistry and model. Check available models with: \texttt{medaka --help} and look for models matching your flowcell (e.g., \texttt{r1041\_e82\_400bps\_sup\_v4.3.0} for R10.4.1 SUP data). If in doubt, run \texttt{medaka smolecule --help} or check the Medaka GitHub repository.
+\end{warningbox}
+
+\subsection{Step 4: Assembly Assessment with QUAST}
+\label{subsec:diyanalysis:quast}
+
+\software{QUAST} provides comprehensive assembly quality statistics, optionally comparing against a reference genome.
+
+\begin{lstlisting}[language=bash,caption={Assessing assembly quality with QUAST.},label=lst:diy-quast]
+# Download E. coli K-12 reference for comparison
+wget -O ref/ecoli_k12.fasta.gz \
+  "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/\
+GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna.gz"
+gunzip ref/ecoli_k12.fasta.gz
+
+# Run QUAST with reference
+quast \
+  assembly/medaka/consensus.fasta \
+  -r ref/ecoli_k12.fasta \
+  -o qc/quast \
+  --threads 4 \
+  --min-contig 500 \
+  --labels "Flye+Medaka"
+
+# View the key metrics
+cat qc/quast/report.txt
+\end{lstlisting}
+
+Key QUAST metrics to examine:
+\begin{description}[nosep]
+  \item[Number of contigs] Ideally 1 for a bacterial genome (single circular chromosome).
+  \item[Total length] Should be close to the expected genome size (4,641,652\basepair{} for \species{E. coli} K-12 MG1655).
+  \item[N50] For a complete bacterial assembly, N50 equals the genome size.
+  \item[Genome fraction (\%)] Percentage of the reference covered by the assembly. Should be $>$99\%.
+  \item[Misassemblies] Should be 0 or very low for a well-assembled bacterial genome.
+  \item[Mismatches per 100\kilobase{}] Indicates per-base accuracy. $<$5 is good; $<$1 is excellent.
+\end{description}
+
+\subsection{Step 5: Completeness with BUSCO}
+\label{subsec:diyanalysis:busco}
+
+\software{BUSCO} (Benchmarking Universal Single-Copy Orthologs) assesses assembly completeness by searching for a set of genes expected to be present in all organisms of a given lineage.
+
+\begin{lstlisting}[language=bash,caption={Running BUSCO for completeness assessment.},label=lst:diy-busco]
+# Run BUSCO with the enterobacterales lineage
+busco \
+  -i assembly/medaka/consensus.fasta \
+  -o busco_results \
+  -m genome \
+  -l enterobacterales_odb10 \
+  --cpu 8 \
+  --out_path qc/
+
+# For a general bacterial assembly (if lineage is unknown)
+busco \
+  -i assembly/medaka/consensus.fasta \
+  -o busco_bacteria \
+  -m genome \
+  -l bacteria_odb10 \
+  --cpu 8 \
+  --out_path qc/
+
+# View the short summary
+cat qc/busco_results/short_summary.specific.\
+enterobacterales_odb10.busco_results.txt
+\end{lstlisting}
+
+A good bacterial assembly should show $>$98\% Complete BUSCOs, with $<$1\% Missing. If completeness is low, the assembly may be fragmented or contaminated.
+
+\subsection{Step 6: Annotation with Bakta}
+\label{subsec:diyanalysis:bakta}
+
+\software{Bakta} is a rapid, comprehensive bacterial genome annotation tool that identifies coding sequences, rRNAs, tRNAs, ncRNAs, CRISPR arrays, and more.
+
+\begin{lstlisting}[language=bash,caption={Annotating the assembly with Bakta.},label=lst:diy-bakta]
+# Download the Bakta database (run once, ~1.5 GB)
+bakta_db download --output db/bakta --type light
+
+# Annotate the polished assembly
+bakta \
+  assembly/medaka/consensus.fasta \
+  --db db/bakta/db-light \
+  --output annotation/bakta \
+  --prefix ecoli_assembly \
+  --threads 8 \
+  --genus Escherichia \
+  --species coli \
+  --strain "K-12 MG1655" \
+  --complete  # flag indicating closed genome
+
+# Key output files:
+ls annotation/bakta/
+# ecoli_assembly.gff3  - gene annotations (GFF3 format)
+# ecoli_assembly.gbff  - GenBank flat file
+# ecoli_assembly.faa   - protein FASTA
+# ecoli_assembly.ffn   - nucleotide FASTA of features
+# ecoli_assembly.tsv   - tab-separated feature table
+# ecoli_assembly.embl  - EMBL format
+\end{lstlisting}
+
+\subsection{Expected Results}
+\label{subsec:diyanalysis:expected_bacterial}
+
+\Cref{tab:diy_bacterial_expected} shows expected results for common bacterial genome assemblies with 50--100$\times$ nanopore coverage using SUP basecalling.
+
+\begin{table}[htbp]
+\centering
+\caption{Expected results for bacterial genome assembly from nanopore data (SUP basecalling, Flye + Medaka).}
+\label{tab:diy_bacterial_expected}
+\begin{tabularx}{\textwidth}{@{}lccccX@{}}
+\toprule
+\textbf{Organism} & \textbf{Size} & \textbf{Contigs} & \textbf{Accuracy} & \textbf{BUSCO} & \textbf{Genes} \\
+\midrule
+\species{E. coli} K-12 & 4.64\megabase{} & 1 & $>$99.9\% (Q30+) & $>$99\% & $\sim$4,300 \\
+\species{S. aureus} & 2.81\megabase{} & 1 & $>$99.9\% & $>$99\% & $\sim$2,600 \\
+\species{P. aeruginosa} & 6.26\megabase{} & 1 & $>$99.8\% & $>$98\% & $\sim$5,700 \\
+\species{M. tuberculosis} & 4.41\megabase{} & 1 & $>$99.5\% & $>$97\% & $\sim$4,000 \\
+\species{K. pneumoniae} & 5.33\megabase{} & 1--3\fmark{*} & $>$99.8\% & $>$98\% & $\sim$5,100 \\
+\bottomrule
+\end{tabularx}
+{\footnotesize \fmark{*}Additional contigs from plasmids.}
+\end{table}
+
+\subsection{Complete Snakemake Workflow}
+\label{subsec:diyanalysis:bacterial_snakemake}
+
+\begin{lstlisting}[language=Python,caption={Snakemake workflow for bacterial genome assembly (Snakefile).},label=lst:diy-smk-bacterial]
+# Snakefile -- Bacterial Genome Assembly Pipeline (Nanopore)
+configfile: "config.yaml"
+
+SAMPLE     = config["sample"]
+RAW_BAM    = config["raw_bam"]
+GENOME_SIZE = config["genome_size"]       # e.g., "4.6m"
+MEDAKA_MODEL = config["medaka_model"]     # e.g., "r1041_e82_400bps_sup_v4.3.0"
+BUSCO_LINEAGE = config["busco_lineage"]   # e.g., "enterobacterales_odb10"
+BAKTA_DB   = config["bakta_db"]
+REFERENCE  = config.get("reference", "")  # optional, for QUAST
+
+rule all:
+    input:
+        f"qc/nanoplot/{SAMPLE}/NanoPlot-report.html",
+        f"assembly/medaka/{SAMPLE}/consensus.fasta",
+        f"qc/quast/{SAMPLE}/report.html",
+        f"qc/busco/{SAMPLE}/short_summary.txt",
+        f"annotation/{SAMPLE}/{SAMPLE}.gff3"
+
+rule bam_to_fastq:
+    input:
+        RAW_BAM
+    output:
+        f"data/{SAMPLE}/basecalled.fastq.gz"
+    threads: 4
+    shell:
+        "samtools fastq -@ {threads} {input} | gzip > {output}"
+
+rule nanoplot:
+    input:
+        f"data/{SAMPLE}/basecalled.fastq.gz"
+    output:
+        f"qc/nanoplot/{SAMPLE}/NanoPlot-report.html"
+    params:
+        outdir=f"qc/nanoplot/{SAMPLE}"
+    threads: 4
+    shell:
+        """
+        NanoPlot --fastq {input} \
+          --outdir {params.outdir} \
+          --threads {threads} --loglength --N50
+        """
+
+rule chopper_filter:
+    input:
+        f"data/{SAMPLE}/basecalled.fastq.gz"
+    output:
+        f"data/{SAMPLE}/filtered.fastq.gz"
+    threads: 4
+    shell:
+        """
+        zcat {input} | chopper \
+          --quality 10 --minlength 1000 \
+          --threads {threads} | gzip > {output}
+        """
+
+rule flye_assembly:
+    input:
+        f"data/{SAMPLE}/filtered.fastq.gz"
+    output:
+        fasta=f"assembly/flye/{SAMPLE}/assembly.fasta",
+        info=f"assembly/flye/{SAMPLE}/assembly_info.txt"
+    params:
+        outdir=f"assembly/flye/{SAMPLE}",
+        genome_size=GENOME_SIZE
+    threads: 8
+    shell:
+        """
+        flye --nano-hq {input} \
+          --out-dir {params.outdir} \
+          --threads {threads} \
+          --genome-size {params.genome_size}
+        """
+
+rule medaka_polish:
+    input:
+        reads=f"data/{SAMPLE}/filtered.fastq.gz",
+        assembly=f"assembly/flye/{SAMPLE}/assembly.fasta"
+    output:
+        f"assembly/medaka/{SAMPLE}/consensus.fasta"
+    params:
+        outdir=f"assembly/medaka/{SAMPLE}",
+        model=MEDAKA_MODEL
+    threads: 8
+    shell:
+        """
+        medaka_polisher \
+          -i {input.reads} \
+          -d {input.assembly} \
+          -o {params.outdir} \
+          --model {params.model} \
+          --threads {threads} --bacteria
+        """
+
+rule quast:
+    input:
+        assembly=f"assembly/medaka/{SAMPLE}/consensus.fasta"
+    output:
+        f"qc/quast/{SAMPLE}/report.html"
+    params:
+        outdir=f"qc/quast/{SAMPLE}",
+        ref_flag=f"-r {REFERENCE}" if REFERENCE else ""
+    threads: 4
+    shell:
+        """
+        quast {input.assembly} \
+          {params.ref_flag} \
+          -o {params.outdir} \
+          --threads {threads} --min-contig 500
+        """
+
+rule busco:
+    input:
+        f"assembly/medaka/{SAMPLE}/consensus.fasta"
+    output:
+        f"qc/busco/{SAMPLE}/short_summary.txt"
+    params:
+        outdir="qc/busco",
+        lineage=BUSCO_LINEAGE
+    threads: 8
+    shell:
+        """
+        busco -i {input} \
+          -o {SAMPLE} -m genome \
+          -l {params.lineage} \
+          --cpu {threads} \
+          --out_path {params.outdir}
+        cp {params.outdir}/{SAMPLE}/short_summary.*.txt \
+           {output}
+        """
+
+rule bakta_annotate:
+    input:
+        f"assembly/medaka/{SAMPLE}/consensus.fasta"
+    output:
+        f"annotation/{SAMPLE}/{SAMPLE}.gff3"
+    params:
+        outdir=f"annotation/{SAMPLE}",
+        db=BAKTA_DB
+    threads: 8
+    shell:
+        """
+        bakta {input} \
+          --db {params.db} \
+          --output {params.outdir} \
+          --prefix {SAMPLE} \
+          --threads {threads} --complete
+        """
+\end{lstlisting}
+
+The corresponding configuration file:
+
+\begin{lstlisting}[language=Python,caption={Configuration file for the bacterial assembly Snakemake pipeline (config.yaml).},label=lst:diy-smk-bacterial-config]
+# config.yaml -- Bacterial Genome Assembly
+sample: "ecoli_k12"
+raw_bam: "data/ecoli/basecalled.bam"
+genome_size: "4.6m"
+medaka_model: "r1041_e82_400bps_sup_v4.3.0"
+busco_lineage: "enterobacterales_odb10"
+bakta_db: "db/bakta/db-light"
+reference: "ref/ecoli_k12.fasta"  # optional
+\end{lstlisting}
+
+\subsection{Complete Nextflow Workflow}
+\label{subsec:diyanalysis:bacterial_nextflow}
+
+\begin{lstlisting}[language=Java,caption={Nextflow DSL2 bacterial genome assembly pipeline (main.nf).},label=lst:diy-nf-bacterial]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+// === Parameters ===
+params.sample        = "ecoli_k12"
+params.raw_bam       = "data/ecoli/basecalled.bam"
+params.genome_size   = "4.6m"
+params.medaka_model  = "r1041_e82_400bps_sup_v4.3.0"
+params.busco_lineage = "enterobacterales_odb10"
+params.bakta_db      = "db/bakta/db-light"
+params.reference     = ""
+params.outdir        = "results"
+
+// === Processes ===
+process BAM_TO_FASTQ {
+    tag "${params.sample}"
+    cpus 4
+
+    input:  path(bam)
+    output: path("*.fastq.gz"), emit: fastq
+
+    script:
+    """
+    samtools fastq -@ ${task.cpus} ${bam} | gzip > basecalled.fastq.gz
+    """
+}
+
+process NANOPLOT {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/qc/nanoplot", mode: 'copy'
+    cpus 4
+
+    input:  path(fastq)
+    output: path("nanoplot_out/*"), emit: report
+
+    script:
+    """
+    NanoPlot --fastq ${fastq} \
+      --outdir nanoplot_out \
+      --threads ${task.cpus} --loglength --N50
+    """
+}
+
+process CHOPPER {
+    tag "${params.sample}"
+    cpus 4
+
+    input:  path(fastq)
+    output: path("filtered.fastq.gz"), emit: filtered
+
+    script:
+    """
+    zcat ${fastq} | chopper \
+      --quality 10 --minlength 1000 \
+      --threads ${task.cpus} | gzip > filtered.fastq.gz
+    """
+}
+
+process FLYE {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/assembly/flye", mode: 'copy'
+    cpus 8
+    memory '16 GB'
+
+    input:  path(reads)
+    output:
+        path("flye_out/assembly.fasta"), emit: assembly
+        path("flye_out/assembly_info.txt"), emit: info
+
+    script:
+    """
+    flye --nano-hq ${reads} \
+      --out-dir flye_out \
+      --threads ${task.cpus} \
+      --genome-size ${params.genome_size}
+    """
+}
+
+process MEDAKA {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/assembly/medaka", mode: 'copy'
+    cpus 8
+    memory '16 GB'
+
+    input:
+        path(reads)
+        path(assembly)
+    output: path("medaka_out/consensus.fasta"), emit: polished
+
+    script:
+    """
+    medaka_polisher \
+      -i ${reads} -d ${assembly} \
+      -o medaka_out \
+      --model ${params.medaka_model} \
+      --threads ${task.cpus} --bacteria
+    """
+}
+
+process QUAST {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/qc/quast", mode: 'copy'
+    cpus 4
+
+    input:
+        path(assembly)
+        val(reference)
+    output: path("quast_out/*"), emit: report
+
+    script:
+    def ref_flag = reference ? "-r ${reference}" : ""
+    """
+    quast ${assembly} ${ref_flag} \
+      -o quast_out --threads ${task.cpus} --min-contig 500
+    """
+}
+
+process BUSCO {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/qc/busco", mode: 'copy'
+    cpus 8
+
+    input:  path(assembly)
+    output: path("busco_out/*"), emit: report
+
+    script:
+    """
+    busco -i ${assembly} \
+      -o busco_out -m genome \
+      -l ${params.busco_lineage} \
+      --cpu ${task.cpus}
+    """
+}
+
+process BAKTA {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/annotation", mode: 'copy'
+    cpus 8
+    memory '8 GB'
+
+    input:
+        path(assembly)
+        path(db)
+    output: path("bakta_out/*"), emit: annotation
+
+    script:
+    """
+    bakta ${assembly} \
+      --db ${db} \
+      --output bakta_out \
+      --prefix ${params.sample} \
+      --threads ${task.cpus} --complete
+    """
+}
+
+// === Workflow ===
+workflow {
+    bam_ch = Channel.fromPath(params.raw_bam, checkIfExists: true)
+    db_ch  = Channel.fromPath(params.bakta_db, checkIfExists: true)
+
+    BAM_TO_FASTQ(bam_ch)
+    NANOPLOT(BAM_TO_FASTQ.out.fastq)
+    CHOPPER(BAM_TO_FASTQ.out.fastq)
+    FLYE(CHOPPER.out.filtered)
+    MEDAKA(CHOPPER.out.filtered, FLYE.out.assembly)
+    QUAST(MEDAKA.out.polished, params.reference)
+    BUSCO(MEDAKA.out.polished)
+    BAKTA(MEDAKA.out.polished, db_ch)
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Walkthrough 2: Species Identification with Kraken2}
+\label{sec:diyanalysis:metagenomics}
+%% ============================================================
+
+Taxonomic classification---identifying which organisms are present in a sample---is one of the most common applications of nanopore sequencing. \software{Kraken2} uses exact $k$-mer matching against a reference database to classify reads at remarkable speed.
+
+\subsection{Database Setup}
+\label{subsec:diyanalysis:kraken_db}
+
+The database is the foundation of any Kraken2 analysis. Different databases offer different trade-offs between comprehensiveness and resource requirements.
+
+\begin{lstlisting}[language=bash,caption={Setting up Kraken2 databases.},label=lst:diy-kraken-db]
+# Option 1: Standard database (~70 GB, requires 64 GB RAM)
+# Includes archaea, bacteria, viral, plasmid, human, UniVec_Core
+kraken2-build --standard --db db/kraken2_standard --threads 8
+
+# Option 2: PlusPF database (includes protozoa & fungi; ~100 GB)
+# Recommended for environmental samples
+kraken2-build --standard --db db/kraken2_pluspf \
+  --threads 8 \
+  --protein  # include protein-level matches
+
+# Option 3: Pre-built databases (fastest setup!)
+# Download from https://benlangmead.github.io/aws-indexes/k2
+wget -P db/ \
+  https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20240904.tar.gz
+mkdir -p db/kraken2_standard
+tar -xzf db/k2_standard_20240904.tar.gz -C db/kraken2_standard
+
+# Option 4: Custom database (e.g., fish species for eDNA)
+kraken2-build --download-taxonomy --db db/kraken2_fish
+# Add custom genomes
+for genome in custom_genomes/*.fasta; do
+  kraken2-build --add-to-library "$genome" --db db/kraken2_fish
+done
+kraken2-build --build --db db/kraken2_fish --threads 8
+\end{lstlisting}
+
+\begin{warningbox}[title={Kraken2 Database Memory Requirements}]
+Kraken2 loads the entire database into RAM during classification. The standard database requires $\sim$64\,GB of RAM, and PlusPF requires $\sim$100\,GB. If you have limited RAM, use one of the smaller pre-built databases (e.g., the ``MinusDB'' variants, $\sim$8\,GB) or use \software{Kraken2} with the \texttt{--memory-mapping} flag (slower but uses disk instead of RAM). The $k$-mer length is fixed at 35\basepair{} by default.
+\end{warningbox}
+
+\subsection{Running Classification}
+\label{subsec:diyanalysis:kraken_classify}
+
+\begin{lstlisting}[language=bash,caption={Classifying reads with Kraken2.},label=lst:diy-kraken-classify]
+# Classify nanopore reads
+kraken2 \
+  --db db/kraken2_standard \
+  --threads 8 \
+  --output kraken2/classifications.txt \
+  --report kraken2/report.txt \
+  --report-minimizer-data \
+  --minimum-hit-groups 3 \
+  reads.fastq.gz
+
+# Key output files:
+# classifications.txt  - per-read classification (C/U, read ID, taxon)
+# report.txt           - hierarchical abundance report
+
+# Quick summary: what percentage was classified?
+head -5 kraken2/report.txt
+\end{lstlisting}
+
+The \texttt{--minimum-hit-groups 3} parameter requires at least 3 groups of consecutive $k$-mers to match a taxon before classification, which reduces false positives for long nanopore reads.
+
+\subsection{Abundance Estimation with Bracken}
+\label{subsec:diyanalysis:bracken}
+
+\software{Bracken} re-estimates species-level abundances from Kraken2 results by redistributing reads assigned to higher taxonomic levels.
+
+\begin{lstlisting}[language=bash,caption={Running Bracken for abundance estimation.},label=lst:diy-bracken]
+# Build Bracken database (one-time step, per Kraken2 DB)
+bracken-build -d db/kraken2_standard -t 8 -l 1000
+
+# Run Bracken at species level
+bracken \
+  -d db/kraken2_standard \
+  -i kraken2/report.txt \
+  -o bracken/species_abundance.txt \
+  -w bracken/report_bracken.txt \
+  -r 1000 \
+  -l S \
+  -t 10
+
+# -r 1000 : read length (approximate; use your median read length)
+# -l S    : taxonomic level (S=species, G=genus, F=family)
+# -t 10   : minimum reads to keep a taxon
+
+# View top species
+sort -t$'\t' -k7 -rn bracken/species_abundance.txt | head -20
+\end{lstlisting}
+
+\subsection{Interactive Visualization with Krona}
+\label{subsec:diyanalysis:krona}
+
+\software{Krona} creates interactive, zoomable pie charts for exploring taxonomic composition.
+
+\begin{lstlisting}[language=bash,caption={Creating Krona visualisations.},label=lst:diy-krona]
+# Convert Kraken2 report to Krona-compatible format
+kreport2krona.py \
+  -r kraken2/report.txt \
+  -o kraken2/krona_input.txt
+
+# Generate interactive HTML
+ktImportText \
+  kraken2/krona_input.txt \
+  -o kraken2/krona_plot.html
+
+# Open in your browser
+# On macOS: open kraken2/krona_plot.html
+# On Linux: xdg-open kraken2/krona_plot.html
+\end{lstlisting}
+
+\subsection{Example 1: Environmental DNA from a Pond}
+\label{subsec:diyanalysis:edna_pond}
+
+Environmental DNA (\acrshort{eDNA}) analysis involves filtering water, extracting DNA, and sequencing to detect which organisms are present. Here is a complete analysis for a freshwater pond sample:
+
+\begin{lstlisting}[language=bash,caption={eDNA pond water analysis pipeline.},label=lst:diy-edna-pond]
+# Assume basecalled reads are in: data/pond_edna/reads.fastq.gz
+
+# Step 1: Quality filter
+zcat data/pond_edna/reads.fastq.gz | \
+  chopper --quality 8 --minlength 500 --threads 4 | \
+  gzip > data/pond_edna/filtered.fastq.gz
+
+# Step 2: Classify with PlusPF database (includes protozoa, fungi)
+kraken2 \
+  --db db/kraken2_pluspf \
+  --threads 8 \
+  --output results/pond/kraken2_output.txt \
+  --report results/pond/kraken2_report.txt \
+  --minimum-hit-groups 3 \
+  data/pond_edna/filtered.fastq.gz
+
+# Step 3: Bracken species-level estimates
+bracken \
+  -d db/kraken2_pluspf \
+  -i results/pond/kraken2_report.txt \
+  -o results/pond/bracken_species.txt \
+  -r 1000 -l S -t 5
+
+# Step 4: Visualise
+kreport2krona.py -r results/pond/kraken2_report.txt \
+  -o results/pond/krona_input.txt
+ktImportText results/pond/krona_input.txt \
+  -o results/pond/pond_krona.html
+
+# Step 5: Extract vertebrate detections (for biodiversity monitoring)
+grep -i "Vertebrata" results/pond/kraken2_report.txt
+\end{lstlisting}
+
+Typical findings from a pond \acrshort{eDNA} sample include: dominant bacterial taxa (e.g., \species{Flavobacterium}, \species{Pseudomonas}), algae, protists, and---critically for biodiversity monitoring---trace amounts of vertebrate DNA from fish, amphibians, and waterfowl that have shed cells into the water.
+
+\subsection{Example 2: Sushi Species Authentication}
+\label{subsec:diyanalysis:sushi}
+
+Nanopore sequencing is increasingly used for food authentication---verifying that the species on the label matches the species on the plate.
+
+\begin{lstlisting}[language=bash,caption={Sushi species authentication analysis.},label=lst:diy-sushi]
+# Basecalled reads from sushi sample: data/sushi/reads.fastq.gz
+
+# Classify against the standard database
+kraken2 \
+  --db db/kraken2_standard \
+  --threads 8 \
+  --output results/sushi/classifications.txt \
+  --report results/sushi/report.txt \
+  --minimum-hit-groups 3 \
+  data/sushi/reads.fastq.gz
+
+# Extract fish-related hits
+grep -E "Actinopterygii|Chondrichthyes" results/sushi/report.txt
+
+# Bracken estimation at species level
+bracken \
+  -d db/kraken2_standard \
+  -i results/sushi/report.txt \
+  -o results/sushi/bracken_species.txt \
+  -r 1000 -l S -t 5
+
+# Common findings for mislabelled sushi:
+# "White tuna" often = Escolar (Lepidocybium flavobrunneum)
+# "Red snapper" often = Tilapia (Oreochromis niloticus)
+# Salmon should be = Salmo salar or Oncorhynchus spp.
+\end{lstlisting}
+
+\subsection{Interpretation Guidelines}
+\label{subsec:diyanalysis:meta_interpretation}
+
+\begin{itemize}[nosep]
+  \item \textbf{Classification rate}: For a pure bacterial culture, expect $>$90\% of reads classified. For environmental samples, 20--60\% is typical (many environmental organisms lack reference genomes).
+  \item \textbf{Confidence threshold}: Reads classified at genus level are more reliable than species-level assignments. Report genus-level results when species-level classification has low $k$-mer coverage.
+  \item \textbf{False positives}: Closely related species (e.g., \species{E. coli} vs.\ \species{Shigella}) can be confused. Validate key findings with a second tool (e.g., \software{Centrifuge} or \software{MetaPhlAn}).
+  \item \textbf{Database matters}: If your target organism is not in the database, it cannot be detected. Always check database contents before drawing negative conclusions.
+  \item \textbf{Quantification caveats}: Relative abundance estimates from Bracken reflect read proportions, not cell counts. Differences in genome size, cell lysis efficiency, and DNA extraction bias all affect the relationship between read abundance and true organism abundance.
+\end{itemize}
+
+%% ============================================================
+\section{Walkthrough 3: Variant Calling}
+\label{sec:diyanalysis:variantcalling}
+%% ============================================================
+
+Variant calling from nanopore data identifies genetic differences between a sequenced sample and a reference genome. While short-read variant calling is well established (see \cref{ch:variants}), long-read variant calling uses specialised tools trained on the unique error profile of nanopore data.
+
+\subsection{Step 1: Alignment with minimap2}
+\label{subsec:diyanalysis:minimap2}
+
+\software{minimap2} is the standard aligner for long reads. Its \texttt{-ax map-ont} preset is optimised for nanopore data.
+
+\begin{lstlisting}[language=bash,caption={Aligning nanopore reads with minimap2.},label=lst:diy-minimap2]
+# Download human reference genome (if not already present)
+wget -P ref/ \
+  https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/\
+GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/\
+GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz
+gunzip ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz
+mv ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna ref/GRCh38.fa
+samtools faidx ref/GRCh38.fa
+
+# Align with minimap2
+minimap2 \
+  -ax map-ont \
+  -t 16 \
+  --MD \
+  -R "@RG\tID:sample1\tSM:HG002\tPL:ONT" \
+  ref/GRCh38.fa \
+  basecalled.fastq.gz | \
+  samtools sort -@ 8 -o aligned/HG002.sorted.bam -
+
+# Index the BAM file
+samtools index aligned/HG002.sorted.bam
+
+# Quick alignment statistics
+samtools flagstat aligned/HG002.sorted.bam
+samtools coverage aligned/HG002.sorted.bam | head -25
+\end{lstlisting}
+
+Key minimap2 parameters:
+\begin{description}[nosep]
+  \item[\texttt{-ax map-ont}] Preset for Oxford Nanopore reads: uses longer minimiser windows, higher error tolerance, and ONT-specific scoring.
+  \item[\texttt{--MD}] Adds the MD tag to the output, which records the reference sequence at mismatching positions. Required by some variant callers.
+  \item[\texttt{-R}] Adds a read group header, required by GATK-based tools and useful for tracking samples in multi-sample analyses.
+  \item[\texttt{-t 16}] Number of alignment threads. minimap2 scales well to 16--32 threads.
+\end{description}
+
+\subsection{Step 2: Variant Calling with Clair3}
+\label{subsec:diyanalysis:clair3}
+
+\software{Clair3} is a deep-learning-based variant caller specifically designed for long-read sequencing data. It supports both nanopore and PacBio data with platform-specific models.
+
+\begin{lstlisting}[language=bash,caption={Calling variants with Clair3.},label=lst:diy-clair3]
+# Create a separate environment for Clair3 (dependency conflicts)
+mamba create -n clair3 -c bioconda clair3
+mamba activate clair3
+
+# Run Clair3
+run_clair3.sh \
+  --bam_fn=aligned/HG002.sorted.bam \
+  --ref_fn=ref/GRCh38.fa \
+  --output=variants/clair3 \
+  --threads=16 \
+  --platform="ont" \
+  --model_path="${CONDA_PREFIX}/bin/models/ont" \
+  --sample_name="HG002" \
+  --include_all_ctgs
+
+# Key output files:
+# variants/clair3/merge_output.vcf.gz  - all variants (SNPs + indels)
+# variants/clair3/pileup.vcf.gz       - pileup model variants
+# variants/clair3/full_alignment.vcf.gz - full-alignment model variants
+
+# Count variants
+bcftools stats variants/clair3/merge_output.vcf.gz | grep "number of records"
+\end{lstlisting}
+
+\begin{tipbox}[title={Clair3 Model Selection}]
+Clair3 ships with pre-trained models for different platforms and chemistries. Use the correct model:
+\begin{itemize}[nosep]
+  \item \textbf{ONT R10.4.1 SUP}: \texttt{ont\_r1041\_e82\_400bps\_sup\_v430} (best current performance)
+  \item \textbf{ONT R10.4.1 HAC}: \texttt{ont\_r1041\_e82\_400bps\_hac\_v430}
+  \item \textbf{ONT R9.4.1 SUP}: \texttt{ont\_r941\_e81\_sup\_v340}
+  \item \textbf{PacBio HiFi}: \texttt{hifi}
+\end{itemize}
+Models are located in \texttt{\$CONDA\_PREFIX/bin/models/}. Using the wrong model will produce unreliable variant calls.
+\end{tipbox}
+
+\subsection{Step 3: Variant Filtering with bcftools}
+\label{subsec:diyanalysis:bcftools_filter}
+
+Raw variant calls should be filtered to remove low-confidence calls before downstream analysis.
+
+\begin{lstlisting}[language=bash,caption={Filtering variants with bcftools.},label=lst:diy-bcftools]
+# Filter by quality and depth
+bcftools filter \
+  -i 'QUAL>=20 && INFO/DP>=10' \
+  -o variants/clair3/filtered.vcf.gz \
+  -O z \
+  variants/clair3/merge_output.vcf.gz
+
+# Index the filtered VCF
+bcftools index variants/clair3/filtered.vcf.gz
+
+# Separate SNPs and indels
+bcftools view -v snps \
+  variants/clair3/filtered.vcf.gz \
+  -o variants/clair3/snps.vcf.gz -O z
+
+bcftools view -v indels \
+  variants/clair3/filtered.vcf.gz \
+  -o variants/clair3/indels.vcf.gz -O z
+
+# Summary statistics
+bcftools stats variants/clair3/filtered.vcf.gz > variants/clair3/stats.txt
+\end{lstlisting}
+
+\subsection{Expected Variant Counts}
+\label{subsec:diyanalysis:expected_variants}
+
+\Cref{tab:diy_variant_counts} shows typical variant counts for a human genome at 30$\times$ nanopore coverage.
+
+\begin{table}[htbp]
+\centering
+\caption{Expected variant counts per human genome (30$\times$ ONT, SUP basecalling, Clair3).}
+\label{tab:diy_variant_counts}
+\begin{tabularx}{\textwidth}{@{}lccX@{}}
+\toprule
+\textbf{Variant Type} & \textbf{Expected Count} & \textbf{Clair3 F1 Score} & \textbf{Notes} \\
+\midrule
+SNVs & 4.0--4.5 million & $>$99.5\% & Performance comparable to short-read callers \\
+Indels (1--50\basepair{}) & 500,000--700,000 & $\sim$85--92\% & Homopolymer indels remain challenging \\
+Heterozygous SNVs & $\sim$2.5 million & $>$99\% & Well-detected by long reads \\
+Homozygous ALT SNVs & $\sim$1.6 million & $>$99.5\% & Very reliable \\
+Ti/Tv ratio & 2.05--2.15 & --- & Values outside this range suggest systematic errors \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Comparison: Clair3 vs Medaka for Variant Calling}
+\label{subsec:diyanalysis:clair3_vs_medaka}
+
+Both \software{Clair3} and \software{Medaka} can call variants, but they are designed for different use cases:
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of Clair3 and Medaka for variant calling from nanopore data.}
+\label{tab:diy_clair3_medaka}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+\textbf{Feature} & \textbf{Clair3} & \textbf{Medaka (variant mode)} \\
+\midrule
+Primary use & Germline variant calling (human, diploid) & Consensus/variant calling (haploid, bacterial) \\
+SNV accuracy & Excellent ($>$99.5\% F1) & Good ($\sim$98\% F1) \\
+Indel accuracy & Good ($\sim$85--92\% F1) & Moderate ($\sim$75--85\% F1) \\
+Diploid genotyping & Yes (proper GT field) & Limited (designed for haploid) \\
+Speed (30$\times$ human) & $\sim$4--8 hours (16 threads) & $\sim$12--24 hours \\
+GPU support & Optional (speeds pileup model) & Optional \\
+Best for & Human/diploid variant calling & Bacterial SNP calling, assembly polishing \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{keyconcept}[title={Rule of Thumb for Variant Caller Selection}]
+Use \software{Clair3} for diploid organisms (human, animal, plant) where you need accurate genotype calls (0/0, 0/1, 1/1). Use \software{Medaka} for haploid organisms (bacteria) or when you primarily need consensus correction rather than per-site variant calls. For structural variant calling ($>$50\basepair{}), use \software{Sniffles2} or \software{cuteSV} instead---neither Clair3 nor Medaka is designed for large structural variants.
+\end{keyconcept}
+
+%% ============================================================
+\section{Visualization with IGV}
+\label{sec:diyanalysis:igv}
+%% ============================================================
+
+The Integrative Genomics Viewer (\software{IGV}) is an essential tool for visually inspecting alignments, variants, and annotations. No bioinformatics analysis is complete without manual inspection of key results.
+
+\subsection{Loading and Navigating Data}
+\label{subsec:diyanalysis:igv_basics}
+
+\begin{lstlisting}[language=bash,caption={Preparing files for IGV and launching from the command line.},label=lst:diy-igv-prep]
+# Ensure BAM is sorted and indexed
+samtools sort aligned/HG002.sorted.bam -o aligned/HG002.sorted.bam
+samtools index aligned/HG002.sorted.bam
+
+# Ensure VCF is sorted, compressed, and indexed
+bcftools sort variants/clair3/filtered.vcf.gz \
+  -o variants/clair3/filtered.sorted.vcf.gz
+bcftools index variants/clair3/filtered.sorted.vcf.gz
+
+# Launch IGV (if installed locally)
+# Download from https://igv.org/doc/desktop/#DownloadPage/
+igv.sh
+
+# Or use IGV-Web at https://igv.org/app/
+\end{lstlisting}
+
+Once IGV is open:
+\begin{enumerate}[nosep]
+  \item \textbf{Load the reference genome}: \textit{Genomes} $\rightarrow$ \textit{Load Genome from Server} $\rightarrow$ select ``Human (GRCh38/hg38)''.
+  \item \textbf{Load the BAM file}: \textit{File} $\rightarrow$ \textit{Load from File} $\rightarrow$ select \texttt{HG002.sorted.bam}.
+  \item \textbf{Load the VCF file}: \textit{File} $\rightarrow$ \textit{Load from File} $\rightarrow$ select \texttt{filtered.sorted.vcf.gz}.
+  \item \textbf{Navigate}: Type a gene name (e.g., \gene{BRCA1}) or coordinates (e.g., \texttt{chr17:43,044,295-43,125,364}) in the search bar.
+\end{enumerate}
+
+\subsection{Interpreting Alignment Displays}
+\label{subsec:diyanalysis:igv_interpret}
+
+When viewing long-read alignments in IGV, pay attention to:
+
+\begin{description}[nosep]
+  \item[Read colour] Grey indicates a proper alignment. Red, blue, or other colours indicate structural variant signatures (mate mapped to different chromosome, unexpected insert size, etc.).
+  \item[Coloured bases within reads] These mark mismatches relative to the reference. A column of consistent mismatches across many reads is likely a true variant; scattered mismatches are sequencing errors.
+  \item[Insertions (purple ``I'')] Small purple marks indicate inserted bases relative to the reference. Hover over them to see the inserted sequence.
+  \item[Deletions (thin lines)] Horizontal lines within a read indicate deleted bases. A consistent deletion across many reads suggests a true deletion variant.
+  \item[Soft-clipped regions] Coloured bars at read ends indicate portions of the read that did not align. Consistent soft-clipping at the same position can indicate a structural variant breakpoint.
+\end{description}
+
+\subsection{Batch Screenshots}
+\label{subsec:diyanalysis:igv_batch}
+
+For publications or systematic review of multiple loci, IGV supports batch scripting:
+
+\begin{lstlisting}[language=bash,caption={IGV batch script for automated screenshots.},label=lst:diy-igv-batch]
+# Create a batch script: igv_batch.txt
+cat > igv_batch.txt << 'BATCH'
+new
+genome hg38
+load aligned/HG002.sorted.bam
+load variants/clair3/filtered.sorted.vcf.gz
+snapshotDirectory igv_screenshots
+maxPanelHeight 500
+goto chr17:43,044,295-43,125,364
+sort base
+snapshot BRCA1_overview.png
+goto chr17:43,092,900-43,093,100
+snapshot BRCA1_exon10_zoom.png
+goto chr13:32,315,474-32,400,266
+snapshot BRCA2_overview.png
+goto chr7:117,120,017-117,120,201
+snapshot CFTR_p.F508del.png
+exit
+BATCH
+
+# Run IGV in batch mode
+igv.sh --batch igv_batch.txt
+\end{lstlisting}
+
+%% ============================================================
+\section{Galaxy: No-Code Option}
+\label{sec:diyanalysis:galaxy}
+%% ============================================================
+
+Not everyone is comfortable with the command line, and not every analysis requires a custom pipeline. \software{Galaxy} (\url{https://usegalaxy.org}) provides a web-based, graphical interface for bioinformatics analysis that requires no programming.
+
+\subsection{Getting Started with Galaxy}
+\label{subsec:diyanalysis:galaxy_intro}
+
+Galaxy is a free, open-source platform available at three main public servers:
+\begin{itemize}[nosep]
+  \item \textbf{usegalaxy.org} (USA, hosted at Penn State/Johns Hopkins)
+  \item \textbf{usegalaxy.eu} (Europe, hosted at University of Freiburg)
+  \item \textbf{usegalaxy.org.au} (Australia, hosted at Melbourne Bioinformatics)
+\end{itemize}
+
+To begin:
+\begin{enumerate}[nosep]
+  \item Create a free account at \url{https://usegalaxy.org}.
+  \item Upload your \acrshort{FASTQ} or \acrshort{BAM} files via the upload tool (supports FTP for large files).
+  \item Search for tools in the left panel (e.g., ``NanoPlot'', ``Flye'', ``Kraken2'').
+  \item Configure parameters via the graphical form and click ``Run Tool''.
+  \item Results appear in your history panel on the right.
+\end{enumerate}
+
+\subsection{Building Visual Workflows}
+\label{subsec:diyanalysis:galaxy_workflows}
+
+Galaxy's Workflow Editor allows you to chain tools together visually:
+\begin{enumerate}[nosep]
+  \item Go to \textit{Workflow} $\rightarrow$ \textit{Create New Workflow}.
+  \item Drag tools from the toolbox onto the canvas.
+  \item Connect outputs to inputs by dragging lines between tool boxes.
+  \item Set parameters for each tool.
+  \item Save and run the workflow on your data.
+\end{enumerate}
+
+Galaxy also hosts a large library of pre-built, community-curated workflows. The Galaxy Training Network (\url{https://training.galaxyproject.org}) provides step-by-step tutorials for nanopore analysis, including bacterial genome assembly and metagenomics.
+
+\subsection{Limitations vs Command Line}
+\label{subsec:diyanalysis:galaxy_limits}
+
+\begin{table}[htbp]
+\centering
+\caption{Galaxy vs command-line analysis: trade-offs.}
+\label{tab:diy_galaxy_comparison}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+\textbf{Aspect} & \textbf{Galaxy} & \textbf{Command Line} \\
+\midrule
+Ease of use & Point-and-click; no coding & Requires terminal familiarity \\
+Reproducibility & Workflows are shareable and versioned & Requires Snakemake/Nextflow discipline \\
+Tool availability & $\sim$5,000+ tools, but not always latest versions & Full access to any tool, any version \\
+Customisation & Limited to available tool wrappers & Unlimited \\
+Large datasets & Upload limits; queue times on public servers & Limited only by your hardware \\
+GPU basecalling & Not available on public servers & Full GPU support \\
+Collaboration & Shared histories and workflows & Requires Git, shared filesystems \\
+Cost & Free on public servers (with quotas) & Hardware and electricity costs \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={When to Use Galaxy}]
+Galaxy is an excellent choice when: (1) you are a wet-lab scientist who needs quick results without learning the command line, (2) you want to teach students bioinformatics concepts without setup overhead, (3) you need to run a well-established workflow and do not need cutting-edge tool versions, or (4) you want to share a reproducible analysis with collaborators. Switch to the command line when you need the latest tools, GPU basecalling, custom scripts, or are processing very large datasets.
+\end{tipbox}
+
+%% ============================================================
+\section{Cloud Computing on a Budget}
+\label{sec:diyanalysis:cloud}
+%% ============================================================
+
+When your local hardware is insufficient---particularly for GPU basecalling, human genome assembly, or large-scale metagenomics---cloud computing offers a scalable alternative.
+
+\subsection{When Local Isn't Enough}
+\label{subsec:diyanalysis:cloud_when}
+
+Consider cloud computing when:
+\begin{itemize}[nosep]
+  \item You need a GPU for basecalling but do not own one.
+  \item Your dataset exceeds local RAM (e.g., human genome assembly needs 32--64\,GB).
+  \item You need to process many samples in parallel (e.g., a sequencing core facility).
+  \item You need temporary burst capacity (e.g., a one-time large experiment).
+  \item Your institution does not provide \acrshort{HPC} access.
+\end{itemize}
+
+\subsection{Cloud Platform Comparison}
+\label{subsec:diyanalysis:cloud_comparison}
+
+\begin{table}[htbp]
+\centering
+\caption{Cloud computing options for nanopore analysis (approximate pricing as of 2024).}
+\label{tab:diy_cloud}
+\begin{tabularx}{\textwidth}{@{}lXccX@{}}
+\toprule
+\textbf{Platform} & \textbf{Instance Type} & \textbf{On-Demand} & \textbf{Spot/Preemptible} & \textbf{Best For} \\
+\midrule
+AWS EC2 & g5.2xlarge (1$\times$ A10G, 32\,GB RAM) & \$1.21/hr & \$0.36--0.50/hr & GPU basecalling \\
+AWS EC2 & r6i.4xlarge (16 vCPU, 128\,GB RAM) & \$1.01/hr & \$0.30--0.40/hr & Genome assembly \\
+GCP & g2-standard-8 (1$\times$ L4, 32\,GB RAM) & \$0.98/hr & \$0.29--0.39/hr & GPU basecalling \\
+GCP & n2-highmem-16 (16 vCPU, 128\,GB RAM) & \$0.95/hr & \$0.28--0.38/hr & Assembly, variant calling \\
+Google Colab & Free tier (T4 GPU, 12\,GB RAM) & Free & --- & Small datasets, learning \\
+Google Colab Pro & A100 GPU, 52\,GB RAM & \$10/month & --- & Moderate basecalling \\
+Terra (Broad) & Configurable & Variable & --- & GATK pipelines, human genomics \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Spot Instances Save 60--80\%}]
+Spot instances (AWS) or preemptible VMs (GCP) offer the same hardware at 60--80\% discount, but can be terminated with 2 minutes' notice. This is acceptable for workflows managed by Snakemake or Nextflow, which can automatically resume interrupted jobs. Always use spot/preemptible instances for non-interactive batch processing.
+\end{tipbox}
+
+\subsection{Google Colab for Small Analyses}
+\label{subsec:diyanalysis:colab}
+
+Google Colab provides free GPU access through a Jupyter notebook interface. It is ideal for learning and processing small datasets (e.g., a single bacterial genome).
+
+\begin{lstlisting}[language=Python,caption={Setting up a nanopore analysis environment in Google Colab.},label=lst:diy-colab]
+# In a Colab notebook cell:
+# Install conda in Colab
+!pip install -q condacolab
+import condacolab
+condacolab.install()
+
+# Install tools
+!mamba install -y -c conda-forge -c bioconda \
+  nanoplot flye medaka minimap2 samtools
+
+# Upload your data (or download from SRA)
+!pip install -q sra-tools
+!prefetch SRR28370649
+!fasterq-dump SRR28370649 -O data/
+
+# Run NanoPlot
+!NanoPlot --fastq data/SRR28370649.fastq --outdir qc/ --threads 2
+\end{lstlisting}
+
+\begin{warningbox}[title={Colab Limitations}]
+Google Colab sessions are ephemeral: they disconnect after $\sim$90 minutes of inactivity (free tier) or 24 hours maximum. All data and installed software are lost. Save results to Google Drive (\texttt{from google.colab import drive; drive.mount('/content/drive')}) before the session ends. RAM is limited to 12\,GB (free) or 52\,GB (Pro), which is insufficient for Kraken2 with the standard database.
+\end{warningbox}
+
+\subsection{Terra for Production Genomics}
+\label{subsec:diyanalysis:terra}
+
+\software{Terra} (\url{https://terra.bio}), developed by the Broad Institute, is a cloud-native platform designed specifically for genomics research. It runs on Google Cloud and provides:
+\begin{itemize}[nosep]
+  \item Pre-configured analysis environments with GATK, Cromwell, and other tools.
+  \item WDL (Workflow Description Language) workflow execution.
+  \item Direct access to large public datasets (TCGA, gnomAD, 1000 Genomes).
+  \item Built-in Jupyter notebooks for interactive analysis.
+  \item Fine-grained billing control with workspace budgets.
+\end{itemize}
+
+Terra is particularly well-suited for clinical genomics labs processing many human genomes through standardised GATK pipelines.
+
+%% ============================================================
+\section{Complete End-to-End Snakemake Workflow}
+\label{sec:diyanalysis:full_snakemake}
+%% ============================================================
+
+This section provides a comprehensive Snakemake workflow that chains every step from basecalling through annotation into a single, reproducible pipeline.
+
+\begin{lstlisting}[language=Python,caption={Complete end-to-end Snakemake workflow for nanopore analysis (Snakefile).},label=lst:diy-smk-e2e]
+# Snakefile -- Complete Nanopore Analysis Pipeline
+# Basecalling -> QC -> Assembly -> Polishing -> Annotation
+configfile: "config.yaml"
+
+SAMPLE       = config["sample"]
+POD5_DIR     = config["pod5_dir"]
+DORADO_MODEL = config["dorado_model"]
+GENOME_SIZE  = config["genome_size"]
+MEDAKA_MODEL = config["medaka_model"]
+BUSCO_LIN    = config["busco_lineage"]
+BAKTA_DB     = config["bakta_db"]
+REFERENCE    = config.get("reference", "")
+DEVICE       = config.get("device", "cuda:0")
+
+rule all:
+    input:
+        f"results/{SAMPLE}/qc/nanoplot/NanoPlot-report.html",
+        f"results/{SAMPLE}/qc/multiqc/multiqc_report.html",
+        f"results/{SAMPLE}/assembly/medaka/consensus.fasta",
+        f"results/{SAMPLE}/qc/quast/report.html",
+        f"results/{SAMPLE}/qc/busco/short_summary.txt",
+        f"results/{SAMPLE}/annotation/{SAMPLE}.gff3"
+
+# ---- Basecalling ----
+rule dorado_basecall:
+    input:
+        POD5_DIR
+    output:
+        f"results/{SAMPLE}/basecall/basecalled.bam"
+    params:
+        model=DORADO_MODEL,
+        device=DEVICE
+    shell:
+        """
+        dorado basecaller {params.model} {input} \
+          --device {params.device} --emit-moves \
+          > {output}
+        """
+
+rule bam_to_fastq:
+    input:
+        f"results/{SAMPLE}/basecall/basecalled.bam"
+    output:
+        f"results/{SAMPLE}/basecall/basecalled.fastq.gz"
+    threads: 4
+    shell:
+        "samtools fastq -@ {threads} {input} | gzip > {output}"
+
+# ---- Quality Control ----
+rule nanoplot_qc:
+    input:
+        f"results/{SAMPLE}/basecall/basecalled.fastq.gz"
+    output:
+        f"results/{SAMPLE}/qc/nanoplot/NanoPlot-report.html"
+    params:
+        outdir=f"results/{SAMPLE}/qc/nanoplot"
+    threads: 4
+    shell:
+        """
+        NanoPlot --fastq {input} --outdir {params.outdir} \
+          --threads {threads} --loglength --N50 \
+          --title "{SAMPLE} QC"
+        """
+
+rule fastqc:
+    input:
+        f"results/{SAMPLE}/basecall/basecalled.fastq.gz"
+    output:
+        f"results/{SAMPLE}/qc/fastqc/basecalled_fastqc.html"
+    params:
+        outdir=f"results/{SAMPLE}/qc/fastqc"
+    threads: 2
+    shell:
+        "fastqc {input} --outdir {params.outdir} --threads {threads}"
+
+rule multiqc:
+    input:
+        f"results/{SAMPLE}/qc/nanoplot/NanoPlot-report.html",
+        f"results/{SAMPLE}/qc/fastqc/basecalled_fastqc.html"
+    output:
+        f"results/{SAMPLE}/qc/multiqc/multiqc_report.html"
+    params:
+        indir=f"results/{SAMPLE}/qc",
+        outdir=f"results/{SAMPLE}/qc/multiqc"
+    shell:
+        "multiqc {params.indir} -o {params.outdir} --force"
+
+# ---- Read Filtering ----
+rule chopper_filter:
+    input:
+        f"results/{SAMPLE}/basecall/basecalled.fastq.gz"
+    output:
+        f"results/{SAMPLE}/filtered/reads.fastq.gz"
+    threads: 4
+    shell:
+        """
+        zcat {input} | chopper --quality 10 --minlength 1000 \
+          --threads {threads} | gzip > {output}
+        """
+
+# ---- Assembly ----
+rule flye_assemble:
+    input:
+        f"results/{SAMPLE}/filtered/reads.fastq.gz"
+    output:
+        fasta=f"results/{SAMPLE}/assembly/flye/assembly.fasta",
+        info=f"results/{SAMPLE}/assembly/flye/assembly_info.txt"
+    params:
+        outdir=f"results/{SAMPLE}/assembly/flye",
+        gsize=GENOME_SIZE
+    threads: 8
+    shell:
+        """
+        flye --nano-hq {input} \
+          --out-dir {params.outdir} \
+          --threads {threads} \
+          --genome-size {params.gsize}
+        """
+
+# ---- Polishing ----
+rule medaka_polish:
+    input:
+        reads=f"results/{SAMPLE}/filtered/reads.fastq.gz",
+        draft=f"results/{SAMPLE}/assembly/flye/assembly.fasta"
+    output:
+        f"results/{SAMPLE}/assembly/medaka/consensus.fasta"
+    params:
+        outdir=f"results/{SAMPLE}/assembly/medaka",
+        model=MEDAKA_MODEL
+    threads: 8
+    shell:
+        """
+        medaka_polisher \
+          -i {input.reads} -d {input.draft} \
+          -o {params.outdir} \
+          --model {params.model} \
+          --threads {threads} --bacteria
+        """
+
+# ---- Quality Assessment ----
+rule quast_assess:
+    input:
+        f"results/{SAMPLE}/assembly/medaka/consensus.fasta"
+    output:
+        f"results/{SAMPLE}/qc/quast/report.html"
+    params:
+        outdir=f"results/{SAMPLE}/qc/quast",
+        ref=f"-r {REFERENCE}" if REFERENCE else ""
+    threads: 4
+    shell:
+        """
+        quast {input} {params.ref} \
+          -o {params.outdir} \
+          --threads {threads} --min-contig 500
+        """
+
+rule busco_assess:
+    input:
+        f"results/{SAMPLE}/assembly/medaka/consensus.fasta"
+    output:
+        f"results/{SAMPLE}/qc/busco/short_summary.txt"
+    params:
+        outdir=f"results/{SAMPLE}/qc/busco",
+        lineage=BUSCO_LIN
+    threads: 8
+    shell:
+        """
+        busco -i {input} -o busco_run -m genome \
+          -l {params.lineage} --cpu {threads} \
+          --out_path {params.outdir}
+        cp {params.outdir}/busco_run/short_summary.*.txt {output}
+        """
+
+# ---- Annotation ----
+rule bakta_annotate:
+    input:
+        f"results/{SAMPLE}/assembly/medaka/consensus.fasta"
+    output:
+        f"results/{SAMPLE}/annotation/{SAMPLE}.gff3"
+    params:
+        outdir=f"results/{SAMPLE}/annotation",
+        db=BAKTA_DB
+    threads: 8
+    shell:
+        """
+        bakta {input} --db {params.db} \
+          --output {params.outdir} \
+          --prefix {SAMPLE} \
+          --threads {threads} --complete
+        """
+\end{lstlisting}
+
+The corresponding configuration file:
+
+\begin{lstlisting}[language=Python,caption={Configuration file for the end-to-end Snakemake pipeline (config.yaml).},label=lst:diy-smk-e2e-config]
+# config.yaml -- Complete Nanopore Pipeline Configuration
+sample: "ecoli_k12"
+pod5_dir: "data/pod5/"
+dorado_model: "dna_r10.4.1_e8.2_400bps_sup@v4.3.0"
+genome_size: "4.6m"
+medaka_model: "r1041_e82_400bps_sup_v4.3.0"
+busco_lineage: "enterobacterales_odb10"
+bakta_db: "db/bakta/db-light"
+reference: "ref/ecoli_k12.fasta"
+device: "cuda:0"       # use "cpu" if no GPU available
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash,caption={Running the complete Snakemake pipeline.},label=lst:diy-smk-e2e-run]
+# Dry run: see what will be executed
+snakemake --configfile config.yaml -n
+
+# Run locally with 8 cores
+snakemake --configfile config.yaml --cores 8
+
+# Run with a SLURM cluster profile
+snakemake --configfile config.yaml \
+  --profile slurm/ \
+  --jobs 10
+
+# Generate a pipeline DAG visualisation
+snakemake --configfile config.yaml --dag | dot -Tpng > dag.png
+\end{lstlisting}
+
+\begin{tipbox}[title={Snakemake Best Practices}]
+\begin{itemize}[nosep]
+  \item Always run \texttt{snakemake -n} (dry run) first to verify the execution plan.
+  \item Use \texttt{--use-conda} with per-rule \texttt{conda:} directives for fully reproducible environments.
+  \item Use \texttt{--configfile} to separate parameters from logic.
+  \item Add \texttt{resources: mem\_mb=16000} to rules for cluster job submission.
+  \item Use \texttt{snakemake --lint} to check for common mistakes.
+  \item Pin tool versions in your environment YAML files.
+\end{itemize}
+\end{tipbox}
+
+%% ============================================================
+\section{Complete End-to-End Nextflow Workflow}
+\label{sec:diyanalysis:full_nextflow}
+%% ============================================================
+
+The equivalent pipeline in Nextflow DSL2, with the same functionality as the Snakemake workflow above.
+
+\begin{lstlisting}[language=Java,caption={Complete end-to-end Nextflow pipeline for nanopore analysis (main.nf).},label=lst:diy-nf-e2e]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+// ========== Parameters ==========
+params.sample        = "ecoli_k12"
+params.pod5_dir      = "data/pod5"
+params.dorado_model  = "dna_r10.4.1_e8.2_400bps_sup@v4.3.0"
+params.genome_size   = "4.6m"
+params.medaka_model  = "r1041_e82_400bps_sup_v4.3.0"
+params.busco_lineage = "enterobacterales_odb10"
+params.bakta_db      = "db/bakta/db-light"
+params.reference     = ""
+params.device        = "cuda:0"
+params.outdir        = "results"
+
+// ========== Processes ==========
+
+process DORADO_BASECALL {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/basecall", mode: 'copy'
+    label 'process_gpu'
+
+    input:  path(pod5_dir)
+    output: path("basecalled.bam"), emit: bam
+
+    script:
+    """
+    dorado basecaller ${params.dorado_model} ${pod5_dir} \
+      --device ${params.device} --emit-moves \
+      > basecalled.bam
+    """
+}
+
+process BAM_TO_FASTQ {
+    tag "${params.sample}"
+    cpus 4
+
+    input:  path(bam)
+    output: path("basecalled.fastq.gz"), emit: fastq
+
+    script:
+    """
+    samtools fastq -@ ${task.cpus} ${bam} | gzip > basecalled.fastq.gz
+    """
+}
+
+process NANOPLOT {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/qc/nanoplot", mode: 'copy'
+    cpus 4
+
+    input:  path(fastq)
+    output: path("nanoplot_out/*"), emit: report
+
+    script:
+    """
+    NanoPlot --fastq ${fastq} --outdir nanoplot_out \
+      --threads ${task.cpus} --loglength --N50 \
+      --title "${params.sample} QC"
+    """
+}
+
+process FASTQC {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/qc/fastqc", mode: 'copy'
+    cpus 2
+
+    input:  path(fastq)
+    output: path("*_fastqc.{html,zip}"), emit: report
+
+    script:
+    """
+    fastqc ${fastq} --threads ${task.cpus}
+    """
+}
+
+process MULTIQC {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/qc/multiqc", mode: 'copy'
+
+    input:  path(reports)
+    output: path("multiqc_report.html"), emit: report
+
+    script:
+    """
+    multiqc . -o . --force
+    """
+}
+
+process CHOPPER {
+    tag "${params.sample}"
+    cpus 4
+
+    input:  path(fastq)
+    output: path("filtered.fastq.gz"), emit: filtered
+
+    script:
+    """
+    zcat ${fastq} | chopper --quality 10 --minlength 1000 \
+      --threads ${task.cpus} | gzip > filtered.fastq.gz
+    """
+}
+
+process FLYE {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/assembly/flye", mode: 'copy'
+    cpus 8
+    memory '16 GB'
+
+    input:  path(reads)
+    output:
+        path("flye_out/assembly.fasta"), emit: assembly
+        path("flye_out/assembly_info.txt"), emit: info
+
+    script:
+    """
+    flye --nano-hq ${reads} \
+      --out-dir flye_out \
+      --threads ${task.cpus} \
+      --genome-size ${params.genome_size}
+    """
+}
+
+process MEDAKA {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/assembly/medaka", mode: 'copy'
+    cpus 8
+    memory '16 GB'
+
+    input:
+        path(reads)
+        path(draft)
+    output: path("medaka_out/consensus.fasta"), emit: polished
+
+    script:
+    """
+    medaka_polisher -i ${reads} -d ${draft} \
+      -o medaka_out \
+      --model ${params.medaka_model} \
+      --threads ${task.cpus} --bacteria
+    """
+}
+
+process QUAST {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/qc/quast", mode: 'copy'
+    cpus 4
+
+    input:
+        path(assembly)
+        val(reference)
+    output: path("quast_out/*"), emit: report
+
+    script:
+    def ref_flag = reference ? "-r ${reference}" : ""
+    """
+    quast ${assembly} ${ref_flag} \
+      -o quast_out --threads ${task.cpus} --min-contig 500
+    """
+}
+
+process BUSCO {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/qc/busco", mode: 'copy'
+    cpus 8
+
+    input:  path(assembly)
+    output: path("busco_out/*"), emit: report
+
+    script:
+    """
+    busco -i ${assembly} -o busco_out -m genome \
+      -l ${params.busco_lineage} --cpu ${task.cpus}
+    """
+}
+
+process BAKTA {
+    tag "${params.sample}"
+    publishDir "${params.outdir}/annotation", mode: 'copy'
+    cpus 8
+    memory '8 GB'
+
+    input:
+        path(assembly)
+        path(db)
+    output: path("bakta_out/*"), emit: annotation
+
+    script:
+    """
+    bakta ${assembly} --db ${db} \
+      --output bakta_out --prefix ${params.sample} \
+      --threads ${task.cpus} --complete
+    """
+}
+
+// ========== Workflow ==========
+workflow {
+    // Input channels
+    pod5_ch = Channel.fromPath(params.pod5_dir, checkIfExists: true)
+    db_ch   = Channel.fromPath(params.bakta_db, checkIfExists: true)
+
+    // Basecalling
+    DORADO_BASECALL(pod5_ch)
+    BAM_TO_FASTQ(DORADO_BASECALL.out.bam)
+
+    // Quality control (runs in parallel)
+    NANOPLOT(BAM_TO_FASTQ.out.fastq)
+    FASTQC(BAM_TO_FASTQ.out.fastq)
+    qc_reports = NANOPLOT.out.report.mix(FASTQC.out.report).collect()
+    MULTIQC(qc_reports)
+
+    // Filtering and assembly
+    CHOPPER(BAM_TO_FASTQ.out.fastq)
+    FLYE(CHOPPER.out.filtered)
+    MEDAKA(CHOPPER.out.filtered, FLYE.out.assembly)
+
+    // Assessment (runs in parallel)
+    QUAST(MEDAKA.out.polished, params.reference)
+    BUSCO(MEDAKA.out.polished)
+
+    // Annotation
+    BAKTA(MEDAKA.out.polished, db_ch)
+}
+\end{lstlisting}
+
+The corresponding Nextflow configuration:
+
+\begin{lstlisting}[language=Java,caption={Nextflow configuration file (nextflow.config).},label=lst:diy-nf-e2e-config]
+// nextflow.config
+params {
+    sample        = "ecoli_k12"
+    pod5_dir      = "data/pod5"
+    dorado_model  = "dna_r10.4.1_e8.2_400bps_sup@v4.3.0"
+    genome_size   = "4.6m"
+    medaka_model  = "r1041_e82_400bps_sup_v4.3.0"
+    busco_lineage = "enterobacterales_odb10"
+    bakta_db      = "db/bakta/db-light"
+    reference     = ""
+    device        = "cuda:0"
+    outdir        = "results"
+}
+
+profiles {
+    standard {
+        process.executor = 'local'
+        process.cpus     = 4
+        process.memory   = '8 GB'
+    }
+    slurm {
+        process.executor = 'slurm'
+        process.queue    = 'standard'
+        process.time     = '6h'
+        process.clusterOptions = '--account=myproject'
+    }
+    docker {
+        docker.enabled = true
+    }
+    singularity {
+        singularity.enabled = true
+    }
+}
+
+process {
+    withLabel: 'process_gpu' {
+        accelerator = 1
+        clusterOptions = '--gres=gpu:1'
+        queue = 'gpu'
+        memory = '32 GB'
+    }
+}
+
+// Timeline and report
+timeline {
+    enabled = true
+    file    = "${params.outdir}/pipeline_info/timeline.html"
+}
+report {
+    enabled = true
+    file    = "${params.outdir}/pipeline_info/report.html"
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash,caption={Running the complete Nextflow pipeline.},label=lst:diy-nf-e2e-run]
+# Run locally
+nextflow run main.nf -profile standard
+
+# Run on a SLURM cluster with Singularity containers
+nextflow run main.nf -profile slurm,singularity
+
+# Run with custom parameters
+nextflow run main.nf \
+  --sample my_sample \
+  --pod5_dir /data/run01/pod5 \
+  --genome_size 5m \
+  --outdir /data/results/run01
+
+# Resume a failed/interrupted run
+nextflow run main.nf -resume
+
+# View execution report after completion
+open results/pipeline_info/report.html
+\end{lstlisting}
+
+\begin{tipbox}[title={Nextflow vs Snakemake: Which to Choose?}]
+Both Snakemake and Nextflow are excellent workflow managers. Some practical guidance:
+\begin{itemize}[nosep]
+  \item \textbf{Snakemake} is Python-based, intuitive for Python users, and uses a ``pull'' model (define desired outputs, Snakemake figures out what to run). Excellent \texttt{conda:} integration per rule.
+  \item \textbf{Nextflow} is Groovy/Java-based, uses a ``push'' model (data flows through connected processes), and has native support for cloud executors (AWS Batch, Google Life Sciences). The \software{nf-core} community provides $>$100 production-grade pipelines.
+  \item Choose Snakemake if your team knows Python and works primarily on HPC clusters. Choose Nextflow if you need cloud portability or want to leverage nf-core pipelines.
+\end{itemize}
+\end{tipbox}
+
+%% ============================================================
+\section{Putting It All Together: A Practical Checklist}
+\label{sec:diyanalysis:checklist}
+%% ============================================================
+
+\begin{protocolbox}[title={Complete Analysis Checklist}]
+\begin{enumerate}[nosep]
+  \item \textbf{Before sequencing}: Estimate required coverage. For bacteria: 50--100$\times$; for human variant calling: 30$\times$ minimum.
+  \item \textbf{Basecalling}: Use \software{Dorado} with the SUP model for publication-quality data. Match the model to your chemistry version.
+  \item \textbf{QC checkpoint}: Run \software{NanoPlot}. Check median quality ($\geq$Q15 for hac, $\geq$Q20 for sup), N50 ($>$5\kilobase{} for ligation libraries), and total yield. If metrics are poor, troubleshoot before proceeding.
+  \item \textbf{Read filtering}: Apply mild quality and length filters with \software{chopper}. Do not over-filter.
+  \item \textbf{Analysis}: Choose the appropriate walkthrough:
+    \begin{itemize}[nosep]
+      \item Bacterial genome? $\rightarrow$ Flye + Medaka + QUAST + BUSCO + Bakta (\cref{sec:diyanalysis:bacterial}).
+      \item Species identification? $\rightarrow$ Kraken2 + Bracken + Krona (\cref{sec:diyanalysis:metagenomics}).
+      \item Human variants? $\rightarrow$ minimap2 + Clair3 + bcftools (\cref{sec:diyanalysis:variantcalling}).
+    \end{itemize}
+  \item \textbf{Visual inspection}: Always look at your data in \software{IGV} (\cref{sec:diyanalysis:igv}). Automated pipelines can produce plausible but incorrect results.
+  \item \textbf{Reproducibility}: Wrap your analysis in a Snakemake or Nextflow workflow. Export your conda environment. Document everything.
+  \item \textbf{Share}: Deposit raw data in the \acrshort{SRA}. Share your workflow on GitHub. Publish your results.
+\end{enumerate}
+\end{protocolbox}
+
+\begin{keyconcept}[title={The Most Important Skill}]
+The single most important skill in bioinformatics is not knowing every command by heart---it is knowing how to \emph{check your results}. Every tool can fail silently, producing output files that look correct but contain errors. Always verify: Is the assembly the expected size? Does BUSCO show high completeness? Does the Ti/Tv ratio make sense? Are there unexpected species in your metagenomics results? Does the variant count match expectations? Build verification steps into every pipeline, and never trust a result you have not inspected.
+\end{keyconcept}

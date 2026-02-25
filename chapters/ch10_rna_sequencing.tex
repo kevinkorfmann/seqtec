@@ -1,0 +1,1624 @@
+% ==============================================================================
+% Chapter 10: RNA Sequencing — Measuring Gene Expression
+% ==============================================================================
+\chapter{RNA Sequencing: Measuring Gene Expression}
+\label{ch:rnaseq}
+
+\begin{keyconcept}
+RNA sequencing (\acrshort{RNA-seq}) measures the transcriptome---the complete set of RNA
+transcripts in a cell, tissue, or organism at a given moment. Because gene
+expression is the primary mechanism through which genotype becomes phenotype,
+\acrshort{RNA-seq} has become one of the most widely used sequencing applications in
+biology and medicine.
+\end{keyconcept}
+
+% ---------------------------------------------------------------------------
+\section{Why Measure RNA?}
+\label{sec:rnaseq:why}
+
+Every cell in a multicellular organism carries essentially the same genome, yet
+a neuron looks and behaves nothing like a hepatocyte. The difference lies
+predominantly in \emph{which genes are expressed} and at \emph{what levels}.
+Measuring RNA therefore provides a direct readout of cellular state.
+
+\subsection{Gene Expression as a Window into Biology}
+
+Gene expression governs virtually every biological process:
+
+\begin{itemize}[nosep]
+  \item \textbf{Development.} Transcription factors activate stage-specific
+    gene programs that drive differentiation from a single zygote into hundreds
+    of specialized cell types.
+  \item \textbf{Disease.} Cancers are defined by aberrant expression profiles;
+    autoimmune diseases by dysregulated immune genes; neurodegeneration by
+    altered synaptic gene networks.
+  \item \textbf{Environmental response.} Cells respond to stress, infection,
+    drugs, and nutrients by rapidly reprogramming their transcriptomes.
+  \item \textbf{Circadian rhythm.} Thousands of genes oscillate with 24-hour
+    periodicity in virtually every tissue.
+\end{itemize}
+
+Before \acrshort{RNA-seq}, gene expression was measured by microarrays,
+Northern blots, or quantitative PCR (qPCR). Microarrays could interrogate
+thousands of genes simultaneously but relied on predefined probes, suffered
+from cross-hybridization, and had limited dynamic range. \acrshort{RNA-seq}
+overcame all of these limitations: it is unbiased, quantitative across
+five orders of magnitude, and can detect novel transcripts, splice variants,
+and allele-specific expression without any prior knowledge of the genome.
+
+\subsection{The Transcriptome}
+
+The transcriptome is far more complex than a simple catalogue of protein-coding
+messenger RNAs:
+
+\begin{description}[style=nextline]
+  \item[Messenger RNA (mRNA)] Protein-coding transcripts, accounting for only
+    $\sim$2--5\% of total RNA mass but $\sim$20,000 genes in humans.
+  \item[Ribosomal RNA (rRNA)] The dominant RNA species by mass ($\sim$80--85\%),
+    forming the structural and catalytic core of ribosomes (28S, 18S, 5.8S, 5S
+    in eukaryotes).
+  \item[Transfer RNA (tRNA)] Adapter molecules ($\sim$10--15\% of RNA) that
+    deliver amino acids during translation.
+  \item[Long non-coding RNA (lncRNA)] Transcripts $>$200\,nt that do not encode
+    proteins; $>$60,000 annotated in humans. Functions include chromatin
+    remodeling, transcriptional regulation, and scaffolding (e.g., \gene{XIST},
+    \gene{MALAT1}, \gene{HOTAIR}).
+  \item[Small non-coding RNAs] Include microRNAs (miRNAs, $\sim$22\,nt),
+    piwi-interacting RNAs (piRNAs, 24--32\,nt), small interfering RNAs
+    (siRNAs), small nucleolar RNAs (snoRNAs), and tRNA-derived fragments
+    (tRFs).
+  \item[Circular RNAs (circRNAs)] Covalently closed loops formed by
+    back-splicing; highly stable, tissue-specific, and implicated in miRNA
+    sponging and translation regulation.
+  \item[Transcript isoforms] Alternative splicing, alternative polyadenylation,
+    and alternative transcription start sites generate multiple isoforms per
+    gene. Human genes produce an average of $\sim$7 distinct isoforms.
+\end{description}
+
+\begin{warningbox}
+The vast majority of cellular RNA is ribosomal RNA. Without an enrichment or
+depletion strategy, an \acrshort{RNA-seq} experiment would waste $>$80\% of
+sequencing reads on rRNA.
+\end{warningbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Bulk RNA-seq: An Overview of Approaches}
+\label{sec:rnaseq:bulk}
+
+Bulk \acrshort{RNA-seq} measures the \emph{average} expression across a
+population of cells (typically $10^5$--$10^7$ cells). Two main strategies exist,
+distinguished by how they deal with the rRNA problem.
+
+\subsection{mRNA-seq: Poly-A Selection}
+
+The most common approach for studying protein-coding gene expression.
+Polyadenylated transcripts (mRNAs plus some lncRNAs) are captured using
+oligo-dT beads that hybridize to the poly-A tail.
+
+\begin{protocolbox}[title={Poly-A Selection Protocol Overview}]
+\begin{enumerate}[nosep]
+  \item Extract total RNA (e.g., TRIzol or column-based methods).
+  \item Incubate with oligo-dT magnetic beads; poly-A$^+$ transcripts bind.
+  \item Wash away rRNA, tRNA, and other non-polyadenylated RNAs.
+  \item Elute mRNA and proceed to fragmentation and cDNA synthesis.
+\end{enumerate}
+Requires high-quality RNA with intact poly-A tails (RIN $\geq$ 7 recommended).
+\end{protocolbox}
+
+\textbf{Advantages:}
+\begin{itemize}[nosep]
+  \item Highly enriched for protein-coding transcripts.
+  \item Lower sequencing depth required (fewer ``wasted'' reads).
+  \item Well-established, widely used---most public datasets use this approach.
+\end{itemize}
+
+\textbf{Limitations:}
+\begin{itemize}[nosep]
+  \item Misses non-polyadenylated transcripts (histone mRNAs, many lncRNAs, most
+    small RNAs, bacterial transcripts).
+  \item Requires high-quality RNA; degraded samples lose poly-A tails, biasing
+    toward 3$'$ ends.
+  \item Cannot capture nascent or nuclear RNA species lacking poly-A tails.
+\end{itemize}
+
+\subsection{Total RNA-seq: Ribosomal RNA Depletion}
+
+Ribosomal depletion removes rRNA from total RNA, leaving all other RNA species
+intact---mRNAs, lncRNAs, circRNAs, pre-mRNAs, and other non-coding species.
+
+Common rRNA depletion kits include:
+\begin{itemize}[nosep]
+  \item \textbf{Illumina Ribo-Zero Plus:} uses DNA probe hybridization and
+    RNase H digestion to deplete rRNA from human, mouse, rat, and bacterial
+    samples.
+  \item \textbf{RiboCop (Lexogen):} enzymatic rRNA depletion compatible with
+    degraded samples.
+  \item \textbf{NEBNext rRNA Depletion Kit:} probe-based depletion for human,
+    mouse, and rat.
+  \item \textbf{QIAseq FastSelect:} targets rRNA during reverse transcription,
+    eliminating a separate depletion step.
+\end{itemize}
+
+\textbf{Advantages:}
+\begin{itemize}[nosep]
+  \item Captures both coding and non-coding RNA.
+  \item Works with degraded/FFPE samples (no reliance on poly-A tail integrity).
+  \item Detects intronic reads, pre-mRNAs, and nascent transcription signals.
+  \item Can reveal circular RNAs (which lack poly-A tails).
+\end{itemize}
+
+\textbf{Limitations:}
+\begin{itemize}[nosep]
+  \item Residual rRNA ($\sim$1--10\%) consumes some sequencing capacity.
+  \item More complex read composition; requires deeper sequencing for equivalent
+    mRNA coverage.
+  \item May require organism-specific depletion probes for non-model organisms.
+\end{itemize}
+
+\subsection{Choosing Between mRNA-seq and Total RNA-seq}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of mRNA-seq (poly-A selection) and total RNA-seq (rRNA
+depletion) approaches.}
+\label{tab:rnaseq:mrna_vs_total}
+\small
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+\textbf{Feature} & \textbf{mRNA-seq (poly-A)} & \textbf{Total RNA-seq (rRNA depletion)} \\
+\midrule
+Target RNA & Poly-A$^+$ mRNA (+ some lncRNA) & All RNA except rRNA \\
+RNA quality requirement & High (RIN $\geq$ 7) & Moderate (works with RIN $\geq$ 2) \\
+FFPE samples & Poor performance & Suitable \\
+Non-coding RNA & Missed (most) & Captured \\
+Intronic reads & Minimal & Substantial \\
+Circular RNA & Not captured & Captured \\
+Typical depth needed & 20--30M reads & 40--60M reads \\
+Cost per informative read & Lower & Higher \\
+Best for & Standard differential expression & Degraded samples, ncRNA, comprehensive profiling \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}
+If your primary goal is differential expression of protein-coding genes and your
+RNA quality is good (RIN $\geq$ 7), mRNA-seq is the most cost-effective choice.
+If you are working with clinical/FFPE samples, interested in non-coding RNAs, or
+need to capture the broadest possible transcriptome, use total RNA-seq.
+\end{tipbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Library Preparation for RNA-seq}
+\label{sec:rnaseq:library}
+
+\subsection{RNA Extraction and Quality Assessment}
+
+High-quality RNA is the single most critical determinant of a successful
+\acrshort{RNA-seq} experiment. RNA is chemically fragile and ubiquitous RNases
+in the environment degrade it rapidly.
+
+\begin{description}[style=nextline]
+  \item[Extraction methods]
+    \begin{itemize}[nosep]
+      \item \textbf{TRIzol / TRI Reagent:} acid guanidinium--phenol--chloroform
+        extraction. Gold standard for yield; suitable for most tissues.
+      \item \textbf{Column-based:} RNeasy (Qiagen), PureLink (Invitrogen). Faster,
+        less toxic, but lower yield for difficult tissues.
+      \item \textbf{Automated:} KingFisher (Thermo), QIAsymphony. Essential for
+        high-throughput core facilities.
+    \end{itemize}
+  \item[Quality metrics]
+    \begin{itemize}[nosep]
+      \item \textbf{RIN (RNA Integrity Number):} Agilent Bioanalyzer / TapeStation
+        score from 1 (fully degraded) to 10 (intact). Based on the 28S/18S rRNA
+        ratio and the electropherogram trace. RIN $\geq$ 7 is recommended for
+        poly-A selection.
+      \item \textbf{DV200:} Fraction of RNA fragments $>$ 200 nucleotides.
+        Preferred metric for degraded/FFPE RNA because the RIN algorithm
+        performs poorly when rRNA peaks are absent. DV200 $\geq$ 30\% is
+        often the minimum for library construction with specialized FFPE kits.
+      \item \textbf{Concentration:} Qubit fluorometer (RNA HS Assay) provides
+        accurate quantitation; NanoDrop UV absorbance gives purity ratios
+        (260/280 $\sim$ 2.0 for pure RNA; 260/230 $\geq$ 1.8).
+    \end{itemize}
+\end{description}
+
+\subsection{Strand-Specific Library Preparation}
+\label{sec:rnaseq:stranded}
+
+In unstranded \acrshort{RNA-seq}, the original strand of the RNA transcript
+cannot be determined from the sequencing reads. Strand-specific (stranded)
+protocols preserve this information.
+
+\subsubsection{Why Strandedness Matters}
+
+\begin{itemize}[nosep]
+  \item \textbf{Overlapping genes:} In complex genomes, genes on opposite
+    strands can overlap. Unstranded data cannot assign reads to the correct
+    gene.
+  \item \textbf{Antisense transcription:} Many loci produce antisense
+    transcripts that regulate the sense gene. Without strand information, sense
+    and antisense reads are indistinguishable.
+  \item \textbf{Accurate quantification:} Stranded data improves the accuracy
+    of gene-level and transcript-level quantification by 5--15\% for
+    overlapping annotations.
+  \item \textbf{Novel transcript discovery:} Strand information is essential
+    for correctly assembling and annotating novel transcripts.
+\end{itemize}
+
+\subsubsection{The dUTP Method}
+
+The most widely used strand-specific protocol:
+
+\begin{enumerate}[nosep]
+  \item Fragment mRNA and synthesize first-strand cDNA using random primers.
+  \item Synthesize second-strand cDNA incorporating dUTP instead of dTTP.
+  \item Ligate sequencing adapters.
+  \item Digest the dUTP-containing second strand with USER enzyme (uracil-DNA
+    glycosylase + endonuclease VIII).
+  \item Only the first-strand cDNA (complementary to the original mRNA) is
+    amplified and sequenced.
+  \item Read 2 corresponds to the sense strand of the original mRNA.
+\end{enumerate}
+
+This is the basis of the \textbf{Illumina Stranded mRNA Prep} and
+\textbf{Illumina Stranded Total RNA Prep} kits, which have largely become the
+community standard.
+
+% TikZ diagram: Strand-specific library prep
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.7cm,
+  every node/.style={font=\small},
+  rna/.style={draw, thick, fill=red!15, rounded corners, minimum width=6cm, minimum height=0.6cm},
+  cdna1/.style={draw, thick, fill=blue!15, rounded corners, minimum width=6cm, minimum height=0.6cm},
+  cdna2/.style={draw, thick, fill=orange!15, rounded corners, minimum width=6cm, minimum height=0.6cm, densely dashed},
+  arrow/.style={-{Stealth[length=6pt]}, thick},
+  label/.style={font=\small\itshape, text=gray!70!black}
+]
+
+% Step 1: mRNA
+\node[rna] (mrna) {5$'$ ------- mRNA (sense) ------- AAAAAAA 3$'$};
+\node[label, right=0.3cm of mrna] {Original transcript};
+
+% Step 2: First-strand cDNA
+\node[cdna1, below=1.0cm of mrna] (ss1) {3$'$ ------- 1st strand cDNA ------- 5$'$};
+\node[label, right=0.3cm of ss1] {Reverse transcription};
+\draw[arrow] (mrna.south) -- node[right, font=\scriptsize] {RT + random primers} (ss1.north);
+
+% Step 3: Second-strand with dUTP
+\node[cdna2, below=1.0cm of ss1] (ss2) {5$'$ - - - 2nd strand cDNA (dUTP) - - - 3$'$};
+\node[label, right=0.3cm of ss2] {Contains dUTP};
+\draw[arrow] (ss1.south) -- node[right, font=\scriptsize] {2nd strand synthesis (dUTP)} (ss2.north);
+
+% Step 4: USER enzyme digestion
+\node[below=1.0cm of ss2, font=\small, text=BrickRed] (digest) {USER enzyme digests dUTP strand};
+\draw[arrow, BrickRed] (ss2.south) -- (digest.north);
+
+% Step 5: Only first strand remains
+\node[cdna1, below=1.0cm of digest] (final) {3$'$ ------- 1st strand cDNA ------- 5$'$};
+\node[label, right=0.3cm of final] {Amplified \& sequenced};
+\draw[arrow] (digest.south) -- (final.north);
+
+% Annotation
+\node[below=0.5cm of final, font=\footnotesize\itshape, text=MidnightBlue] {Read 1 $\rightarrow$ antisense; \quad Read 2 $\rightarrow$ sense (original mRNA direction)};
+
+\end{tikzpicture}
+\caption{Schematic of the dUTP strand-specific library preparation method. The
+second-strand cDNA is synthesized with dUTP (dashed orange) and subsequently
+digested by USER enzyme, ensuring that only the first-strand cDNA (blue) is
+amplified. This preserves strand-of-origin information.}
+\label{fig:rnaseq:stranded}
+\end{figure}
+
+\subsection{Low-Input RNA-seq}
+
+Standard RNA-seq protocols require 100\,ng--1\,$\mu$g of total RNA. Many
+biological questions demand profiling from small cell populations, sorted cells,
+or limited clinical material.
+
+\begin{description}[style=nextline]
+  \item[Smart-seq2] Full-length transcript coverage from single cells or
+    picogram-level input. Uses template-switching oligos and limited PCR
+    amplification. Plate-based (typically 96- or 384-well). Excellent
+    sensitivity but low throughput and not strand-specific in the original
+    protocol.
+  \item[SMART-Seq Stranded (Takara)] Combines Smart-seq template-switching
+    with strand-specific library prep. Input as low as 10\,pg (single cells)
+    to 10\,ng. Adds strand specificity lacking in original Smart-seq2.
+  \item[NEBNext Single Cell / Low Input RNA Library Prep] Template-switching
+    approach compatible with 2\,pg--200\,ng input.
+\end{description}
+
+\subsection{Degraded RNA and FFPE Samples}
+
+Formalin-fixed paraffin-embedded (FFPE) tissues are ubiquitous in pathology
+archives. The fixation and embedding process crosslinks and fragments RNA
+severely (RIN typically 1--3). Specialized protocols are needed:
+
+\begin{itemize}[nosep]
+  \item \textbf{Illumina Stranded Total RNA with Ribo-Zero Plus:} works with
+    FFPE RNA down to DV200 of $\sim$30\%.
+  \item \textbf{KAPA RNA HyperPrep with RiboErase:} optimized for low-quality
+    input; produces libraries from as little as 25\,ng FFPE RNA.
+  \item \textbf{Takara SMARTer Stranded Total RNA-Seq Kit v3 -- Pico Input:}
+    designed for 250\,pg--10\,ng of degraded RNA.
+  \item \textbf{Probe-based approaches (Twist Bioscience RNA Panel, IDT xGen
+    RNA):} use hybridization capture for targeted RNA panels from FFPE
+    samples.
+\end{itemize}
+
+\begin{warningbox}
+FFPE RNA-seq data has distinct characteristics: shorter insert sizes, higher
+duplicate rates, and 3$'$ bias. Specialized QC metrics (DV200, percentage of
+reads in gene bodies) should be used. The standard RIN score is unreliable for
+FFPE samples.
+\end{warningbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Small RNA Sequencing}
+\label{sec:rnaseq:smallrna}
+
+Small RNA-seq targets RNA molecules $<$ 200\,nt, with a particular focus on
+microRNAs (miRNAs, $\sim$22\,nt), which are key post-transcriptional
+regulators of gene expression.
+
+\subsection{Small RNA Species}
+
+\begin{description}[style=nextline]
+  \item[microRNAs (miRNAs)] 19--25\,nt single-stranded RNAs that bind the
+    3$'$ UTR of target mRNAs to induce translational repression or mRNA
+    degradation. $\sim$2,600 mature miRNAs annotated in humans (miRBase v22.1).
+  \item[piRNAs] 24--32\,nt RNAs that silence transposable elements in the
+    germline; associate with PIWI-clade Argonaute proteins.
+  \item[siRNAs] 20--24\,nt double-stranded RNA-derived species involved in RNA
+    interference.
+  \item[tRNA-derived fragments (tRFs)] 14--35\,nt fragments cleaved from mature
+    or precursor tRNAs. Emerging roles in stress response, gene regulation,
+    and cancer.
+  \item[snoRNAs] 60--300\,nt; guide chemical modifications of rRNA and snRNA.
+\end{description}
+
+\subsection{Small RNA Library Preparation}
+
+\begin{protocolbox}[title={Small RNA-seq Library Preparation}]
+\begin{enumerate}[nosep]
+  \item \textbf{Size selection:} Total RNA is size-selected for 15--50\,nt
+    fragments using PAGE gel or bead-based selection.
+  \item \textbf{3$'$ adapter ligation:} An adapter is ligated to the 3$'$-OH of
+    small RNAs (which have a free 3$'$-OH after Dicer processing).
+  \item \textbf{5$'$ adapter ligation:} An adapter is ligated to the 5$'$
+    phosphate.
+  \item \textbf{Reverse transcription:} cDNA is synthesized from the
+    adapter-ligated small RNA.
+  \item \textbf{PCR amplification:} Limited-cycle PCR with indexed primers.
+  \item \textbf{Size selection:} Final library is size-selected ($\sim$135--170\,bp
+    including adapters) to remove adapter dimers.
+\end{enumerate}
+\end{protocolbox}
+
+\begin{warningbox}[title={Adapter Dimers in Small RNA-seq}]
+Adapter dimers (3$'$ and 5$'$ adapters ligated directly to each other without
+a small RNA insert) are the most common artifact in small RNA-seq. They are
+$\sim$120--130\,bp and can dominate the library if input RNA is limiting.
+Rigorous gel-based or bead-based size selection is essential. Always check the
+library size distribution on a Bioanalyzer/TapeStation before sequencing.
+\end{warningbox}
+
+\subsection{miRNA-seq Analysis Workflow}
+
+The analysis of miRNA-seq data follows a specialized pipeline:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Adapter trimming:} Critical because inserts ($\sim$22\,nt)
+    are shorter than reads (typically 50--75\,bp). Tools: \software{Cutadapt},
+    \software{Trim Galore}, \software{fastp}.
+  \item \textbf{Quality filtering:} Remove reads $<$ 15\,nt or $>$ 35\,nt after
+    trimming.
+  \item \textbf{Mapping to miRNA reference:} Align to mature and precursor miRNA
+    sequences from miRBase using \software{Bowtie} (allowing 0--1 mismatches)
+    or dedicated tools.
+  \item \textbf{Quantification:} Count reads mapping to each miRNA.
+  \item \textbf{Normalization and differential expression:} Use
+    \software{DESeq2} or \software{edgeR} as for mRNA, but with miRNA-specific
+    considerations (lower library complexity, more discrete count
+    distributions).
+  \item \textbf{Target prediction:} \software{TargetScan}, \software{miRDB},
+    \software{DIANA-microT}.
+\end{enumerate}
+
+Key tools for small RNA analysis include:
+\begin{itemize}[nosep]
+  \item \textbf{miRDeep2:} Discovers known and novel miRNAs by modeling the
+    miRNA biogenesis pathway (Drosha/Dicer processing signatures).
+  \item \textbf{sRNAbench:} Comprehensive small RNA analysis including miRNA,
+    piRNA, tRFs, and isomiR detection.
+  \item \textbf{miRge 3.0:} Fast miRNA alignment and quantification using a
+    Bayesian approach.
+  \item \textbf{Oasis 2.0:} Web-based platform for small RNA-seq analysis.
+\end{itemize}
+
+
+% ---------------------------------------------------------------------------
+\section{Long-Read RNA Sequencing}
+\label{sec:rnaseq:longread}
+
+Short-read RNA-seq excels at quantification but struggles with isoform
+resolution. When multiple transcript isoforms share exons, short reads
+($\sim$150\,bp) cannot span the full transcript, making it impossible to
+determine which combination of exons belongs to the same molecule. Long-read
+RNA sequencing solves this by reading full-length transcripts.
+
+\subsection{PacBio Iso-Seq}
+
+The \textbf{Isoform Sequencing (Iso-Seq)} protocol from Pacific Biosciences
+produces full-length transcript sequences without the need for assembly:
+
+\begin{enumerate}[nosep]
+  \item Reverse-transcribe poly-A$^+$ RNA into full-length cDNA using a
+    template-switching oligo.
+  \item Size-select cDNA (optional; can fractionate to enrich specific size
+    ranges).
+  \item Generate SMRTbell libraries and sequence on the PacBio Revio or Sequel
+    IIe platform.
+  \item Use the \software{IsoSeq3} pipeline to produce high-quality (HQ)
+    full-length transcript isoforms with $>$99\% accuracy using CCS reads.
+\end{enumerate}
+
+Typical output: 5--15 million HiFi reads per SMRT Cell on Revio, yielding
+hundreds of thousands of unique transcript isoforms.
+
+\subsection{Oxford Nanopore RNA Sequencing}
+
+Oxford Nanopore offers two RNA-seq approaches:
+
+\begin{description}[style=nextline]
+  \item[Direct RNA sequencing (RNA004)] Sequences native RNA molecules directly
+    through the nanopore without reverse transcription or PCR. This preserves
+    RNA modifications (m$^6$A, pseudouridine, m$^5$C) and poly-A tail length
+    as part of the raw signal. Requires $\sim$500\,ng poly-A$^+$ RNA.
+    Currently lower throughput ($\sim$1--4M reads per flow cell).
+  \item[cDNA sequencing (SQK-PCS114)] Reverse-transcribes RNA into cDNA with
+    template-switching, then sequences the cDNA. Higher throughput than direct
+    RNA; compatible with PCR amplification for lower inputs.
+\end{description}
+
+\begin{keyconcept}[title={Advantages of Long-Read RNA-seq}]
+\begin{itemize}[nosep]
+  \item \textbf{True isoform identification:} Each read represents a single
+    full-length transcript, eliminating assembly artifacts.
+  \item \textbf{No computational assembly:} No need for transcript assembly
+    tools that can generate chimeric isoforms.
+  \item \textbf{RNA modification detection:} ONT direct RNA-seq detects
+    base modifications in native RNA.
+  \item \textbf{Poly-A tail length measurement:} Direct information on
+    polyadenylation dynamics.
+  \item \textbf{Fusion transcript detection:} Full-length reads span fusion
+    junctions unambiguously.
+\end{itemize}
+\end{keyconcept}
+
+\subsection{Long-Read Isoform Analysis Tools}
+
+\begin{description}[style=nextline]
+  \item[\software{IsoQuant}] Maps long reads to a reference genome and assigns
+    them to annotated or novel isoforms. Handles both PacBio and ONT data with
+    sophisticated error correction.
+  \item[\software{FLAIR}] Full-Length Alternative Isoform analysis of RNA.
+    Corrects, collapses, and quantifies long-read isoforms. Integrates with
+    short-read junction data for hybrid analysis.
+  \item[\software{Bambu}] Reference-guided transcript discovery and
+    quantification for long-read data. Uses a machine-learning model to
+    distinguish genuine novel isoforms from noise.
+  \item[\software{TALON}] Technology-agnostic long-read analysis pipeline;
+    builds a database of observed transcripts across samples and tracks
+    isoform usage changes.
+  \item[\software{SQANTI3}] Structural and quality annotation of novel
+    transcript isoforms; classifies isoforms into categories (full splice
+    match, novel in catalog, novel not in catalog, etc.) and filters
+    artifacts.
+\end{description}
+
+
+% ---------------------------------------------------------------------------
+\section{Nascent RNA Sequencing}
+\label{sec:rnaseq:nascent}
+
+Standard RNA-seq measures \emph{steady-state} RNA levels, which reflect the
+balance of transcription and degradation. Nascent RNA-seq methods specifically
+capture RNA that is \emph{currently being transcribed} by RNA polymerase II,
+providing a direct readout of transcriptional activity.
+
+\begin{description}[style=nextline]
+  \item[GRO-seq (Global Run-On sequencing)] Nuclei are isolated and RNA
+    polymerases are allowed to extend nascent transcripts in the presence of
+    BrUTP (bromouridine), which labels newly synthesized RNA. Labeled RNA is
+    immunoprecipitated and sequenced. Reveals active transcription sites and
+    their directionality, including enhancer RNAs (eRNAs).
+  \item[PRO-seq (Precision Run-On sequencing)] Similar to GRO-seq but uses
+    biotin-labeled NTPs that cause chain termination after a single nucleotide
+    incorporation. This maps the position of active RNA polymerase at
+    single-nucleotide resolution.
+  \item[NET-seq (Native Elongating Transcript sequencing)] Immunoprecipitates
+    RNA Pol II and sequences the 3$'$ ends of associated nascent RNA. No
+    run-on step; captures the native polymerase position.
+  \item[TT-seq (Transient Transcriptome sequencing)] Cells are pulsed with
+    4-thiouridine (4sU) for 5--10 minutes; newly synthesized RNA incorporates
+    4sU, which is biotinylated and selected. Captures both stable and unstable
+    nascent transcripts at near-physiological conditions.
+\end{description}
+
+\begin{tipbox}
+Nascent RNA-seq is essential for studying transcriptional regulation, enhancer
+activity, and RNA polymerase dynamics. If your biological question is ``how much
+RNA is being produced?'' rather than ``how much RNA is present?'', consider a
+nascent RNA method.
+\end{tipbox}
+
+
+% ---------------------------------------------------------------------------
+\section{RNA-seq Bioinformatics Workflow}
+\label{sec:rnaseq:bioinformatics}
+
+% TikZ: RNA-seq analysis workflow
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.8cm and 1.5cm,
+  every node/.style={font=\small},
+  boxstep/.style={draw, rounded corners, fill=MidnightBlue!12, minimum width=3.8cm, minimum height=0.8cm, align=center, font=\small},
+  tool/.style={font=\scriptsize\ttfamily, text=OliveGreen!80!black},
+  arrow/.style={-{Stealth[length=5pt]}, thick, MidnightBlue!70},
+  branch/.style={-{Stealth[length=5pt]}, thick, BrickRed!70},
+]
+
+% Main workflow
+\node[boxstep] (raw) {Raw FASTQ reads};
+\node[boxstep, below=of raw] (qc) {Quality control};
+\node[boxstep, below=of qc] (trim) {Adapter/quality trimming};
+
+% Branch point
+\node[boxstep, below left=1.2cm and 1.0cm of trim] (align) {Splice-aware\\alignment};
+\node[boxstep, below right=1.2cm and 1.0cm of trim] (pseudo) {Pseudo-alignment /\\lightweight quantification};
+
+% After alignment
+\node[boxstep, below=of align] (count) {Gene/transcript\\quantification};
+
+% Merge
+\node[boxstep, below=2.8cm of trim] (de) {Differential expression\\analysis};
+
+% Downstream
+\node[boxstep, below left=1.0cm and 0.8cm of de] (gsea) {Gene set\\enrichment};
+\node[boxstep, below=of de] (iso) {Isoform / splicing\\analysis};
+\node[boxstep, below right=1.0cm and 0.8cm of de] (fusion) {Fusion gene\\detection};
+
+% Arrows
+\draw[arrow] (raw) -- (qc);
+\draw[arrow] (qc) -- (trim);
+\draw[arrow] (trim) -| (align);
+\draw[arrow] (trim) -| (pseudo);
+\draw[arrow] (align) -- (count);
+\draw[arrow] (count) -- (de);
+\draw[arrow] (pseudo) |- (de);
+\draw[arrow] (de) -| (gsea);
+\draw[arrow] (de) -- (iso);
+\draw[arrow] (de) -| (fusion);
+
+% Tool labels
+\node[tool, right=0.1cm of qc] {FastQC, MultiQC};
+\node[tool, right=0.1cm of trim] {fastp, Trim Galore};
+\node[tool, left=0.1cm of align] {STAR, HISAT2};
+\node[tool, right=0.1cm of pseudo] {Salmon, kallisto};
+\node[tool, left=0.1cm of count] {featureCounts, RSEM};
+\node[tool, right=0.1cm of de] {DESeq2, edgeR};
+\node[tool, left=0.05cm of gsea] {fgsea, clusterProfiler};
+\node[tool, right=0.05cm of fusion] {STAR-Fusion, Arriba};
+\node[tool, below=0.05cm of iso] {rMATS, SUPPA2, Leafcutter};
+
+\end{tikzpicture}
+\caption{Overview of the bulk RNA-seq bioinformatics workflow. Two main paths
+exist after trimming: alignment-based quantification (left, using STAR/HISAT2
+followed by featureCounts) or pseudo-alignment-based quantification (right,
+using Salmon/kallisto). Both converge at differential expression analysis.}
+\label{fig:rnaseq:workflow}
+\end{figure}
+
+\subsection{Quality Control}
+
+\begin{description}[style=nextline]
+  \item[\software{FastQC}] Generates per-read-base quality scores, GC content
+    distribution, adapter contamination levels, sequence duplication levels,
+    and overrepresented sequences for each FASTQ file.
+  \item[\software{MultiQC}] Aggregates FastQC (and other tool) reports across
+    all samples into a single interactive HTML report. Essential for spotting
+    batch effects and outlier samples.
+\end{description}
+
+\textbf{Key RNA-seq QC metrics} to monitor:
+\begin{itemize}[nosep]
+  \item Per-base sequence quality (Phred $\geq$ 30 across the read).
+  \item GC content distribution (should match species expectation; bimodal
+    distribution suggests contamination).
+  \item Adapter content (should be minimal for RNA-seq with appropriate insert
+    sizes).
+  \item Duplication rate (high duplication may indicate low-complexity library
+    or over-amplification).
+  \item After alignment: percentage of uniquely mapped reads, percentage of
+    reads in exons vs. introns vs. intergenic regions, 5$'$-to-3$'$ gene body
+    coverage (detects RNA degradation bias).
+\end{itemize}
+
+\subsection{Trimming}
+
+\begin{description}[style=nextline]
+  \item[\software{fastp}] All-in-one tool for adapter trimming, quality
+    trimming, polyG tail removal (common on NovaSeq two-color chemistry),
+    and QC report generation. Fast (multi-threaded C++).
+  \item[\software{Trim Galore}] Wrapper around \software{Cutadapt} with
+    automatic adapter detection and optional FastQC integration. Widely used in
+    RNA-seq pipelines.
+\end{description}
+
+\begin{tipbox}
+For modern Illumina data, \software{fastp} is often sufficient as the sole
+preprocessing step. It performs adapter trimming, quality trimming, and
+generates a QC report in a single pass, simplifying the workflow.
+\end{tipbox}
+
+\subsection{Alignment: Splice-Aware Aligners}
+
+RNA-seq reads frequently span exon--exon junctions. Standard DNA aligners like
+BWA cannot handle these split reads because they expect contiguous alignment
+to the reference.
+
+\begin{warningbox}
+Never use \software{BWA} or \software{Bowtie2} (DNA aligners) for RNA-seq
+read alignment. These tools are not splice-aware and will discard or misalign
+reads that span exon--exon junctions, which can constitute 20--40\% of all
+reads.
+\end{warningbox}
+
+\begin{description}[style=nextline]
+  \item[\software{STAR} (Spliced Transcripts Alignment to a Reference)]
+    The most widely used RNA-seq aligner. Uses a suffix array-based algorithm
+    that is extremely fast but memory-intensive ($\sim$30--40\,GB RAM for
+    human genome). Features:
+    \begin{itemize}[nosep]
+      \item Two-pass mode for improved novel junction detection.
+      \item Built-in gene quantification (\texttt{--quantMode GeneCounts}).
+      \item Chimeric read detection for fusion gene calling.
+      \item \software{STARsolo} mode for single-cell RNA-seq (see \cref{ch:scrnaseq}).
+    \end{itemize}
+  \item[\software{HISAT2} (Hierarchical Indexing for Spliced Alignment of Transcripts)]
+    Uses a graph-based FM index that is much more memory-efficient ($\sim$8\,GB
+    for human). Slightly slower than STAR but suitable for machines with limited
+    RAM. Successor to TopHat2/Bowtie2.
+\end{description}
+
+\subsection{Pseudo-Alignment and Lightweight Quantification}
+
+An alternative to alignment-based approaches, pseudo-alignment (also called
+quasi-mapping or lightweight alignment) estimates transcript abundance without
+producing a traditional BAM file:
+
+\begin{description}[style=nextline]
+  \item[\software{Salmon}] Maps reads to the transcriptome (not genome) using
+    selective alignment or quasi-mapping. Corrects for GC bias, sequence-specific
+    bias, and fragment length distribution. Outputs transcript-level
+    quantification (TPM and estimated counts). Run time: minutes rather than
+    hours.
+  \item[\software{kallisto}] Uses pseudo-alignment based on k-mer hashing.
+    Produces transcript-level abundance estimates. Very fast and
+    memory-efficient.
+\end{description}
+
+\begin{keyconcept}[title={Alignment vs. Pseudo-Alignment}]
+\textbf{Alignment-based} (STAR $\rightarrow$ featureCounts): Produces BAM files
+useful for visualization, variant calling, and splicing analysis. Required when
+you need genome-level information. \textbf{Pseudo-alignment} (Salmon/kallisto):
+Faster, produces transcript-level quantification directly. Excellent for
+differential expression and isoform quantification. No BAM file for
+visualization. For most differential expression analyses, both approaches yield
+highly concordant results.
+\end{keyconcept}
+
+\subsection{Gene and Transcript Quantification}
+
+\begin{description}[style=nextline]
+  \item[\software{featureCounts} (Subread package)] Assigns aligned reads (from
+    BAM files) to genomic features (genes, exons) based on a GTF/GFF
+    annotation. Fast and simple. Produces a gene-by-sample count matrix.
+    Handles paired-end reads, multi-mapping reads, and strand-specific
+    assignments.
+  \item[\software{RSEM}] Reference-free estimation of transcript-level
+    expression using an expectation-maximization (EM) algorithm. Often used with
+    STAR alignment (\texttt{STAR --quantMode TranscriptomeSAM}).
+  \item[\software{StringTie}] Assembles transcripts from aligned reads and
+    estimates abundance. Particularly useful for novel transcript discovery and
+    isoform-level quantification.
+\end{description}
+
+\subsection{Differential Expression Analysis}
+
+Differential expression (DE) analysis identifies genes whose expression differs
+significantly between experimental conditions. The three dominant tools all use
+negative binomial generalized linear models:
+
+\begin{description}[style=nextline]
+  \item[\software{DESeq2} (R/Bioconductor)] Uses shrinkage estimation for
+    dispersion and fold changes. Provides independent filtering and Benjamini--Hochberg
+    adjusted $p$-values. The most cited DE tool. Recommended for studies with
+    $\geq$ 3 replicates per condition.
+  \item[\software{edgeR} (R/Bioconductor)] Uses empirical Bayes methods for
+    dispersion estimation. Slightly more liberal than DESeq2 in some benchmarks.
+    Offers both exact tests and GLM-based approaches (quasi-likelihood F-tests
+    are recommended for complex designs).
+  \item[\software{limma-voom} (R/Bioconductor)] Transforms count data using the
+    voom method (variance modeling at the observational level) and applies the
+    limma linear modeling framework. Particularly powerful for complex
+    experimental designs with multiple factors and interactions. Often performs
+    well with larger sample sizes ($n > 10$ per group).
+\end{description}
+
+\begin{tipbox}
+When importing Salmon or kallisto transcript-level counts into R, use the
+\software{tximport} or \software{tximeta} package. These tools correctly
+aggregate transcript-level estimates to gene-level counts while accounting for
+changes in transcript length across samples---a bias that simple summing ignores.
+\end{tipbox}
+
+\subsection{The Negative Binomial Distribution for RNA-seq}
+\label{subsec:rnaseq:negbinom}
+
+RNA-seq read counts are \emph{discrete} non-negative integers, making continuous
+distributions like the normal distribution inappropriate. A natural first model
+is the Poisson distribution, where the variance equals the mean:
+$\text{Var}(Y) = \mu$. However, biological replicates exhibit
+\textbf{overdispersion}---the observed variance exceeds the Poisson expectation
+because biological samples differ from one another beyond what sampling noise
+alone would predict. A gene with mean expression $\mu = 100$ across replicates
+may have variance of 500 or more, far larger than the Poisson prediction of 100.
+
+The \textbf{negative binomial (NB) distribution} accounts for this
+overdispersion by introducing a dispersion parameter $\alpha$ (also written
+$\phi$ or $1/r$ in different parameterizations):
+\begin{equation}
+  \label{eq:rnaseq:nbvar}
+  \text{Var}(Y) = \mu + \alpha\mu^2
+\end{equation}
+where $\mu$ is the mean expression and $\alpha \geq 0$ is the gene-specific
+dispersion. When $\alpha = 0$, the NB reduces to the Poisson. For most genes in
+a typical RNA-seq experiment, $\alpha$ ranges from 0.01 to 0.5. The probability
+mass function of the NB distribution (using the mean-dispersion
+parameterization) is:
+\begin{equation}
+  \label{eq:rnaseq:nbpmf}
+  P(Y = k) = \binom{k + r - 1}{k}
+    \left(\frac{r}{r + \mu}\right)^{r}
+    \left(\frac{\mu}{r + \mu}\right)^{k},
+    \qquad r = \frac{1}{\alpha}
+\end{equation}
+where $r = 1/\alpha$ is the size (or inverse dispersion) parameter.
+
+\begin{keyconcept}[title={Why Not Poisson?}]
+The Poisson model underestimates variance in RNA-seq data because it cannot
+represent biological variability between replicates. Using a Poisson test
+(e.g., an exact Poisson test in early RNA-seq tools) produces dramatically
+inflated false-positive rates. All modern DE tools---\software{DESeq2},
+\software{edgeR}, and \software{limma-voom}---use models that accommodate
+overdispersion: the negative binomial GLM (\software{DESeq2}, \software{edgeR})
+or variance-weighted linear models (\software{limma-voom}).
+\end{keyconcept}
+
+\subsection{DESeq2 Dispersion Estimation and Shrinkage}
+\label{subsec:rnaseq:deseq2dispersion}
+
+Accurate estimation of the gene-specific dispersion $\alpha_i$ is the central
+statistical challenge in RNA-seq differential expression. With only 3--6
+replicates per condition, per-gene maximum-likelihood estimates of $\alpha_i$
+are highly noisy. \software{DESeq2} addresses this through a three-step
+\textbf{dispersion shrinkage} procedure:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Gene-wise dispersion estimates.} For each gene $i$,
+    \software{DESeq2} computes a maximum-likelihood estimate $\hat{\alpha}_i^{\text{MLE}}$
+    by fitting a negative binomial GLM using the Cox--Reid adjusted profile
+    likelihood. These estimates are highly variable when the number of replicates
+    is small.
+  \item \textbf{Fitted dispersion trend.} A smooth function
+    $\alpha_{\text{tr}}(\mu)$ is fitted to the gene-wise estimates as a function
+    of the mean expression $\mu_i$. This trend captures the systematic
+    relationship between dispersion and expression level (lowly expressed genes
+    tend to have higher dispersion). The parametric fit is typically of the form:
+    \begin{equation}
+      \label{eq:rnaseq:disptrend}
+      \alpha_{\text{tr}}(\mu) = \frac{a_1}{\mu} + a_0
+    \end{equation}
+    where $a_0$ and $a_1$ are estimated by regression.
+  \item \textbf{Shrinkage toward the trend.} Each gene-wise estimate is
+    shrunk toward the trend using a log-normal prior centered on
+    $\log(\alpha_{\text{tr}}(\mu_i))$. The final maximum a posteriori (MAP)
+    estimate balances the gene-specific data with the global trend:
+    \begin{equation}
+      \label{eq:rnaseq:dispmap}
+      \hat{\alpha}_i^{\text{MAP}} = \arg\max_{\alpha_i}
+        \left[
+          \ell(\alpha_i \mid Y_i) +
+          \log \pi(\alpha_i \mid \alpha_{\text{tr}}(\mu_i), \sigma_d^2)
+        \right]
+    \end{equation}
+    where $\ell$ is the log-likelihood and $\pi$ is the log-normal prior with
+    variance $\sigma_d^2$ estimated from the data. Genes with very high
+    dispersion (outliers above the trend) are not shrunk, to avoid
+    underestimating their variance and inflating false positives.
+\end{enumerate}
+
+\begin{tipbox}
+The \software{edgeR} package uses a conceptually similar but technically
+different approach. It estimates a common dispersion across all genes and
+gene-wise dispersions, then shrinks gene-wise estimates toward the common
+(or trended) dispersion using a weighted likelihood empirical Bayes procedure.
+The key difference is that \software{edgeR} uses a weighted likelihood approach
+rather than a prior distribution, and its quasi-likelihood F-test (recommended
+for complex designs) adds a second layer of overdispersion modeling.
+\end{tipbox}
+
+\subsection{Normalisation Methods for RNA-seq}
+\label{subsec:rnaseq:normalisation}
+
+Raw read counts cannot be compared directly across genes or samples because they
+are confounded by gene length, library size (total sequencing depth), and RNA
+composition. Several normalisation metrics address different subsets of these
+biases:
+
+\begin{description}[style=nextline]
+  \item[RPKM (Reads Per Kilobase per Million mapped reads)]
+    Normalises for both gene length and sequencing depth. Used for single-end
+    data:
+    \begin{equation}
+      \label{eq:rnaseq:rpkm}
+      \text{RPKM}_i = \frac{c_i \times 10^9}{N \times l_i}
+    \end{equation}
+    where $c_i$ is the raw count for gene $i$, $N$ is the total number of mapped
+    reads in the sample, and $l_i$ is the effective gene length in base pairs.
+  \item[FPKM (Fragments Per Kilobase per Million mapped fragments)]
+    The paired-end equivalent of RPKM, where $N$ counts fragments (read pairs)
+    rather than individual reads. The formula is identical to RPKM but uses
+    fragment counts, avoiding double-counting of paired-end reads.
+  \item[TPM (Transcripts Per Million)]
+    A two-step normalisation that first divides by gene length, then normalises
+    to a fixed sum:
+    \begin{equation}
+      \label{eq:rnaseq:tpm}
+      \text{TPM}_i = \frac{c_i / l_i}{\sum_{j} (c_j / l_j)} \times 10^6
+    \end{equation}
+    Because TPM values within each sample sum to exactly $10^6$, the relative
+    proportions are directly comparable across samples---a property that RPKM/FPKM
+    lack (their column sums vary with the gene length distribution of expressed
+    genes).
+\end{description}
+
+\begin{warningbox}
+RPKM and FPKM values are \textbf{not directly comparable across samples}
+because the denominator $N$ includes all mapped reads, and the gene-length
+normalisation step alters the effective library size differently depending on
+which genes are expressed in each sample. TPM resolves this by normalising to a
+fixed sum. For this reason, TPM has largely replaced RPKM/FPKM in modern
+publications. However, for differential expression analysis, none of these
+within-sample metrics are appropriate---use the raw counts with \software{DESeq2}
+or \software{edgeR}, which apply their own between-sample normalisation
+(median-of-ratios or TMM, respectively).
+\end{warningbox}
+
+\begin{keyconcept}[title={DESeq2 Median-of-Ratios Normalisation}]
+\software{DESeq2} computes a \emph{size factor} $s_j$ for each sample $j$ as
+the median of the ratios of observed counts to the geometric mean across
+samples:
+\begin{equation}
+  \label{eq:rnaseq:sizefactor}
+  s_j = \text{median}_i \frac{c_{ij}}{\left(\prod_{j'=1}^{m} c_{ij'}\right)^{1/m}}
+\end{equation}
+This approach is robust to highly expressed genes that dominate a few samples
+and accounts for RNA composition differences---a major advantage over simple
+library-size normalisation.
+\end{keyconcept}
+
+\subsection{DESeq2 vs.\ edgeR vs.\ limma-voom: A Detailed Comparison}
+\label{subsec:rnaseq:detools_comparison}
+
+\begin{table}[htbp]
+\centering
+\caption{Detailed comparison of the three major differential expression tools
+for bulk RNA-seq.}
+\label{tab:rnaseq:de_comparison}
+\small
+\begin{tabularx}{\textwidth}{lXXX}
+\toprule
+\textbf{Feature} & \textbf{DESeq2} & \textbf{edgeR} & \textbf{limma-voom} \\
+\midrule
+Statistical model & Negative binomial GLM & Negative binomial GLM (QL F-test recommended) & Weighted linear model on log-CPM \\
+Normalisation & Median-of-ratios (size factors) & Trimmed mean of M-values (TMM) & TMM (via edgeR) or quantile \\
+Dispersion estimation & Gene-wise MLE $\rightarrow$ trend $\rightarrow$ MAP shrinkage (log-normal prior) & Gene-wise $\rightarrow$ trended $\rightarrow$ empirical Bayes squeeze (weighted likelihood) & Mean-variance trend modeled by voom; precision weights per observation \\
+Shrinkage of fold changes & Optional (apeglm, ashr, normal) & No built-in LFC shrinkage & Empirical Bayes moderation of $t$-statistics \\
+Multiple testing & Benjamini--Hochberg with independent filtering & Benjamini--Hochberg & Benjamini--Hochberg \\
+Complex designs & Supported (interaction terms, continuous covariates) & Excellent (quasi-likelihood framework is very flexible) & Excellent (full linear model framework; best for large, complex designs) \\
+Speed (20k genes, $n$=20) & $\sim$1--3 minutes & $\sim$30 seconds--1 minute & $\sim$10--30 seconds \\
+Best for & Standard two-group comparisons with small $n$; strong defaults & Complex experimental designs; large datasets & Very large sample sizes ($n > 20$); complex multi-factor designs \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}
+In practice, all three tools produce highly overlapping results for well-designed
+experiments with adequate replication. \software{DESeq2} is the most popular due
+to its sensible defaults and extensive documentation. \software{edgeR} with
+quasi-likelihood F-tests is preferred for complex designs with multiple factors.
+\software{limma-voom} excels when sample sizes are large (e.g., GTEx-scale
+studies with hundreds of samples) because its linear model framework is both
+fast and statistically powerful. For the most robust results, consider running
+two tools and focusing on the intersection of significant genes.
+\end{tipbox}
+
+\subsection{Gene Set Enrichment Analysis}
+
+After identifying differentially expressed genes, the next step is biological
+interpretation:
+
+\begin{description}[style=nextline]
+  \item[\software{GSEA} (Gene Set Enrichment Analysis)] The original
+    Broad Institute tool. Uses a ranked list of all genes (not just significant
+    ones) to determine whether predefined gene sets (e.g., GO terms, KEGG
+    pathways, MSigDB collections) are enriched at the top or bottom of the
+    ranking. Avoids the arbitrary cutoff problem of over-representation analysis.
+  \item[\software{fgsea} (R/Bioconductor)] Fast implementation of the GSEA
+    algorithm in R. Orders of magnitude faster than the original Java tool.
+  \item[\software{clusterProfiler} (R/Bioconductor)] Comprehensive enrichment
+    analysis package supporting Gene Ontology (GO), KEGG, Reactome, Disease
+    Ontology, and custom gene sets. Performs both over-representation analysis
+    (ORA) and GSEA. Provides publication-quality visualization functions
+    (dot plots, enrichment maps, ridge plots).
+  \item[\software{enrichR}] Web-based tool with an R API that queries $>$200
+    gene set libraries including ENCODE, ChEA, and other curated databases.
+\end{description}
+
+\subsection{Isoform and Splicing Analysis}
+
+\begin{description}[style=nextline]
+  \item[\software{rMATS} (replicate Multivariate Analysis of Transcript Splicing)]
+    Detects differential alternative splicing events from RNA-seq data.
+    Classifies events into five types: skipped exon (SE), retained intron
+    (RI), mutually exclusive exons (MXE), alternative 5$'$ splice site (A5SS),
+    and alternative 3$'$ splice site (A3SS). Uses a Bayesian framework to
+    estimate inclusion levels ($\Psi$ / PSI values) and their differences.
+  \item[\software{SUPPA2}] Fast differential splicing analysis using percent
+    spliced-in (PSI) values calculated directly from transcript quantification
+    (Salmon/kallisto output). Does not require BAM files.
+  \item[\software{Leafcutter}] Detects differential intron usage without
+    requiring transcript annotations. Identifies intron excision clusters and
+    tests for differential usage between conditions. Annotation-free approach
+    is particularly valuable for non-model organisms.
+\end{description}
+
+\subsection{Fusion Gene Detection}
+
+Gene fusions---where two normally separate genes are joined---are hallmarks of
+many cancers (e.g., \gene{BCR-ABL1} in CML, \gene{EML4-ALK} in lung cancer).
+
+\begin{description}[style=nextline]
+  \item[\software{STAR-Fusion}] Uses chimeric read alignments from STAR to
+    detect fusion transcripts. Integrates with the FusionInspector
+    visualization tool and with CTAT (Cancer Transcriptome Analysis Toolkit).
+  \item[\software{Arriba}] Fast and accurate fusion detection from STAR chimeric
+    alignments. Known for low false-positive rate and built-in visualization
+    of fusion events with gene structure diagrams.
+\end{description}
+
+
+% ---------------------------------------------------------------------------
+\section{Complete Snakemake Workflow for RNA-seq}
+\label{sec:rnaseq:snakemake}
+
+\begin{lstlisting}[language=Python, caption={Complete Snakemake workflow for
+bulk RNA-seq analysis with STAR alignment and featureCounts quantification.},
+label={lst:rnaseq:snakemake}, float=htbp]
+# Snakefile for Bulk RNA-seq Analysis
+# ====================================
+# Pipeline: FastQC -> fastp -> STAR -> featureCounts -> DESeq2
+
+import pandas as pd
+
+configfile: "config/config.yaml"
+
+# Load sample sheet
+samples = pd.read_csv(config["samples"], sep="\t")
+SAMPLES = samples["sample"].tolist()
+
+# Reference files
+GENOME_DIR = config["star_index"]
+GTF = config["gtf"]
+FASTA = config["genome_fasta"]
+
+rule all:
+    input:
+        "results/multiqc/multiqc_report.html",
+        "results/counts/gene_counts.tsv",
+        "results/deseq2/differential_expression.csv",
+        expand("results/fastqc_raw/{sample}_{read}_fastqc.html",
+               sample=SAMPLES, read=["R1", "R2"]),
+        expand("results/bigwig/{sample}.bw", sample=SAMPLES)
+
+rule fastqc_raw:
+    input:
+        "data/raw/{sample}_{read}.fastq.gz"
+    output:
+        html="results/fastqc_raw/{sample}_{read}_fastqc.html",
+        zip="results/fastqc_raw/{sample}_{read}_fastqc.zip"
+    threads: 2
+    conda: "envs/qc.yaml"
+    shell:
+        "fastqc -t {threads} -o results/fastqc_raw/ {input}"
+
+rule fastp:
+    input:
+        r1="data/raw/{sample}_R1.fastq.gz",
+        r2="data/raw/{sample}_R2.fastq.gz"
+    output:
+        r1="results/trimmed/{sample}_R1.fastq.gz",
+        r2="results/trimmed/{sample}_R2.fastq.gz",
+        html="results/fastp/{sample}.html",
+        json="results/fastp/{sample}.json"
+    threads: 4
+    conda: "envs/qc.yaml"
+    shell:
+        """
+        fastp \
+          --in1 {input.r1} --in2 {input.r2} \
+          --out1 {output.r1} --out2 {output.r2} \
+          --html {output.html} --json {output.json} \
+          --detect_adapter_for_pe \
+          --qualified_quality_phred 20 \
+          --length_required 35 \
+          --thread {threads}
+        """
+
+rule star_index:
+    input:
+        fasta=FASTA,
+        gtf=GTF
+    output:
+        directory("resources/star_index")
+    threads: 12
+    resources:
+        mem_mb=40000
+    conda: "envs/align.yaml"
+    shell:
+        """
+        STAR --runMode genomeGenerate \
+          --genomeDir {output} \
+          --genomeFastaFiles {input.fasta} \
+          --sjdbGTFfile {input.gtf} \
+          --sjdbOverhang 149 \
+          --runThreadN {threads}
+        """
+
+rule star_align:
+    input:
+        r1="results/trimmed/{sample}_R1.fastq.gz",
+        r2="results/trimmed/{sample}_R2.fastq.gz",
+        index=GENOME_DIR
+    output:
+        bam="results/star/{sample}/Aligned.sortedByCoord.out.bam",
+        log="results/star/{sample}/Log.final.out",
+        sj="results/star/{sample}/SJ.out.tab"
+    threads: 8
+    resources:
+        mem_mb=36000
+    params:
+        prefix="results/star/{sample}/"
+    conda: "envs/align.yaml"
+    shell:
+        """
+        STAR --runMode alignReads \
+          --genomeDir {input.index} \
+          --readFilesIn {input.r1} {input.r2} \
+          --readFilesCommand zcat \
+          --outSAMtype BAM SortedByCoordinate \
+          --outSAMstrandField intronMotif \
+          --quantMode GeneCounts \
+          --twopassMode Basic \
+          --outFileNamePrefix {params.prefix} \
+          --runThreadN {threads} \
+          --outSAMattributes NH HI AS NM MD \
+          --outFilterMultimapNmax 20 \
+          --alignSJoverhangMin 8 \
+          --alignSJDBoverhangMin 1 \
+          --chimSegmentMin 20 \
+          --chimJunctionOverhangMin 20
+        """
+
+rule index_bam:
+    input:
+        "results/star/{sample}/Aligned.sortedByCoord.out.bam"
+    output:
+        "results/star/{sample}/Aligned.sortedByCoord.out.bam.bai"
+    conda: "envs/align.yaml"
+    shell:
+        "samtools index {input}"
+
+rule featurecounts:
+    input:
+        bams=expand(
+            "results/star/{sample}/Aligned.sortedByCoord.out.bam",
+            sample=SAMPLES),
+        gtf=GTF
+    output:
+        counts="results/counts/gene_counts.tsv",
+        summary="results/counts/gene_counts.tsv.summary"
+    threads: 4
+    params:
+        strandedness=2  # 2 = reverse-stranded (dUTP)
+    conda: "envs/quantify.yaml"
+    shell:
+        """
+        featureCounts \
+          -a {input.gtf} \
+          -o {output.counts} \
+          -p --countReadPairs \
+          -s {params.strandedness} \
+          -T {threads} \
+          -B -C \
+          --extraAttributes gene_name \
+          {input.bams}
+        """
+
+rule bigwig:
+    input:
+        bam="results/star/{sample}/Aligned.sortedByCoord.out.bam",
+        bai="results/star/{sample}/Aligned.sortedByCoord.out.bam.bai"
+    output:
+        "results/bigwig/{sample}.bw"
+    threads: 4
+    conda: "envs/quantify.yaml"
+    shell:
+        """
+        bamCoverage -b {input.bam} -o {output} \
+          --normalizeUsing RPKM \
+          --binSize 10 \
+          -p {threads}
+        """
+
+rule multiqc:
+    input:
+        expand("results/fastqc_raw/{sample}_{read}_fastqc.zip",
+               sample=SAMPLES, read=["R1", "R2"]),
+        expand("results/fastp/{sample}.json", sample=SAMPLES),
+        expand("results/star/{sample}/Log.final.out",
+               sample=SAMPLES),
+        "results/counts/gene_counts.tsv.summary"
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "envs/qc.yaml"
+    shell:
+        "multiqc results/ -o results/multiqc/ --force"
+
+rule deseq2:
+    input:
+        counts="results/counts/gene_counts.tsv",
+        samples=config["samples"]
+    output:
+        results="results/deseq2/differential_expression.csv",
+        ma_plot="results/deseq2/ma_plot.pdf",
+        volcano="results/deseq2/volcano_plot.pdf",
+        pca="results/deseq2/pca_plot.pdf"
+    conda: "envs/deseq2.yaml"
+    script:
+        "scripts/run_deseq2.R"
+\end{lstlisting}
+
+
+% ---------------------------------------------------------------------------
+\section{Complete Nextflow Workflow for RNA-seq}
+\label{sec:rnaseq:nextflow}
+
+\begin{lstlisting}[language=Java, caption={Complete Nextflow DSL2 workflow for
+bulk RNA-seq analysis with STAR alignment and featureCounts quantification.},
+label={lst:rnaseq:nextflow}, float=htbp]
+#!/usr/bin/env nextflow
+// RNA-seq Analysis Pipeline (Nextflow DSL2)
+// ==========================================
+// Pipeline: FastQC -> fastp -> STAR -> featureCounts -> DESeq2
+
+nextflow.enable.dsl = 2
+
+params.reads       = "data/raw/*_{R1,R2}.fastq.gz"
+params.genome      = "resources/genome.fa"
+params.gtf         = "resources/genes.gtf"
+params.star_index  = null
+params.outdir      = "results"
+params.strandedness = 2  // 2 = reverse-stranded (dUTP)
+
+// Print pipeline info
+log.info """
+=============================
+ RNA-seq Analysis Pipeline
+=============================
+ reads        : ${params.reads}
+ genome       : ${params.genome}
+ GTF          : ${params.gtf}
+ strandedness : ${params.strandedness}
+ outdir       : ${params.outdir}
+=============================
+"""
+
+// --- Processes ---
+
+process FASTQC {
+    tag "$sample_id"
+    publishDir "${params.outdir}/fastqc", mode: 'copy'
+    cpus 2
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    path("*.html"), emit: html
+    path("*.zip"),  emit: zip
+
+    script:
+    """
+    fastqc -t ${task.cpus} ${reads}
+    """
+}
+
+process FASTP {
+    tag "$sample_id"
+    publishDir "${params.outdir}/fastp", mode: 'copy'
+    cpus 4
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    tuple val(sample_id), path("*_trimmed_R{1,2}.fastq.gz"),
+        emit: trimmed_reads
+    path("*.html"), emit: html
+    path("*.json"), emit: json
+
+    script:
+    def (r1, r2) = reads
+    """
+    fastp \
+      --in1 ${r1} --in2 ${r2} \
+      --out1 ${sample_id}_trimmed_R1.fastq.gz \
+      --out2 ${sample_id}_trimmed_R2.fastq.gz \
+      --html ${sample_id}_fastp.html \
+      --json ${sample_id}_fastp.json \
+      --detect_adapter_for_pe \
+      --qualified_quality_phred 20 \
+      --length_required 35 \
+      --thread ${task.cpus}
+    """
+}
+
+process STAR_INDEX {
+    publishDir "${params.outdir}/star_index", mode: 'copy'
+    cpus 12
+    memory '40 GB'
+
+    input:
+    path(genome)
+    path(gtf)
+
+    output:
+    path("star_index"), emit: index
+
+    script:
+    """
+    mkdir -p star_index
+    STAR --runMode genomeGenerate \
+      --genomeDir star_index \
+      --genomeFastaFiles ${genome} \
+      --sjdbGTFfile ${gtf} \
+      --sjdbOverhang 149 \
+      --runThreadN ${task.cpus}
+    """
+}
+
+process STAR_ALIGN {
+    tag "$sample_id"
+    publishDir "${params.outdir}/star/${sample_id}", mode: 'copy'
+    cpus 8
+    memory '36 GB'
+
+    input:
+    tuple val(sample_id), path(reads)
+    path(index)
+
+    output:
+    tuple val(sample_id),
+        path("*Aligned.sortedByCoord.out.bam"), emit: bam
+    path("*Log.final.out"),                     emit: log
+    path("*SJ.out.tab"),                        emit: sj
+
+    script:
+    def (r1, r2) = reads
+    """
+    STAR --runMode alignReads \
+      --genomeDir ${index} \
+      --readFilesIn ${r1} ${r2} \
+      --readFilesCommand zcat \
+      --outSAMtype BAM SortedByCoordinate \
+      --outSAMstrandField intronMotif \
+      --quantMode GeneCounts \
+      --twopassMode Basic \
+      --outFileNamePrefix ${sample_id}_ \
+      --runThreadN ${task.cpus} \
+      --outSAMattributes NH HI AS NM MD \
+      --outFilterMultimapNmax 20 \
+      --chimSegmentMin 20
+    """
+}
+
+process FEATURECOUNTS {
+    publishDir "${params.outdir}/counts", mode: 'copy'
+    cpus 4
+
+    input:
+    path(bams)
+    path(gtf)
+
+    output:
+    path("gene_counts.tsv"),         emit: counts
+    path("gene_counts.tsv.summary"), emit: summary
+
+    script:
+    """
+    featureCounts \
+      -a ${gtf} \
+      -o gene_counts.tsv \
+      -p --countReadPairs \
+      -s ${params.strandedness} \
+      -T ${task.cpus} \
+      -B -C \
+      ${bams}
+    """
+}
+
+process MULTIQC {
+    publishDir "${params.outdir}/multiqc", mode: 'copy'
+
+    input:
+    path('*')
+
+    output:
+    path("multiqc_report.html")
+
+    script:
+    """
+    multiqc . -o . --force
+    """
+}
+
+process DESEQ2 {
+    publishDir "${params.outdir}/deseq2", mode: 'copy'
+
+    input:
+    path(counts)
+    path(sample_sheet)
+
+    output:
+    path("differential_expression.csv"), emit: results
+    path("*.pdf"), emit: plots
+
+    script:
+    """
+    Rscript ${projectDir}/bin/run_deseq2.R \
+      --counts ${counts} \
+      --samples ${sample_sheet} \
+      --outdir .
+    """
+}
+
+// --- Workflow ---
+
+workflow {
+    // Create channel from read pairs
+    reads_ch = Channel
+        .fromFilePairs(params.reads, checkIfExists: true)
+
+    // Quality control on raw reads
+    FASTQC(reads_ch)
+
+    // Adapter and quality trimming
+    FASTP(reads_ch)
+
+    // Build STAR index if not provided
+    if (params.star_index) {
+        star_index = Channel.fromPath(params.star_index)
+    } else {
+        STAR_INDEX(
+            Channel.fromPath(params.genome),
+            Channel.fromPath(params.gtf)
+        )
+        star_index = STAR_INDEX.out.index
+    }
+
+    // Align reads with STAR
+    STAR_ALIGN(FASTP.out.trimmed_reads, star_index.collect())
+
+    // Quantify with featureCounts
+    FEATURECOUNTS(
+        STAR_ALIGN.out.bam.map { it[1] }.collect(),
+        Channel.fromPath(params.gtf)
+    )
+
+    // Aggregate QC reports
+    MULTIQC(
+        FASTQC.out.zip
+            .mix(FASTP.out.json)
+            .mix(STAR_ALIGN.out.log)
+            .mix(FEATURECOUNTS.out.summary)
+            .collect()
+    )
+}
+\end{lstlisting}
+
+\begin{tipbox}
+For production use, consider the \software{nf-core/rnaseq} pipeline, which
+implements a full-featured, peer-reviewed RNA-seq workflow in Nextflow with
+extensive QC, multiple aligner/quantifier options, and compatibility with
+institutional HPC systems and cloud environments. As of v3.14, it supports
+STAR, HISAT2, Salmon, and RSEM, with automatic strandedness detection.
+\end{tipbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Experimental Design for RNA-seq}
+\label{sec:rnaseq:design}
+
+\subsection{Biological Replicates}
+
+\begin{keyconcept}[title={Replication is Non-Negotiable}]
+Biological replicates are essential for statistical inference. Technical
+replicates (sequencing the same library twice) do not capture biological
+variability and are rarely needed given the high reproducibility of modern
+sequencing. The minimum is \textbf{3 biological replicates per condition};
+\textbf{5--6 replicates} substantially increase power to detect smaller fold
+changes. For heterogeneous clinical samples, even more replicates are
+advisable.
+\end{keyconcept}
+
+Power analysis tools such as \software{RNASeqPower} (R/Bioconductor) and
+\software{PROPER} can estimate the number of replicates needed given expected
+effect sizes, dispersion, and sequencing depth.
+
+\subsection{Sequencing Depth}
+
+\begin{table}[htbp]
+\centering
+\caption{Recommended sequencing depths for common RNA-seq applications.}
+\label{tab:rnaseq:depth}
+\begin{tabularx}{\textwidth}{lXr}
+\toprule
+\textbf{Application} & \textbf{Rationale} & \textbf{Reads/sample} \\
+\midrule
+Differential gene expression & Sufficient to quantify $\sim$15,000 expressed genes & 20--30M \\
+Isoform-level analysis & Need to distinguish splice variants & 50--100M \\
+Novel transcript discovery & Deeper coverage of low-abundance transcripts & 80--150M \\
+Small RNA-seq & Smaller library; many reads are adapter dimers & 10--20M \\
+Total RNA-seq (rRNA depleted) & Compensate for residual rRNA reads & 40--60M \\
+FFPE RNA-seq & Higher duplicate rate reduces usable reads & 50--80M \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}
+In most cases, adding biological replicates provides more statistical power
+than increasing sequencing depth beyond 20--30M reads per sample. Budget your
+sequencing funds toward more replicates rather than deeper sequencing, unless
+you specifically need isoform-level resolution.
+\end{tipbox}
+
+\subsection{Batch Effects and Their Mitigation}
+
+Batch effects are systematic technical differences between groups of samples
+processed at different times, by different operators, or on different flow
+cells. They can be devastating in RNA-seq because they may confound or entirely
+obscure biological signal.
+
+\textbf{Prevention (most important):}
+\begin{itemize}[nosep]
+  \item Extract RNA from all samples in the same session if possible.
+  \item Prepare libraries in a single batch.
+  \item If batching is unavoidable, \textbf{balance experimental groups across
+    batches} (do not process all controls in batch 1 and all treatments in
+    batch 2).
+  \item Record batch information meticulously.
+\end{itemize}
+
+\textbf{Computational correction (second line of defense):}
+\begin{description}[style=nextline]
+  \item[\software{ComBat} (sva package)] Empirical Bayes framework for batch
+    effect adjustment. Operates on normalized expression matrices. Widely used
+    and effective but can remove real biological signal if batch and condition
+    are confounded.
+  \item[\software{limma::removeBatchEffect}] Removes batch effects from a
+    normalized expression matrix for visualization purposes (PCA, heatmaps).
+    For differential expression, include batch as a covariate in the DE model
+    instead.
+  \item[Inclusion in the DE model] The statistically preferred approach: add
+    batch as a covariate in the DESeq2 or edgeR design formula (e.g.,
+    \texttt{\textasciitilde{} batch + condition}). This separates batch
+    variance from treatment variance without modifying the data.
+\end{description}
+
+\begin{warningbox}
+If batch is completely confounded with the biological variable of interest
+(e.g., all treatment samples were processed in January and all controls in
+March), no computational method can rescue the experiment. The only solution
+is to re-design and re-run the experiment with proper balancing.
+\end{warningbox}
+
+
+% ---------------------------------------------------------------------------
+\section{RNA-seq Approaches: Comprehensive Comparison}
+\label{sec:rnaseq:comparison}
+
+\begin{table}[htbp]
+\centering
+\caption{Comprehensive comparison of RNA-seq approaches.}
+\label{tab:rnaseq:approaches}
+\small
+\begin{tabularx}{\textwidth}{lXXXX}
+\toprule
+\textbf{Feature} & \textbf{mRNA-seq} & \textbf{Total RNA-seq} & \textbf{Small RNA-seq} & \textbf{Long-read RNA-seq} \\
+\midrule
+Target & Poly-A$^+$ mRNA & All RNA (rRNA depleted) & miRNA, piRNA, tRFs & Full-length transcripts \\
+Read length & 2$\times$150\,bp & 2$\times$150\,bp & 1$\times$50--75\,bp & 1--20\,kb \\
+Platform & Illumina & Illumina & Illumina & PacBio, ONT \\
+Input RNA & 100\,ng--1\,$\mu$g & 100\,ng--1\,$\mu$g & 100\,ng--1\,$\mu$g & 300\,ng--5\,$\mu$g \\
+Quality req. & RIN $\geq$ 7 & RIN $\geq$ 2 (with rRNA depl.) & RIN $\geq$ 7 & RIN $\geq$ 7 (Iso-Seq) \\
+Isoform resolution & Limited & Limited & N/A & Excellent \\
+ncRNA coverage & Minimal & Comprehensive & Small ncRNA only & Good \\
+Depth needed & 20--30M & 40--60M & 10--20M & 1--10M \\
+Cost/sample & \$\$  & \$\$ & \$ & \$\$\$ \\
+Main use case & Standard DE & Degraded samples, ncRNA & miRNA profiling & Isoform discovery \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+% ---------------------------------------------------------------------------
+\section{Chapter Summary}
+\label{sec:rnaseq:summary}
+
+RNA-seq is the workhorse technology of modern transcriptomics, applicable to
+an extraordinary range of biological questions. In this chapter we covered:
+
+\begin{itemize}[nosep]
+  \item The rationale for measuring RNA and the complexity of the transcriptome.
+  \item Poly-A selection (mRNA-seq) versus ribosomal depletion (total RNA-seq)
+    and when to use each.
+  \item Library preparation details: strand-specific protocols (dUTP method),
+    low-input protocols (Smart-seq), and degraded RNA handling (FFPE).
+  \item Small RNA sequencing for miRNAs and other small non-coding RNAs.
+  \item Long-read RNA-seq (PacBio Iso-Seq, ONT direct RNA) for full-length
+    isoform characterization.
+  \item Nascent RNA methods (GRO-seq, PRO-seq, NET-seq, TT-seq) for measuring
+    active transcription.
+  \item The complete bioinformatics pipeline: QC, trimming, alignment (STAR,
+    HISAT2), quantification (featureCounts, Salmon), differential expression
+    (DESeq2, edgeR, limma-voom), gene set enrichment, isoform analysis, and
+    fusion detection.
+  \item Practical workflows in both Snakemake and Nextflow.
+  \item Experimental design: replication, sequencing depth, and batch effect
+    management.
+\end{itemize}
+
+In the next chapter, we move from bulk tissue-level measurements to the
+resolution of individual cells with single-cell RNA sequencing
+(\cref{ch:scrnaseq}).

@@ -1,0 +1,955 @@
+\chapter{Library Preparation: From Sample to Sequencer}
+\label{ch:libprep}
+
+Every sequencing experiment, regardless of platform, begins with the transformation of a biological sample into a \textbf{sequencing library}: a collection of DNA (or cDNA) fragments that carry the platform-specific adapter sequences required for cluster generation (or equivalent amplification), priming, and sequencing. Library preparation is arguably the most critical step in the entire sequencing workflow---poor library quality cannot be rescued by downstream bioinformatics. This chapter covers the complete library preparation process, from nucleic acid extraction through quality control, with detailed discussion of specific protocols, multiplexing strategies, and common failure modes.
+
+\section{What Is a Sequencing Library?}
+\label{sec:what_is_library}
+
+\begin{keyconcept}[title={Definition of a Sequencing Library}]
+A \textbf{sequencing library} is a collection of DNA fragments of defined size range, each carrying platform-specific adapter sequences at both ends. These adapters serve multiple functions:
+\begin{itemize}[nosep]
+  \item \textbf{Binding} the fragment to the flow cell surface (or bead, or ZMW).
+  \item \textbf{Priming} the sequencing reaction (providing a known sequence for the sequencing primer to hybridise).
+  \item \textbf{Indexing/barcoding} the fragment so that multiple samples can be pooled and sequenced together (multiplexing) and then computationally separated after sequencing (demultiplexing).
+  \item \textbf{Amplification priming} during optional PCR enrichment of the library.
+\end{itemize}
+\end{keyconcept}
+
+The general workflow for preparing a sequencing library consists of:
+
+\begin{enumerate}[nosep]
+  \item Nucleic acid extraction.
+  \item Fragmentation (for DNA libraries; RNA is typically already fragmented or is fragmented during protocol steps).
+  \item End repair and A-tailing.
+  \item Adapter ligation.
+  \item Size selection (optional, depending on protocol).
+  \item PCR amplification (optional; PCR-free protocols exist).
+  \item Library quantification and quality control.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  node distance=1.2cm,
+  wfstep/.style={draw=MidnightBlue!70, fill=MidnightBlue!8, rounded corners=4pt,
+    minimum width=4.5cm, minimum height=0.9cm, align=center, font=\small\sffamily},
+  optional/.style={draw=Goldenrod!70, fill=Goldenrod!8, rounded corners=4pt,
+    minimum width=4.5cm, minimum height=0.9cm, align=center, font=\small\sffamily},
+  arr/.style={->, thick, MidnightBlue!50},
+]
+
+\node[wfstep] (extract) {1. Nucleic acid extraction};
+\node[wfstep, below=of extract] (frag) {2. Fragmentation};
+\node[wfstep, below=of frag] (endrepair) {3. End repair + A-tailing};
+\node[wfstep, below=of endrepair] (ligate) {4. Adapter ligation};
+\node[optional, below=of ligate] (size) {5. Size selection};
+\node[optional, below=of size] (pcr) {6. PCR amplification};
+\node[wfstep, below=of pcr] (qc) {7. Library QC};
+\node[wfstep, below=of qc] (seq) {Load onto sequencer};
+
+\draw[arr] (extract) -- (frag);
+\draw[arr] (frag) -- (endrepair);
+\draw[arr] (endrepair) -- (ligate);
+\draw[arr] (ligate) -- (size);
+\draw[arr] (size) -- (pcr);
+\draw[arr] (pcr) -- (qc);
+\draw[arr] (qc) -- (seq);
+
+% Optional labels
+\node[font=\tiny\sffamily, Goldenrod!70!black, right=0.3cm of size] {(optional)};
+\node[font=\tiny\sffamily, Goldenrod!70!black, right=0.3cm of pcr] {(optional)};
+
+% Annotations
+\node[font=\tiny\sffamily, gray, left=0.3cm of frag, text width=3cm, align=right] {Mechanical, enzymatic,\\or chemical};
+\node[font=\tiny\sffamily, gray, left=0.3cm of ligate, text width=3cm, align=right] {Y-adapters (Illumina)\\hairpins (PacBio)\\motor protein (ONT)};
+
+\end{tikzpicture}
+\caption[General library preparation workflow]{Overview of the general sequencing library preparation workflow. Gold-coloured steps are optional depending on the specific protocol. The entire process transforms extracted nucleic acids into adapter-ligated fragments ready for sequencing.}
+\label{fig:libprep_workflow}
+\end{figure}
+
+
+\section{Nucleic Acid Extraction}
+\label{sec:extraction}
+
+The first step is obtaining high-quality nucleic acid from the biological sample. The choice of extraction method depends on the sample type (tissue, blood, cells, FFPE, environmental), the nucleic acid type (DNA vs.\ RNA), and the downstream application (especially the required fragment length for long-read sequencing).
+
+\subsection{DNA Extraction Methods}
+
+\subsubsection{Column-Based Extraction}
+
+Column-based kits (e.g., QIAGEN DNeasy, Zymo Quick-DNA) use silica membranes that selectively bind DNA in the presence of chaotropic salts. The workflow consists of lysis, binding, washing, and elution.
+
+\begin{itemize}[nosep]
+  \item \textbf{Advantages:} fast (30--60 minutes), reproducible, minimal hands-on time, good purity (A260/280 $\geq$ 1.8).
+  \item \textbf{Disadvantages:} shears DNA to 20--50\kilobase\ (unsuitable for ultra-long read preps). Limited input capacity.
+  \item \textbf{Best for:} short-read sequencing, PCR-based applications, standard long-read preps where $>$50\kilobase\ reads are not required.
+\end{itemize}
+
+\subsubsection{Bead-Based Extraction}
+
+Magnetic bead kits (e.g., Omega Bio-tek Mag-Bind, Beckman Coulter GenFind, PacBio Nanobind) use paramagnetic beads coated with silica or other DNA-binding matrices.
+
+\begin{itemize}[nosep]
+  \item \textbf{Advantages:} automatable (liquid-handling robots), scalable, gentler than columns (can preserve longer fragments with optimised protocols). The PacBio Nanobind (formerly Circulomics) kits use large paramagnetic discs that minimise shearing and can yield DNA $>$100\kilobase.
+  \item \textbf{Disadvantages:} requires magnetic rack; some kits have lower yields than columns.
+  \item \textbf{Best for:} high-throughput extraction, long-read sequencing, automation.
+\end{itemize}
+
+\subsubsection{Phenol-Chloroform Extraction}
+
+The traditional organic extraction method remains the gold standard for yield and purity from difficult samples.
+
+\begin{itemize}[nosep]
+  \item \textbf{Procedure:} cell lysis with SDS and proteinase~K, organic extraction with phenol:chloroform:isoamyl alcohol (25:24:1), aqueous phase recovery, ethanol precipitation or SPRI bead cleanup.
+  \item \textbf{Advantages:} highest yields, excellent purity, can handle large and difficult samples (e.g., plant tissue, insects).
+  \item \textbf{Disadvantages:} uses toxic chemicals (phenol is corrosive and a suspected carcinogen), time-consuming, difficult to automate, requires a fume hood.
+  \item \textbf{Best for:} challenging samples, when maximum yield is essential, ultra-high molecular weight DNA for ultra-long nanopore reads.
+\end{itemize}
+
+\begin{warningbox}[title={DNA Integrity for Long-Read Sequencing}]
+For PacBio HiFi or ONT long-read sequencing, DNA integrity is critical. Degraded or highly sheared DNA will produce short reads regardless of the sequencing platform's capabilities. Always assess DNA integrity using pulsed-field gel electrophoresis (PFGE) or the Agilent Femto Pulse / AATI Fragment Analyzer before committing to a long-read library preparation.
+\end{warningbox}
+
+\subsection{RNA Extraction Methods}
+
+RNA is chemically less stable than DNA due to the 2\textquotesingle-OH on the ribose sugar, which makes it susceptible to alkaline hydrolysis. RNA is also readily degraded by ubiquitous RNases. RNA extraction therefore requires strict RNase-free technique.
+
+\subsubsection{TRIzol (Guanidinium Thiocyanate-Phenol-Chloroform)}
+
+\begin{itemize}[nosep]
+  \item \textbf{Principle:} guanidinium thiocyanate denatures proteins (including RNases); phenol-chloroform extraction separates RNA into the aqueous phase.
+  \item \textbf{Advantages:} high yield, works from diverse tissues, extracts total RNA (including small RNAs).
+  \item \textbf{Disadvantages:} organic solvents, time-consuming, potential genomic DNA contamination.
+\end{itemize}
+
+\subsubsection{Column-Based RNA Extraction}
+
+Kits such as QIAGEN RNeasy and Zymo Quick-RNA provide silica column purification with optional on-column DNase digestion.
+
+\begin{itemize}[nosep]
+  \item \textbf{Advantages:} fast, reproducible, DNase treatment integrated, good for automation.
+  \item \textbf{Disadvantages:} lower yield than TRIzol from some tissues; may lose small RNAs unless specifically captured.
+\end{itemize}
+
+\subsubsection{mRNA Selection vs rRNA Depletion}
+
+Total RNA is composed of approximately 80--85\% ribosomal RNA (rRNA), which is usually uninformative for gene expression studies. Two strategies address this:
+
+\begin{itemize}
+  \item \textbf{Poly(A) selection:} oligo(dT) beads capture polyadenylated mRNA. Effective and widely used, but excludes non-polyadenylated transcripts (many lncRNAs, histone mRNAs, prokaryotic mRNAs).
+  \item \textbf{rRNA depletion:} probe-based methods (e.g., Illumina Ribo-Zero, NEB NEBNext rRNA Depletion) hybridise to rRNA and remove it, retaining all other RNA species. Necessary for prokaryotic \gls{RNA-seq}, total RNA studies, and when non-coding RNAs are of interest.
+\end{itemize}
+
+\begin{tipbox}[title={Choosing Between Poly(A) Selection and rRNA Depletion}]
+\begin{itemize}[nosep]
+  \item For standard eukaryotic gene expression profiling, \textbf{poly(A) selection} provides cleaner data with less intronic/intergenic noise.
+  \item For degraded samples (e.g., FFPE tissue), use \textbf{rRNA depletion}---degraded RNA loses its poly(A) tails.
+  \item For prokaryotic or mixed samples, \textbf{rRNA depletion} is essential (prokaryotic mRNAs lack poly(A) tails).
+  \item For non-coding RNA studies, use \textbf{rRNA depletion} to retain all non-ribosomal transcripts.
+\end{itemize}
+\end{tipbox}
+
+
+\section{Fragmentation}
+\label{sec:fragmentation}
+
+Genomic DNA is far too long (chromosomes are megabases to hundreds of megabases) to be sequenced directly on short-read platforms. Fragmentation reduces the DNA to a defined size range suitable for the sequencing platform and application.
+
+\subsection{Mechanical Fragmentation}
+
+\subsubsection{Sonication (Covaris)}
+
+The most widely used mechanical fragmentation method employs focused acoustic energy (Covaris ultrasonicators). DNA in solution is subjected to high-frequency acoustic waves that create cavitation, shearing the DNA at random positions.
+
+\begin{itemize}[nosep]
+  \item \textbf{Fragment size:} tunable from 150\basepair\ to 5\kilobase\ by adjusting power, duty cycle, and time.
+  \item \textbf{Advantages:} highly reproducible, produces a tight fragment-size distribution, no sequence bias.
+  \item \textbf{Disadvantages:} requires specialised equipment (Covaris instrument), limited throughput (one sample at a time for some models), DNA ends are damaged and require end repair.
+\end{itemize}
+
+\subsubsection{Nebulisation and Hydroshear}
+
+Older mechanical methods include nebulisation (forcing DNA through a small orifice under gas pressure) and hydroshearing (forcing DNA through a small tube). These are largely superseded by Covaris but may be encountered in legacy protocols.
+
+\subsection{Enzymatic Fragmentation}
+
+\subsubsection{Tagmentation (Tn5 Transposase)}
+
+Tagmentation uses a hyperactive mutant of the Tn5 transposase loaded with sequencing adapters. The transposase simultaneously fragments the DNA and inserts adapters in a single step (``cut-and-paste'' transposition). This is the basis of the Illumina DNA Prep (formerly Nextera DNA Flex) kit.
+
+\begin{itemize}[nosep]
+  \item \textbf{Advantages:} extremely fast (minutes), requires very low input (as little as 1~ng), simultaneously fragments and tags, reducing the number of protocol steps.
+  \item \textbf{Disadvantages:} Tn5 has known insertion-site preferences (bias toward open chromatin and certain sequence motifs), which can create non-uniform genome coverage. Fragment size is controlled by the enzyme:DNA ratio and is less precisely tunable than Covaris.
+  \item \textbf{Applications:} Illumina DNA Prep, ATAC-seq (where the Tn5 insertion bias is actually the signal of interest), ONT rapid library prep.
+\end{itemize}
+
+\paragraph{Quantifying Tn5 Insertion Bias.}
+\label{par:libprep:tn5-bias}
+
+The hyperactive Tn5 transposase exhibits a measurable sequence preference at its insertion site. Studies have revealed a consensus insertion motif centred on the 9\basepair{} target site duplication:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Position +1/+9 (flanking the duplication):} strong preference for weak bases (A/T), with $\sim$70\% AT frequency versus the expected 50--60\%.
+  \item \textbf{Central positions:} mild preference for alternating purine-pyrimidine patterns.
+  \item \textbf{Chromatin context:} in native chromatin (as in ATAC-seq), Tn5 preferentially inserts into nucleosome-free regions. On purified DNA, the bias is purely sequence-dependent.
+\end{itemize}
+
+The practical consequence is that tagmentation-based libraries show up to $\pm$20\% deviation from expected coverage at extreme GC compositions compared to $\pm$5--10\% for Covaris-based libraries. This bias is modest for most applications but can be significant for quantitative analyses in GC-extreme organisms (e.g., \species{Plasmodium falciparum} at $\sim$19\% GC or \species{Streptomyces} at $\sim$72\% GC).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  scale=0.95,
+]
+
+% --- Input DNA ---
+\draw[very thick, BrickRed!70] (0, 0) -- (10, 0);
+\draw[very thick, MidnightBlue!70] (0, -0.2) -- (10, -0.2);
+\node[font=\sffamily\footnotesize, gray] at (5, 0.5) {Double-stranded genomic DNA};
+
+% --- Tn5 enzymes ---
+\foreach \x in {2.5, 5.0, 7.5} {
+  \node[circle, fill=OliveGreen!60, inner sep=3pt, font=\tiny\bfseries\sffamily, text=white] at (\x, -0.1) {Tn5};
+  \draw[OliveGreen!40, thick] (\x-0.3, -0.5) -- (\x-0.3, -0.9);
+  \draw[OliveGreen!40, thick] (\x+0.3, -0.5) -- (\x+0.3, -0.9);
+}
+
+% Arrow
+\draw[->, very thick, gray!60] (5, -1.3) -- (5, -2.0);
+\node[font=\sffamily\footnotesize, gray, right] at (5.3, -1.65) {tagmentation};
+
+% --- Fragmented DNA with adapters ---
+\begin{scope}[yshift=-3cm]
+  % Fragment 1
+  \draw[very thick, Goldenrod!80] (0, 0) -- (0.6, 0);
+  \draw[very thick, BrickRed!70] (0.6, 0) -- (2.1, 0);
+  \draw[very thick, Goldenrod!80] (2.1, 0) -- (2.7, 0);
+  \draw[very thick, Goldenrod!80] (0, -0.2) -- (0.6, -0.2);
+  \draw[very thick, MidnightBlue!70] (0.6, -0.2) -- (2.1, -0.2);
+  \draw[very thick, Goldenrod!80] (2.1, -0.2) -- (2.7, -0.2);
+
+  % Fragment 2
+  \draw[very thick, Goldenrod!80] (3.5, 0) -- (4.1, 0);
+  \draw[very thick, BrickRed!70] (4.1, 0) -- (6.1, 0);
+  \draw[very thick, Goldenrod!80] (6.1, 0) -- (6.7, 0);
+  \draw[very thick, Goldenrod!80] (3.5, -0.2) -- (4.1, -0.2);
+  \draw[very thick, MidnightBlue!70] (4.1, -0.2) -- (6.1, -0.2);
+  \draw[very thick, Goldenrod!80] (6.1, -0.2) -- (6.7, -0.2);
+
+  % Fragment 3
+  \draw[very thick, Goldenrod!80] (7.5, 0) -- (8.1, 0);
+  \draw[very thick, BrickRed!70] (8.1, 0) -- (9.6, 0);
+  \draw[very thick, Goldenrod!80] (9.6, 0) -- (10.2, 0);
+  \draw[very thick, Goldenrod!80] (7.5, -0.2) -- (8.1, -0.2);
+  \draw[very thick, MidnightBlue!70] (8.1, -0.2) -- (9.6, -0.2);
+  \draw[very thick, Goldenrod!80] (9.6, -0.2) -- (10.2, -0.2);
+
+  \node[font=\sffamily\footnotesize, gray] at (5, -0.8) {Adapter-tagged fragments};
+
+  % Legend
+  \draw[very thick, Goldenrod!80] (1, -1.5) -- (1.8, -1.5);
+  \node[font=\sffamily\tiny, right] at (1.9, -1.5) {= adapter};
+  \draw[very thick, BrickRed!70] (4, -1.5) -- (4.8, -1.5);
+  \node[font=\sffamily\tiny, right] at (4.9, -1.5) {= insert (top strand)};
+  \draw[very thick, MidnightBlue!70] (7.5, -1.5) -- (8.3, -1.5);
+  \node[font=\sffamily\tiny, right] at (8.4, -1.5) {= insert (bottom strand)};
+\end{scope}
+
+\end{tikzpicture}
+\caption[Tagmentation with Tn5 transposase]{Tagmentation: the Tn5 transposase simultaneously fragments double-stranded DNA and inserts sequencing adapters at the cut sites. This combines fragmentation, end repair, and adapter attachment into a single enzymatic step.}
+\label{fig:tagmentation}
+\end{figure}
+
+\subsubsection{Enzymatic Fragmentation (dsDNA Fragmentase)}
+
+NEB's dsDNA Fragmentase and similar enzyme cocktails use a combination of a nicking enzyme and a recombinase to produce random double-strand breaks. Fragment size is controlled by incubation time and temperature.
+
+\begin{itemize}[nosep]
+  \item \textbf{Advantages:} no specialised equipment needed, compatible with standard lab equipment.
+  \item \textbf{Disadvantages:} less reproducible than Covaris; time-sensitive (over-digestion is easy).
+\end{itemize}
+
+\subsection{Chemical Fragmentation}
+
+RNA fragmentation for \gls{RNA-seq} is typically achieved by incubation in alkaline buffer or divalent cations (Mg$^{2+}$) at elevated temperature (e.g., 94\textdegree C for 1--8 minutes). The fragmentation time controls the resulting size distribution. This is a standard step in most RNA-seq library prep protocols.
+
+
+\section{End Repair and A-Tailing}
+\label{sec:endrepair}
+
+After fragmentation, DNA ends are heterogeneous: they may have overhangs, blunt ends, damaged bases, or 5\textquotesingle-hydroxyl groups. Before adapters can be ligated, the ends must be repaired:
+
+\begin{enumerate}[nosep]
+  \item \textbf{End repair:} a combination of T4 DNA polymerase (fills in 5\textquotesingle\ overhangs, removes 3\textquotesingle\ overhangs) and T4 polynucleotide kinase (phosphorylates 5\textquotesingle\ ends) converts all fragments to blunt-ended, 5\textquotesingle-phosphorylated molecules.
+
+  \item \textbf{A-tailing:} Klenow fragment (exo-) adds a single deoxyadenosine (A) overhang to the 3\textquotesingle\ end of each fragment. This A-overhang is complementary to the T-overhang on most Illumina adapters, providing a non-palindromic sticky end that (i)~increases ligation efficiency and (ii)~prevents fragment--fragment concatenation.
+\end{enumerate}
+
+Most modern kits combine end repair and A-tailing into a single reaction (e.g., NEB Ultra~II End Prep Enzyme Mix).
+
+
+\section{Adapter Ligation}
+\label{sec:adapters}
+
+Adapters are short, synthetic oligonucleotide constructs that are ligated to the prepared DNA fragments. Their structure varies by platform:
+
+\subsection{Illumina Y-Adapters}
+
+Illumina adapters have a distinctive \textbf{Y-shape} (forked adapter). The double-stranded region ligates to the DNA fragment, while the single-stranded arms carry the P5 and P7 sequences (for flow cell binding) and primer sites for sequencing and index reads.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  scale=1.0,
+]
+
+% --- Insert DNA ---
+\draw[very thick, BrickRed!70] (-2, 0) -- (2, 0);
+\draw[very thick, MidnightBlue!70] (-2, -0.25) -- (2, -0.25);
+\node[font=\sffamily\footnotesize, gray] at (0, -0.8) {DNA insert};
+
+% --- Left Y-adapter ---
+\draw[very thick, OliveGreen!70] (-2, 0) -- (-3.0, 0) -- (-4.0, 0.7);
+\draw[very thick, OliveGreen!70] (-2, -0.25) -- (-3.0, -0.25) -- (-4.0, -0.95);
+\node[font=\sffamily\tiny, OliveGreen!70!black] at (-4.3, 0.7) {P5};
+\node[font=\sffamily\tiny, OliveGreen!70!black] at (-4.3, -0.95) {P7$'$};
+
+% --- Right Y-adapter ---
+\draw[very thick, Goldenrod!80] (2, 0) -- (3.0, 0) -- (4.0, 0.7);
+\draw[very thick, Goldenrod!80] (2, -0.25) -- (3.0, -0.25) -- (4.0, -0.95);
+\node[font=\sffamily\tiny, Goldenrod!80!black] at (4.3, 0.7) {P7};
+\node[font=\sffamily\tiny, Goldenrod!80!black] at (4.3, -0.95) {P5$'$};
+
+% --- Index regions ---
+\draw[very thick, purple!60] (-3.4, 0.25) -- (-3.7, 0.45);
+\node[font=\sffamily\tiny, purple!60] at (-3.4, 0.65) {i5 index};
+\draw[very thick, purple!60] (3.4, -0.5) -- (3.7, -0.7);
+\node[font=\sffamily\tiny, purple!60] at (3.4, -1.0) {i7 index};
+
+% --- Sequencing primer sites ---
+\draw[<-, thin, gray] (-2.5, 0.4) -- (-2.5, 0.9) node[above, font=\tiny\sffamily, gray] {Rd1 seq primer};
+\draw[<-, thin, gray] (2.5, -0.65) -- (2.5, -1.1) node[below, font=\tiny\sffamily, gray] {Rd2 seq primer};
+
+% --- T-overhang ---
+\node[font=\tiny\bfseries, BrickRed] at (-1.9, 0.2) {A};
+\node[font=\tiny\bfseries, OliveGreen!70!black] at (-2.1, -0.05) {T};
+
+\end{tikzpicture}
+\caption[Illumina Y-adapter structure]{Structure of an Illumina Y-adapter (forked adapter) ligated to a DNA insert. The double-stranded stem ligates to the A-tailed fragment via a complementary T-overhang. The single-stranded arms carry the P5 and P7 flow cell binding sequences, index sequences (i5, i7), and sequencing primer annealing sites.}
+\label{fig:y_adapter}
+\end{figure}
+
+After adapter ligation:
+\begin{itemize}[nosep]
+  \item \textbf{Read~1} is sequenced from the Read~1 primer site, reading through the insert toward the opposite adapter.
+  \item \textbf{Index~1 (i7)} is read after Read~1, identifying the sample.
+  \item \textbf{Index~2 (i5)} is read after resynthesis of the complementary strand.
+  \item \textbf{Read~2} is sequenced from the Read~2 primer site in the opposite direction.
+\end{itemize}
+
+\subsection{PacBio SMRTbell Adapters}
+
+PacBio uses \textbf{hairpin adapters} that are ligated to both ends of the double-stranded insert, creating a topologically circular molecule (the SMRTbell). This circular structure enables the polymerase to read around the molecule multiple times for HiFi consensus generation.
+
+\subsection{ONT Adapters}
+
+ONT adapters contain the \textbf{motor protein} (helicase) pre-loaded onto the adapter. During ligation, the adapter--motor complex is attached to the end of the DNA. When the adapted molecule encounters a nanopore, the motor protein engages and controls the translocation rate.
+
+
+\section{Size Selection}
+\label{sec:size_selection}
+
+After ligation, the library typically contains a range of fragment sizes. Size selection narrows this range to the optimal window for the application and platform.
+
+\subsection{SPRI Bead-Based Size Selection (AMPure XP)}
+
+The most widely used size-selection method employs \textbf{Solid Phase Reversible Immobilisation (SPRI) beads} (Beckman Coulter AMPure XP or equivalent). DNA binds to the carboxyl-coated paramagnetic beads in the presence of polyethylene glycol (PEG) and salt; the size selectivity is controlled by the ratio of beads to sample.
+
+\begin{itemize}[nosep]
+  \item \textbf{High bead:sample ratio} (e.g., 1.8$\times$): binds fragments down to ${\sim}$100\basepair.
+  \item \textbf{Low bead:sample ratio} (e.g., 0.6$\times$): binds only large fragments ($>$500\basepair), effectively removing small fragments and adapter dimers.
+  \item \textbf{Double-sided selection:} a two-step protocol (e.g., 0.55$\times$ followed by 0.8$\times$) removes both large and small fragments, yielding a tight size distribution centred on the desired range.
+\end{itemize}
+
+\begin{protocolbox}[title={Double-Sided SPRI Size Selection (Target: 300--500\,bp)}]
+\begin{enumerate}[nosep]
+  \item Add 0.55$\times$ volume of SPRI beads to the library. Mix and incubate 5~min.
+  \item Place on magnet. \textbf{Transfer supernatant} (contains fragments $<$600\basepair) to a new tube. Discard beads (large fragments bound).
+  \item Add 0.25$\times$ \emph{additional} beads to the supernatant (total ratio now ${\sim}$0.8$\times$). Mix and incubate 5~min.
+  \item Place on magnet. \textbf{Discard supernatant} (contains fragments $<$200\basepair, including adapter dimers).
+  \item Wash beads twice with 80\% ethanol.
+  \item Elute in 30~\textmu L EB or water. The eluted library is enriched for 300--500\basepair\ fragments.
+\end{enumerate}
+\end{protocolbox}
+
+\subsection{Gel-Based Size Selection}
+
+\begin{itemize}[nosep]
+  \item \textbf{BluePippin / PippinHT (Sage Science):} automated gel electrophoresis with electroelution of size-selected fractions. Highly precise (narrow size distributions), essential for some applications (e.g., PacBio HiFi libraries targeting a specific insert size).
+  \item \textbf{Manual gel extraction:} excision of the desired band from an agarose gel followed by gel purification (e.g., QIAGEN QIAquick). Low throughput, risk of UV damage, but still used in some protocols.
+\end{itemize}
+
+\begin{warningbox}[title={Adapter Dimers}]
+Adapter dimers (two adapters ligated together without an insert) are the most common library preparation artefact. They are preferentially sequenced because they are small and cluster efficiently. Even a small fraction of adapter dimers can consume a large proportion of sequencing reads. Always verify dimer removal by Bioanalyzer/TapeStation before sequencing. If dimers are present, perform an additional SPRI cleanup at 0.8$\times$ ratio.
+\end{warningbox}
+
+
+\subsection{The Physics of SPRI Bead Size Selection}
+\label{subsec:libprep:spri-physics}
+
+SPRI (Solid Phase Reversible Immobilisation) bead-based selection exploits the principle that DNA solubility in a PEG/NaCl solution depends on fragment length. The mechanism involves molecular crowding: PEG excludes volume, effectively increasing the local concentration of DNA and salt, forcing DNA out of solution and onto the negatively charged carboxyl bead surface (mediated by divalent cation bridging).
+
+The critical PEG concentration for precipitation of a DNA fragment of length $L$ scales approximately as:
+
+\begin{equation}
+[\text{PEG}]_{\text{crit}} \propto L^{-0.5}
+\label{eq:libprep:spri-scaling}
+\end{equation}
+
+This means that longer fragments precipitate (bind to beads) at lower PEG concentrations than shorter fragments. Since the bead:sample ratio directly controls the effective PEG concentration (the beads are suspended in a PEG/NaCl buffer), the ratio controls the size cutoff:
+
+\begin{table}[htbp]
+\centering
+\caption[SPRI bead ratio and size cutoff.]{Approximate relationship between AMPure XP bead:sample volume ratio and the minimum fragment size retained.}
+\label{tab:libprep:spri-ratios}
+\small
+\begin{tabular}{cl}
+\toprule
+\textbf{Bead:sample ratio} & \textbf{Approximate size cutoff} \\
+\midrule
+2.0$\times$ & $\geq$50\basepair{} (captures nearly everything) \\
+1.8$\times$ & $\geq$100\basepair{} (standard cleanup) \\
+1.0$\times$ & $\geq$200\basepair{} \\
+0.8$\times$ & $\geq$300\basepair{} \\
+0.65$\times$ & $\geq$400\basepair{} \\
+0.5$\times$ & $\geq$600\basepair{} \\
+0.4$\times$ & $\geq$800\basepair{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tipbox}[title={Optimising SPRI Ratios}]
+The exact size cutoff at a given ratio depends on the buffer composition of your sample. Carry-over ethanol, high salt concentrations, or detergents can shift the effective cutoff. When precision matters (e.g., PacBio HiFi library prep), always validate your SPRI ratios empirically using a Bioanalyzer or TapeStation trace before and after selection.
+\end{tipbox}
+
+
+\subsection{Adapter Design: Thermodynamic Considerations}
+\label{subsec:libprep:adapter-thermo}
+
+Sequencing adapters are carefully engineered oligonucleotides whose design is constrained by multiple thermodynamic requirements:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Melting temperature ($T_m$) matching:} The double-stranded portion of Y-adapters must have a $T_m$ high enough to remain annealed at the ligation temperature (typically 20$\,^\circ$C) but low enough to denature cleanly during cluster generation (typically 95--98$\,^\circ$C). A $T_m$ of 60--72$\,^\circ$C is typical for Illumina adapters.
+  \item \textbf{Minimal secondary structure:} Self-complementary regions must be avoided to prevent adapter hairpins and self-dimers. The free energy of the most stable intramolecular structure should be $\Delta G > -2$ kcal/mol.
+  \item \textbf{Balanced GC content:} Adapter sequences are designed with 40--60\% GC content to ensure uniform hybridisation and amplification.
+  \item \textbf{Index sequence design:} Barcode sequences must maintain minimum Hamming distance ($d \geq 3$ for single-error correction, $d \geq 5$ for double-error correction) and balanced base composition at each position across the index set. Illumina's IDT for Illumina indexes are designed with $d \geq 4$ and colour balance at every cycle.
+\end{itemize}
+
+\begin{keyconcept}[title={Why Y-Shaped Adapters?}]
+Illumina adapters are ``Y-shaped'': the bottom portion is double-stranded (complementary P5 and P7 sequences), while the top portion is single-stranded and non-complementary. This asymmetry ensures that after bridge amplification, the two strands of each cluster have different adapter orientations, enabling independent sequencing of Read~1 (from the P5 end) and Read~2 (from the P7 end).
+\end{keyconcept}
+
+
+\subsection{Low-Input and FFPE Protocols}
+\label{subsec:libprep:low-input-ffpe}
+
+Standard library preparation protocols assume 100 ng to 1 $\mu$g of high-quality input DNA. Many important sample types---biopsies, circulating cell-free DNA, FFPE (formalin-fixed, paraffin-embedded) tissue, single cells---provide far less or far more degraded material.
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Low-input protocols ($<$10 ng)] Use tagmentation-based methods (Illumina DNA Prep) which work with as little as 1--10 ng, or specialised kits such as the KAPA HyperPlus or Swift Biosciences Accel-NGS. These protocols minimise handling losses through reduced reaction volumes and integrated enzymatic steps.
+
+  \item[FFPE samples] Formalin fixation causes extensive DNA damage: cross-links, deamination (C$\to$U, read as C$\to$T substitutions), fragmentation, and oxidative damage (8-oxoG, read as G$\to$T transversions). Specialised FFPE protocols include:
+  \begin{itemize}[nosep]
+    \item \textbf{Enzymatic repair:} uracil-DNA glycosylase (UDG) removes deaminated cytosines; formamidopyrimidine-DNA glycosylase (Fpg) removes oxidised purines.
+    \item \textbf{Adapted fragmentation:} FFPE DNA is already fragmented, so mechanical fragmentation is often skipped or minimised.
+    \item \textbf{Higher PCR cycles:} Typically 10--14 cycles (vs.\ 4--6 for fresh tissue) to compensate for low-complexity input.
+  \end{itemize}
+
+  \item[Cell-free DNA (cfDNA)] Circulating cfDNA from blood plasma is naturally fragmented ($\sim$167\basepair{} fragments, corresponding to mono-nucleosomal DNA). Library prep skips fragmentation and uses end-repair $\to$ A-tailing $\to$ ligation with UMIs for error suppression.
+\end{description}
+
+\begin{warningbox}[title={FFPE Artefacts}]
+C$\to$T and G$\to$A artefacts from formalin damage can be mistaken for real somatic mutations. Always include UDG treatment in FFPE library prep for variant calling applications. Some bioinformatics tools (e.g., \software{FilterMutectCalls} with the \texttt{--orientation-bias-artifact-priors} flag) can also filter these artefacts computationally.
+\end{warningbox}
+
+
+\section{PCR Amplification}
+\label{sec:pcr}
+
+Many library preparation protocols include a PCR amplification step after adapter ligation to increase the total library mass.
+
+\subsection{Why PCR?}
+
+\begin{itemize}[nosep]
+  \item \textbf{Low input:} when starting material is limited (e.g., single cells, FFPE tissue, circulating cell-free DNA), PCR is necessary to generate enough library for sequencing.
+  \item \textbf{Enrichment:} PCR selectively amplifies adapter-ligated fragments, enriching them over unligated fragments or adapter dimers.
+\end{itemize}
+
+\subsection{How Many Cycles?}
+
+The number of PCR cycles should be minimised to reduce amplification bias and duplicate rates:
+
+\begin{itemize}[nosep]
+  \item \textbf{Standard WGS} (100~ng--1~\textmu g input): 2--6 cycles, or PCR-free.
+  \item \textbf{Low-input protocols} (1--10~ng): 8--12 cycles.
+  \item \textbf{Ultra-low input / single cell:} 12--18+ cycles (with significant duplication expected).
+\end{itemize}
+
+\subsection{PCR-Free Protocols}
+
+\textbf{PCR-free library preparation} skips amplification entirely, proceeding directly from adapter ligation to size selection and QC. PCR-free libraries offer:
+
+\begin{itemize}[nosep]
+  \item \textbf{More uniform coverage:} no GC-dependent amplification bias.
+  \item \textbf{No PCR duplicates:} every read is an independent observation of the original molecule.
+  \item \textbf{Better representation of difficult regions:} AT-rich and GC-rich regions are not under- or over-amplified.
+  \item \textbf{Requirement:} sufficient input DNA (typically 100~ng--1~\textmu g).
+\end{itemize}
+
+\begin{tipbox}[title={When to Go PCR-Free}]
+For whole-genome sequencing where uniform coverage and accurate variant calling are paramount (especially clinical WGS), PCR-free library preparation is strongly preferred whenever input material is sufficient. The Illumina DNA PCR-Free Prep and KAPA HyperPrep PCR-Free workflows are widely used.
+\end{tipbox}
+
+
+\section{Unique Molecular Identifiers (UMIs)}
+\label{sec:umis}
+
+\textbf{Unique Molecular Identifiers (UMIs)} are short random oligonucleotide sequences (typically 8--16\basepair) incorporated into library molecules before or during PCR amplification.
+
+\subsection{How UMIs Work}
+
+\begin{enumerate}[nosep]
+  \item During adapter ligation, each original molecule receives a unique (or nearly unique) random barcode---the UMI.
+  \item After PCR amplification, all copies (PCR duplicates) of the same original molecule carry the \textbf{same UMI}.
+  \item During analysis, reads sharing the same UMI and mapping position are identified as duplicates of the same original molecule. They can be collapsed into a single consensus read, improving accuracy and enabling accurate quantification of the number of original molecules.
+\end{enumerate}
+
+\subsection{Applications}
+
+\begin{itemize}[nosep]
+  \item \textbf{Liquid biopsy / cfDNA:} UMIs are essential for detecting rare variants (e.g., $<$1\% allele frequency) in circulating cell-free DNA, where PCR duplicates dominate.
+  \item \textbf{RNA-seq:} UMIs enable absolute transcript counting (how many molecules, not how many reads) and correct for PCR amplification bias.
+  \item \textbf{Single-cell sequencing:} 10x Genomics and other single-cell platforms use UMIs to count individual mRNA molecules per cell.
+  \item \textbf{Error correction:} consensus of all reads sharing a UMI can suppress sequencing errors, effectively creating a ``molecular consensus'' analogous to PacBio CCS but in the library prep domain.
+\end{itemize}
+
+
+\section{Indexing and Multiplexing}
+\label{sec:indexing}
+
+Modern sequencing instruments generate far more data per run than a single sample typically requires. \textbf{Multiplexing} (also called barcoding or indexing) allows multiple samples to be pooled into a single sequencing run, with computational demultiplexing after sequencing.
+
+\subsection{Single Indexing vs Dual Indexing}
+
+\begin{description}[style=nextline, font=\bfseries]
+  \item[Single indexing.] Each sample receives a single unique index sequence (typically 6--8\basepair\ i7 index). Sufficient for small experiments with few samples, but limited combinatorial space and no protection against index hopping.
+
+  \item[Dual indexing.] Each sample receives two index sequences (i7 and i5), read in separate index reads. Dual indexing provides:
+  \begin{itemize}[nosep]
+    \item A much larger combinatorial space (e.g., 96 i7 $\times$ 96 i5 = 9{,}216 combinations).
+    \item The ability to detect and filter index-hopped reads (see below).
+  \end{itemize}
+
+  \item[Unique Dual Indexes (UDI).] Each sample receives a unique \emph{pair} of indexes that is not shared with any other sample. UDIs provide unambiguous sample assignment: an index-hopped read will carry an i7 from one sample and an i5 from another, creating a combination not present in any real sample, which can be identified and discarded.
+\end{description}
+
+\subsection{Index Hopping}
+
+\textbf{Index hopping} (also called index switching or barcode swapping) occurs when free adapter molecules recombine during cluster generation on patterned flow cells using exclusion amplification (ExAmp). This causes a small fraction (0.1--2\%) of reads to be assigned to the wrong sample.
+
+\begin{warningbox}[title={Index Hopping on Patterned Flow Cells}]
+Index hopping is a significant concern on instruments with patterned flow cells (NovaSeq, NextSeq~1000/2000). To mitigate:
+\begin{enumerate}[nosep]
+  \item \textbf{Always use Unique Dual Indexes (UDI).} This allows detection and removal of hopped reads.
+  \item \textbf{Clean up libraries thoroughly.} Remove free adapters and adapter dimers with SPRI beads before pooling.
+  \item \textbf{Do not store pooled libraries.} Pool and load promptly; long storage of pooled libraries increases free adapter contamination.
+\end{enumerate}
+Index hopping does \textbf{not} occur on non-patterned flow cells (MiSeq) or on platforms using DNA nanoballs (MGI).
+\end{warningbox}
+
+\subsection{Index Design Considerations}
+
+\begin{itemize}[nosep]
+  \item \textbf{Hamming distance:} index sequences should differ by at least 3 bases from every other index in the set, allowing single-error correction during demultiplexing.
+  \item \textbf{Colour balance:} on two-channel Illumina instruments, the pool of indexes must provide signal in both colour channels at every cycle of the index read. Illumina provides pre-validated index sets that ensure colour balance.
+  \item \textbf{Number of samples:} match the number of indexed samples to the sequencing capacity. Under-multiplexing wastes data; over-multiplexing yields insufficient coverage per sample.
+\end{itemize}
+
+
+\section{Library Quality Control}
+\label{sec:library_qc}
+
+Before loading a library onto a sequencer, three measurements should be performed:
+
+\subsection{Quantification: Qubit Fluorometer}
+
+The Qubit (Thermo Fisher) measures DNA or RNA concentration using fluorescent dyes that bind specifically to double-stranded DNA, single-stranded DNA, or RNA. Unlike spectrophotometric methods (NanoDrop), the Qubit is not confounded by contaminants (free nucleotides, adapters, proteins) and provides an accurate measurement of intact library molecules.
+
+\subsection{Fragment Size Distribution: Bioanalyzer / TapeStation}
+
+Capillary electrophoresis instruments (Agilent Bioanalyzer, Agilent TapeStation, Agilent Fragment Analyzer) separate library fragments by size and provide:
+
+\begin{itemize}[nosep]
+  \item An electropherogram showing the size distribution.
+  \item Average fragment size.
+  \item Detection of adapter dimers (a sharp peak at ${\sim}$120--180\basepair).
+  \item For RNA: the RNA Integrity Number (RIN), a metric from 1 (degraded) to 10 (intact).
+\end{itemize}
+
+\subsection{Functional Quantification: qPCR / dPCR}
+
+Quantitative PCR (qPCR) using primers that anneal to the adapter sequences measures only \textbf{functional} library molecules (those with adapters on both ends that can actually be sequenced). KAPA Library Quantification Kits are the standard. Digital PCR (dPCR) offers absolute quantification without a standard curve.
+
+\begin{protocolbox}[title={Library QC Checklist}]
+Before sequencing, verify:
+\begin{enumerate}[nosep]
+  \item \textbf{Qubit concentration:} $>$2~nM (platform-specific threshold).
+  \item \textbf{Fragment size:} peaks at the expected size for your protocol (e.g., 350\basepair\ for WGS with 150\basepair\ inserts + adapters).
+  \item \textbf{No adapter dimers:} no sharp peak at 120--180\basepair\ on Bioanalyzer/TapeStation.
+  \item \textbf{qPCR molarity:} within the loading range for your instrument.
+  \item \textbf{Pool balance:} if multiplexing, all samples should contribute approximately equal molarity to the pool.
+\end{enumerate}
+\end{protocolbox}
+
+
+\section{Specific Library Preparation Protocols}
+\label{sec:specific_protocols}
+
+\subsection{Illumina DNA Prep (Tagmentation-Based)}
+
+Formerly known as Nextera DNA Flex, this is Illumina's standard whole-genome library preparation kit.
+
+\begin{itemize}[nosep]
+  \item \textbf{Input:} 100--500~ng DNA.
+  \item \textbf{Fragmentation:} bead-linked Tn5 transposase (tagmentation).
+  \item \textbf{Fragment size:} approximately 350\basepair\ (tuneable by adjusting tagmentation conditions).
+  \item \textbf{Indexing:} dual indexing with Nextera CD indexes.
+  \item \textbf{PCR:} 5 cycles (standard input) to 12 cycles (low input).
+  \item \textbf{Hands-on time:} approximately 2.5 hours.
+  \item \textbf{Strengths:} fast, flexible input range, well-validated.
+  \item \textbf{Limitations:} Tn5 insertion bias, not PCR-free.
+\end{itemize}
+
+\subsection{Illumina Stranded mRNA Prep}
+
+Illumina's standard mRNA sequencing library preparation.
+
+\begin{itemize}[nosep]
+  \item \textbf{Input:} 25--1{,}000~ng total RNA.
+  \item \textbf{mRNA selection:} poly(A) capture with oligo(dT) beads.
+  \item \textbf{Fragmentation:} heat fragmentation in the presence of divalent cations.
+  \item \textbf{Reverse transcription:} first-strand synthesis with random hexamers and actinomycin~D; second-strand synthesis with dUTP for strand specificity.
+  \item \textbf{Strand specificity:} the dUTP-marked second strand is degraded during PCR, preserving only the first strand (which is complementary to the mRNA). This provides strand-specific information, enabling sense/antisense discrimination.
+  \item \textbf{Hands-on time:} approximately 5 hours (or 7 hours with rRNA depletion instead of poly(A) selection).
+\end{itemize}
+
+\subsection{NEBNext Ultra II Kits}
+
+New England Biolabs (NEB) offers a widely used family of library prep kits:
+
+\begin{itemize}[nosep]
+  \item \textbf{NEBNext Ultra II DNA Library Prep:} enzymatic fragmentation or pre-fragmented DNA input, end repair, adapter ligation, PCR (or PCR-free). Supports inputs from 500~pg to 1~\textmu g.
+  \item \textbf{NEBNext Ultra II FS (Fragmentation/Selection):} integrated enzymatic fragmentation with size selection; ``time-based'' fragmentation control.
+  \item \textbf{NEBNext Ultra II RNA Library Prep:} supports both poly(A)-selected and rRNA-depleted RNA, with strand-specific chemistry.
+  \item \textbf{Strengths:} excellent low-input performance, well-validated, available with UMI adapters.
+\end{itemize}
+
+\subsection{KAPA HyperPrep and HyperPlus}
+
+Roche/KAPA Biosystems kits are popular in core facilities:
+
+\begin{itemize}[nosep]
+  \item \textbf{KAPA HyperPrep:} for pre-fragmented DNA (e.g., Covaris-sheared). Single-tube end repair/A-tailing and adapter ligation. Supports PCR-free workflow.
+  \item \textbf{KAPA HyperPlus:} adds enzymatic fragmentation (fragmentase) to HyperPrep. Suitable when Covaris is unavailable.
+  \item \textbf{Strengths:} excellent for PCR-free WGS, widely used in clinical labs, robust and reproducible.
+\end{itemize}
+
+\subsection{10x Genomics Chromium (Single-Cell)}
+
+The 10x Genomics Chromium platform uses microfluidic partitioning to generate single-cell libraries:
+
+\begin{itemize}[nosep]
+  \item \textbf{Principle:} individual cells (or nuclei) are captured in gel bead-in-emulsion (GEM) droplets, each containing a barcoded gel bead. Cell lysis, reverse transcription, and barcoding occur within each droplet.
+  \item \textbf{Output:} each cDNA molecule is tagged with a cell barcode (identifying the cell of origin) and a UMI (identifying the individual molecule).
+  \item \textbf{Library structure:} standard Illumina-compatible paired-end library. Read~1 contains the cell barcode + UMI; Read~2 contains the cDNA insert.
+  \item \textbf{Applications:} \gls{scRNA-seq}, single-cell ATAC-seq, single-cell multiome (RNA + ATAC), spatial transcriptomics (Visium).
+\end{itemize}
+
+\subsection{PacBio SMRTbell Library Preparation}
+
+\begin{itemize}[nosep]
+  \item \textbf{Input:} 5--10~\textmu g of high-molecular-weight genomic DNA (for standard WGS HiFi libraries).
+  \item \textbf{Fragmentation:} controlled shearing to the target insert size (typically 15--20\kilobase\ for HiFi).
+  \item \textbf{End repair and adapter ligation:} blunt-end ligation of hairpin adapters to both ends of each fragment, creating the circular SMRTbell.
+  \item \textbf{Size selection:} BluePippin or SageELF to remove short fragments (which would consume ZMW reads without contributing useful long reads).
+  \item \textbf{Annealing and binding:} sequencing primer annealing, polymerase binding to the SMRTbell.
+  \item \textbf{Hands-on time:} 4--8 hours (longer with size selection).
+  \item \textbf{Considerations:} the protocol is demanding in terms of DNA quality and quantity. Degraded or impure DNA leads to poor SMRTbell formation and low yields.
+\end{itemize}
+
+\subsection{ONT Ligation Sequencing Kit (SQK-LSK114)}
+
+\begin{itemize}[nosep]
+  \item \textbf{Input:} 1~\textmu g of genomic DNA (recommended; as low as 100~ng with reduced output).
+  \item \textbf{Fragmentation:} optional (skip for long-read or ultra-long applications).
+  \item \textbf{End repair and A-tailing:} using NEB reagents.
+  \item \textbf{Adapter ligation:} ONT adapters with pre-loaded motor protein.
+  \item \textbf{SPRI cleanup:} to remove unligated adapters and short fragments.
+  \item \textbf{Hands-on time:} approximately 60--90 minutes.
+  \item \textbf{Strengths:} preserves long fragments, highest throughput of ONT kits.
+\end{itemize}
+
+\subsection{ONT Rapid Sequencing Kit (SQK-RAD114 / SQK-RBK114)}
+
+\begin{itemize}[nosep]
+  \item \textbf{Input:} 200--400~ng of genomic DNA.
+  \item \textbf{Fragmentation:} transposase-mediated (simultaneously fragments and tags).
+  \item \textbf{Adapter attachment:} rapid adapters click onto the transposase-tagged ends.
+  \item \textbf{Hands-on time:} approximately 10 minutes.
+  \item \textbf{Limitations:} transposase fragmentation limits read length to the fragment size produced (${\sim}$8--15\kilobase\ N50).
+  \item \textbf{Barcoding variant (RBK114):} the rapid barcoding kit includes 96 barcodes for multiplexing.
+  \item \textbf{Best for:} quick experiments, diagnostics, time-critical applications, teaching.
+\end{itemize}
+
+
+\section{Target Enrichment}
+\label{sec:enrichment}
+
+For many applications, sequencing the entire genome is unnecessary or impractical. Target enrichment methods selectively capture specific genomic regions before sequencing, dramatically reducing cost per target base.
+
+\subsection{Hybridisation Capture (Pull-Down)}
+
+Hybridisation capture uses biotinylated oligonucleotide probes (``baits'') that hybridise to regions of interest. Probe-target hybrids are captured with streptavidin-coated magnetic beads, and off-target DNA is washed away.
+
+\begin{description}[style=nextline, font=\bfseries]
+  \item[IDT xGen Lockdown Probes] A widely used panel system supporting custom and predesigned panels (e.g., xGen Exome). Known for high uniformity and flexibility.
+
+  \item[Twist Bioscience] Offers highly uniform probes synthesised on silicon chips. Twist panels are cost-competitive and available in custom and catalogue configurations (exome, cancer panels).
+
+  \item[Agilent SureSelect] One of the original hybridisation capture systems. Available in multiple formats including SureSelect XT, XT~HS (with UMIs), and SureSelect~V8 (latest exome design covering 34~Mb).
+\end{description}
+
+\begin{itemize}[nosep]
+  \item \textbf{Advantages:} excellent for large target regions (exomes: 30--60\megabase), even coverage, compatible with many library types.
+  \item \textbf{Disadvantages:} long protocol (1--2 day hybridisation), higher cost per sample than amplicon methods, requires more input DNA.
+\end{itemize}
+
+\subsection{Amplicon-Based Enrichment}
+
+Amplicon methods use PCR primers to amplify specific targets directly.
+
+\begin{description}[style=nextline, font=\bfseries]
+  \item[AmpliSeq (Thermo Fisher / Illumina)] Highly multiplexed PCR (up to 24{,}000 amplicon pairs per pool) covering panels from small gene sets to near-exome coverage. Very low input ($\leq$10~ng), fast (2--3 hours), and cost-effective for focused panels.
+
+  \item[Archer FusionPlex / ArcherDX] Anchored multiplex PCR (AMP), which uses one gene-specific primer and one adapter-specific primer, enabling detection of fusions with unknown partners.
+\end{description}
+
+\begin{itemize}[nosep]
+  \item \textbf{Advantages:} fast, low input, low cost for small to medium panels.
+  \item \textbf{Disadvantages:} PCR bias, allelic dropout, limited scalability to very large targets, primer design constraints.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  decision/.style={diamond, draw=MidnightBlue!70, fill=MidnightBlue!8,
+    inner sep=1pt, aspect=2.8, align=center, font=\small\sffamily},
+  result/.style={rectangle, draw=OliveGreen!70, fill=OliveGreen!8,
+    rounded corners=4pt, minimum height=0.8cm, align=center, font=\small\sffamily},
+  arr/.style={->, thick, gray!70},
+  lbl/.style={font=\tiny\sffamily, text=gray},
+]
+
+\node[decision] (q1) at (0,0) {Target region\\size?};
+\node[decision] (q2a) at (-4.5,-2.5) {Input amount?};
+\node[decision] (q2b) at (4.5,-2.5) {Fusions / novel\\breakpoints?};
+
+\node[result] (r1) at (-6.5,-5) {AmpliSeq\\(amplicon)};
+\node[result] (r2) at (-2.5,-5) {Hybridisation\\capture panel};
+\node[result] (r3) at (2.5,-5) {Exome capture\\(SureSelect, xGen,\\Twist)};
+\node[result] (r4) at (6.5,-5) {Archer AMP\\or capture};
+
+\draw[arr] (q1) -- node[lbl, above left] {$<$1 Mb} (q2a);
+\draw[arr] (q1) -- node[lbl, above right] {$>$1 Mb (exome)} (q2b);
+\draw[arr] (q2a) -- node[lbl, left] {Low ($<$50 ng)} (r1);
+\draw[arr] (q2a) -- node[lbl, right] {Standard} (r2);
+\draw[arr] (q2b) -- node[lbl, left] {No} (r3);
+\draw[arr] (q2b) -- node[lbl, right] {Yes} (r4);
+
+\end{tikzpicture}
+\caption[Target enrichment decision flowchart]{Decision flowchart for choosing a target enrichment strategy. For small panels with low input, amplicon-based methods are preferred. For exome-scale targets, hybridisation capture is standard. For fusion detection with unknown partners, anchored multiplex PCR (Archer) or capture-based methods are appropriate.}
+\label{fig:enrichment_decision}
+\end{figure}
+
+
+\section{Common Failure Modes and Troubleshooting}
+\label{sec:troubleshooting}
+
+Library preparation is a multistep biochemical process with many potential points of failure. \Cref{tab:troubleshooting} summarises the most common problems and their solutions.
+
+\begin{table}[htbp]
+\centering
+\caption[Library preparation troubleshooting guide]{Common library preparation failure modes, their symptoms, likely causes, and solutions.}
+\label{tab:troubleshooting}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright}p{2.5cm} >{\raggedright}p{3cm} >{\raggedright}p{3cm} X@{}}
+\toprule
+\textbf{Symptom} & \textbf{Likely Cause} & \textbf{Diagnosis} & \textbf{Solution} \\
+\midrule
+Very low library yield & Degraded input DNA/RNA; failed ligation & Check input on Bioanalyzer; check adapter integrity & Use fresh extraction; verify enzyme activity; increase input \\
+\addlinespace
+Adapter dimer peak (120--180\basepair) & Excess adapters relative to insert; low-input protocol & Bioanalyzer/TapeStation & Additional SPRI cleanup (0.8$\times$); reduce adapter concentration \\
+\addlinespace
+Library too large (broad, $>$800\basepair) & Insufficient fragmentation & Bioanalyzer & Increase fragmentation time/energy; repeat with optimised parameters \\
+\addlinespace
+Library too small ($<$200\basepair) & Over-fragmentation; over-digestion & Bioanalyzer & Reduce fragmentation time/energy; handle DNA more gently \\
+\addlinespace
+High duplication rate after sequencing & Low library complexity; too many PCR cycles; overloading & Picard MarkDuplicates metrics & Increase input; reduce PCR cycles; use PCR-free protocol \\
+\addlinespace
+Low \%PF (clusters passing filter) & Overloading; poor library quality & Run metrics & Reduce loading concentration; verify library QC \\
+\addlinespace
+Index hopping / sample crosstalk & Free adapters on patterned flow cells; combinatorial indexing & Unexpected barcode combinations & Use UDI; clean libraries; pool immediately before loading \\
+\addlinespace
+Uneven coverage & GC bias from PCR; Tn5 insertion bias & Coverage plots, GC bias analysis & Use PCR-free protocol; switch from tagmentation to mechanical fragmentation \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\section{Decision Framework: Choosing a Library Prep Method}
+\label{sec:libprep_decision}
+
+The choice of library preparation protocol depends on multiple factors. The following framework provides guidance:
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  decision/.style={diamond, draw=MidnightBlue!70, fill=MidnightBlue!8,
+    inner sep=1pt, aspect=3.0, align=center, font=\small\sffamily},
+  result/.style={rectangle, draw=OliveGreen!70, fill=OliveGreen!8,
+    rounded corners=4pt, minimum width=2.5cm, minimum height=0.7cm, align=center, font=\small\sffamily},
+  arr/.style={->, thick, gray!70},
+  lbl/.style={font=\tiny\sffamily, text=gray},
+]
+
+% Level 1
+\node[decision] (q1) at (0,0) {Nucleic\\acid type?};
+
+% Level 2
+\node[decision] (q2a) at (-5,-2.5) {Sequencing\\platform?};
+\node[decision] (q2b) at (5,-2.5) {Transcript\\detection?};
+
+% Level 3 - DNA branch
+\node[decision] (q3a) at (-7.5,-5) {Input\\amount?};
+\node[result] (r_pacbio) at (-4,-5) {PacBio SMRTbell\\prep};
+\node[result] (r_ont_lig) at (-2,-5) {ONT ligation\\kit};
+
+% Level 3 - RNA branch
+\node[result] (r_mrna) at (3,-5) {Poly(A) mRNA\\prep};
+\node[result] (r_total) at (7,-5) {rRNA depletion\\+ stranded prep};
+
+% Level 4 - Illumina DNA
+\node[result] (r_tagment) at (-9,-7.5) {Illumina DNA\\Prep (tagmentation)};
+\node[result] (r_pcr_free) at (-6,-7.5) {KAPA HyperPrep\\PCR-free};
+
+% Arrows
+\draw[arr] (q1) -- node[lbl, above left] {DNA} (q2a);
+\draw[arr] (q1) -- node[lbl, above right] {RNA} (q2b);
+
+\draw[arr] (q2a) -- node[lbl, above left] {Illumina} (q3a);
+\draw[arr] (q2a) -- node[lbl, left, pos=0.3] {PacBio} (r_pacbio);
+\draw[arr] (q2a) -- node[lbl, right, pos=0.3] {ONT} (r_ont_lig);
+
+\draw[arr] (q2b) -- node[lbl, left] {mRNA only} (r_mrna);
+\draw[arr] (q2b) -- node[lbl, right] {Total/ncRNA} (r_total);
+
+\draw[arr] (q3a) -- node[lbl, left] {Low ($<$100 ng)} (r_tagment);
+\draw[arr] (q3a) -- node[lbl, right] {High ($>$100 ng)} (r_pcr_free);
+
+\end{tikzpicture}
+\caption[Library preparation decision flowchart]{Decision flowchart for selecting a library preparation method. The primary decision points are the nucleic acid type (DNA vs.\ RNA), the sequencing platform, the available input amount, and the target transcript population.}
+\label{fig:libprep_decision}
+\end{figure}
+
+\begin{protocolbox}[title={Library Prep Selection Summary}]
+\textbf{For Illumina DNA WGS:}
+\begin{itemize}[nosep]
+  \item High input ($>$100~ng): KAPA HyperPrep PCR-free or Illumina DNA PCR-Free Prep.
+  \item Low input ($<$100~ng): Illumina DNA Prep (tagmentation) or NEBNext Ultra~II with PCR.
+  \item Ultra-low input / FFPE: NEBNext Ultra~II with increased PCR cycles; consider UMIs.
+\end{itemize}
+
+\textbf{For Illumina RNA-seq:}
+\begin{itemize}[nosep]
+  \item Standard mRNA: Illumina Stranded mRNA Prep or NEBNext Ultra~II RNA.
+  \item Total RNA / degraded: rRNA depletion (Ribo-Zero / NEBNext rRNA Depletion) + stranded library prep.
+  \item Low input: SMART-Seq (full-length) or NEB Ultra~II RNA (directional).
+\end{itemize}
+
+\textbf{For PacBio HiFi:}
+\begin{itemize}[nosep]
+  \item Standard WGS: SMRTbell prep kit 3.0, targeting 15--20\kilobase\ inserts.
+  \item Iso-Seq (full-length transcripts): SMRTbell Iso-Seq Express protocol.
+\end{itemize}
+
+\textbf{For ONT:}
+\begin{itemize}[nosep]
+  \item Maximum read length: Ligation sequencing kit (SQK-LSK114) with UHMW DNA.
+  \item Rapid turnaround: Rapid sequencing kit (SQK-RAD114).
+  \item Multiplexed: Rapid barcoding kit (SQK-RBK114) or native barcoding kit (SQK-NBD114).
+  \item Direct RNA: Direct RNA sequencing kit (SQK-RNA004).
+\end{itemize}
+\end{protocolbox}
+
+
+\section{Automation and High-Throughput Library Preparation}
+\label{sec:automation}
+
+For core facilities and large-scale projects, manual library preparation is impractical. Liquid-handling robots (e.g., Beckman Coulter Biomek, Hamilton STAR, Opentrons OT-2) can automate most library preparation steps:
+
+\begin{itemize}[nosep]
+  \item \textbf{Advantages:} reproducibility, reduced hands-on time, throughput (96 or 384 samples per batch), reduced pipetting errors.
+  \item \textbf{Considerations:} requires protocol optimisation for robotic execution (tip types, mixing strategies, magnetic plate timing), significant upfront programming effort, and ongoing maintenance.
+  \item \textbf{Common automated workflows:} Illumina DNA Prep on Hamilton, KAPA HyperPrep on Biomek, NEBNext Ultra~II on Opentrons.
+\end{itemize}
+
+\begin{tipbox}[title={Starting with Automation}]
+If you are new to automated library preparation, start by automating the most time-consuming and error-prone steps (SPRI cleanups, PCR setup, normalisation) while performing fragmentation and adapter ligation manually. Once confident, expand to full protocol automation.
+\end{tipbox}
+
+
+\section{Cost Considerations}
+\label{sec:libprep_cost}
+
+Library preparation costs can be a significant component of the overall per-sample sequencing cost, especially for low-throughput applications:
+
+\begin{itemize}[nosep]
+  \item \textbf{Standard WGS library:} \$30--100 per sample (depending on kit and protocol).
+  \item \textbf{RNA-seq library:} \$50--150 per sample (including RNA extraction and QC).
+  \item \textbf{Exome capture:} \$100--200 per sample (library prep + capture probes).
+  \item \textbf{10x Genomics single-cell:} \$1{,}500--3{,}000 per run (capturing 5{,}000--10{,}000 cells).
+  \item \textbf{ONT rapid sequencing:} \$20--50 per sample (excluding flow cell cost).
+\end{itemize}
+
+Bulk purchasing, automation, and protocol miniaturisation (reducing reagent volumes) can substantially reduce per-sample costs for high-throughput operations.
+
+
+\section{Summary}
+
+Library preparation is the crucial bridge between biological samples and sequencing data. The choice of extraction method, fragmentation approach, adapter chemistry, size selection, amplification strategy, and quality control steps all directly impact data quality and the success of downstream analysis. Key principles to remember:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Start with high-quality input.} No library preparation protocol can rescue severely degraded nucleic acid.
+  \item \textbf{Minimise PCR.} Use PCR-free protocols when possible; minimise cycle numbers when PCR is necessary.
+  \item \textbf{Use appropriate controls.} Include positive controls, negative controls, and PhiX spike-ins.
+  \item \textbf{QC rigorously.} Always measure library concentration (Qubit), size distribution (Bioanalyzer/TapeStation), and functional molarity (qPCR) before sequencing.
+  \item \textbf{Use UDIs on patterned flow cells.} Prevent index hopping with unique dual indexes.
+  \item \textbf{Match the protocol to the question.} The best library preparation method depends on the nucleic acid type, input amount, sequencing platform, and biological question.
+  \item \textbf{Document everything.} Record kit lot numbers, input amounts, PCR cycles, and QC results. Library preparation metadata is essential for troubleshooting and reproducibility.
+\end{enumerate}

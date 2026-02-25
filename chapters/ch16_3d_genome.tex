@@ -1,0 +1,1025 @@
+\chapter{Three-Dimensional Genome Architecture}
+\label{ch:3dgenome}
+
+\begin{keyconcept}
+The genome is not a linear string of DNA floating freely in the nucleus. Instead, it is elaborately folded in three-dimensional space, and this folding is functionally critical. Enhancers must physically contact the promoters they regulate, often across hundreds of kilobases of linear genomic distance. The genome is organised hierarchically---from chromosome territories and A/B compartments to topologically associating domains (TADs) and individual chromatin loops---and this organisation is mediated by architectural proteins such as CTCF and cohesin. Sequencing-based chromosome conformation capture methods, most notably Hi-C and its variants, allow researchers to map these three-dimensional interactions genome-wide, revealing the structural principles that govern gene regulation.
+\end{keyconcept}
+
+%% ============================================================
+\section{Why Three-Dimensional Genome Organisation Matters}
+\label{sec:3dgenome:why}
+
+The three-dimensional organisation of the genome has profound functional consequences:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Enhancer--promoter communication:} Enhancers often reside tens to hundreds of kilobases from their target promoters in linear distance but are brought into close physical proximity through chromatin looping. This spatial proximity is required for enhancer-mediated gene activation.
+  \item \textbf{Gene insulation:} Topological boundaries prevent enhancers from activating inappropriate genes. Disruption of these boundaries (e.g., by structural variants that delete CTCF binding sites) can cause developmental disorders and cancer through enhancer hijacking.
+  \item \textbf{Transcriptional regulation:} Genes located in the transcriptionally active A compartment tend to be expressed, while genes in the inactive B compartment tend to be silenced.
+  \item \textbf{DNA replication:} Replication timing correlates with compartment identity: A compartment replicates early, B compartment replicates late.
+  \item \textbf{DNA repair:} The spatial organisation of chromosomes influences the frequency and patterns of chromosomal translocations.
+\end{itemize}
+
+%% ============================================================
+\section{Levels of 3D Genome Organisation}
+\label{sec:3dgenome:levels}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  scale=0.9,
+  level/.style={font=\small\bfseries, MidnightBlue},
+  desc/.style={font=\scriptsize, text width=5.5cm},
+  arrow/.style={-{Stealth[length=2mm]}, thick, gray},
+  box/.style={draw, rounded corners=3pt, thick, minimum height=1.4cm, text width=4.8cm, align=center, font=\small}
+]
+
+% Title
+\node[font=\bfseries, MidnightBlue] at (6, 10.5) {Hierarchical Organisation of the 3D Genome};
+
+% Level 1: Chromosome territories
+\node[box, fill=BrickRed!8] (ct) at (2.5, 9) {Chromosome\\Territories};
+\node[desc, right=0.3cm of ct] {Each chromosome occupies a distinct, largely non-overlapping volume in the nucleus. Gene-rich chromosomes tend to be more centrally located.};
+
+% Level 2: Compartments
+\node[box, fill=OliveGreen!8] (comp) at (2.5, 7) {A/B Compartments\\(Mb scale)};
+\node[desc, right=0.3cm of comp] {\textbf{A compartment:} open, gene-rich, early-replicating, transcriptionally active.\\
+\textbf{B compartment:} closed, gene-poor, late-replicating, transcriptionally silent.};
+
+% Level 3: TADs
+\node[box, fill=MidnightBlue!8] (tad) at (2.5, 4.8) {Topologically Associating\\Domains (200 kb--2 Mb)};
+\node[desc, right=0.3cm of tad] {Self-interacting genomic domains bounded by CTCF/cohesin. Interactions within a TAD are more frequent than interactions between TADs. Boundaries are largely conserved across cell types.};
+
+% Level 4: Loops
+\node[box, fill=Goldenrod!12] (loop) at (2.5, 2.6) {Chromatin Loops\\(10 kb--1 Mb)};
+\node[desc, right=0.3cm of loop] {Point-to-point contacts, often between convergent CTCF sites. Include enhancer--promoter loops that mediate gene regulation.};
+
+% Level 5: Nucleosomes
+\node[box, fill=gray!8] (nuc) at (2.5, 0.8) {Nucleosome Fibre\\(10 nm)};
+\node[desc, right=0.3cm of nuc] {DNA wrapped around histone octamers. The fundamental unit of chromatin packaging (147 bp per nucleosome).};
+
+% Arrows
+\draw[arrow] (ct.south) -- (comp.north);
+\draw[arrow] (comp.south) -- (tad.north);
+\draw[arrow] (tad.south) -- (loop.north);
+\draw[arrow] (loop.south) -- (nuc.north);
+
+% Scale bar
+\draw[very thick, MidnightBlue!50] (-0.3, 9.5) -- (-0.3, 0.3);
+\node[font=\tiny, MidnightBlue, rotate=90] at (-0.7, 5) {Decreasing scale};
+\draw[-{Stealth}, MidnightBlue!50] (-0.3, 5) -- (-0.3, 0.3);
+
+\end{tikzpicture}
+\caption[Hierarchical levels of 3D genome organisation.]{The 3D genome is organised hierarchically, from chromosome territories (largest scale) to individual nucleosomes (smallest scale). Each level can be interrogated by specific sequencing-based methods: chromosome territories and A/B compartments by Hi-C eigenvector analysis, TADs by Hi-C and Micro-C at moderate resolution, and chromatin loops by high-resolution Hi-C, HiChIP, or Capture Hi-C.}
+\label{fig:3dgenome:hierarchy}
+\end{figure}
+
+\subsection{Chromosome Territories}
+\label{subsec:3dgenome:territories}
+
+Each chromosome occupies a distinct, largely non-overlapping volume in the interphase nucleus called a \textbf{chromosome territory}. Gene-rich chromosomes (e.g., chr19) tend to reside in the nuclear interior, while gene-poor chromosomes (e.g., chr18) tend to be positioned near the nuclear periphery (lamina-associated). Chromosome territories can be visualised by fluorescence in situ hybridisation (FISH) with whole-chromosome paints.
+
+\subsection{A/B Compartments}
+\label{subsec:3dgenome:compartments}
+
+At the megabase scale, the genome is partitioned into two types of compartments:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{A compartment:} euchromatic, gene-rich, transcriptionally active, early-replicating, enriched for active histone marks (H3K27ac, H3K4me3). Corresponds to open chromatin.
+  \item \textbf{B compartment:} heterochromatic, gene-poor, transcriptionally silent, late-replicating, enriched for repressive marks (H3K27me3, H3K9me3) or lacking histone marks entirely. Corresponds to closed/compacted chromatin.
+\end{itemize}
+
+A/B compartments are identified from Hi-C data by performing principal component analysis (PCA) on the correlation matrix of Hi-C contact frequencies. The first eigenvector (PC1) separates the genome into A and B compartments. Compartment identity is dynamic and changes during differentiation, reprogramming, and disease.
+
+\subsection{Topologically Associating Domains (TADs)}
+\label{subsec:3dgenome:tads}
+
+\textbf{TADs} are contiguous genomic regions (typically 200\kilobase{}--2\megabase{} in mammals) within which chromatin interactions are substantially more frequent than interactions crossing TAD boundaries. TADs appear as prominent ``triangles'' along the diagonal of Hi-C contact maps.
+
+Key properties of TADs:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Boundaries} are enriched for CTCF binding sites in convergent orientation, cohesin complex components, active promoters, and housekeeping genes.
+  \item TAD boundaries are \textbf{largely conserved} across cell types and species, though sub-TAD organisation and loop contacts are more cell-type-specific.
+  \item TADs serve as \textbf{regulatory domains}: enhancers within a TAD preferentially regulate genes within the same TAD.
+  \item \textbf{Disruption of TAD boundaries} can cause enhancer hijacking---a mechanism implicated in developmental disorders (e.g., limb malformations) and cancer (e.g., oncogene activation).
+\end{itemize}
+
+\subsection{Chromatin Loops}
+\label{subsec:3dgenome:loops}
+
+Chromatin loops are specific point-to-point contacts between two genomic loci. The most prominent loops are mediated by \textbf{CTCF and cohesin}:
+
+\begin{itemize}[itemsep=2pt]
+  \item CTCF binds to its motif in a directional manner (the motif is asymmetric).
+  \item Cohesin (a ring-shaped complex) extrudes chromatin until it encounters two convergently oriented CTCF sites (facing each other), forming a loop.
+  \item This \textbf{loop extrusion model} explains how TADs and loops form: cohesin extrudes chromatin bidirectionally until blocked by convergent CTCF barriers.
+\end{itemize}
+
+\begin{keyconcept}[title={The Loop Extrusion Model}]
+The loop extrusion model proposes that cohesin (or condensin) complexes are loaded onto chromatin and actively extrude DNA through their ring structure, progressively enlarging a chromatin loop. Extrusion halts when cohesin encounters CTCF proteins bound in convergent orientation, establishing a stable loop with CTCF at its anchors. This model elegantly explains: (1) why loops form preferentially between convergent CTCF sites; (2) why TADs are insulated domains; and (3) why cohesin depletion eliminates loops and TADs but not compartments. The model has been supported by polymer simulations, cohesin depletion experiments (using auxin-inducible degron systems), and live-cell imaging.
+\end{keyconcept}
+
+%% ============================================================
+\section{Hi-C: Genome-Wide Chromosome Conformation Capture}
+\label{sec:3dgenome:hic}
+
+\subsection{Principle}
+\label{subsec:3dgenome:hic-principle}
+
+Hi-C is the most widely used method for mapping genome-wide chromatin interactions. It captures all pairwise contacts in the genome simultaneously:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Crosslinking:} Fix cells with formaldehyde to covalently link spatially proximal chromatin segments.
+  \item \textbf{Restriction enzyme digestion:} Digest chromatin with a restriction enzyme (e.g., MboI, DpnII, or HindIII). The choice of enzyme determines the theoretical resolution limit.
+  \item \textbf{Biotinylated fill-in:} Fill in the restriction enzyme overhangs with biotinylated nucleotides, marking the ligation junction.
+  \item \textbf{Proximity ligation:} Under dilute conditions (or in situ within the nucleus), ligate the blunt ends. Fragments that were spatially proximal (regardless of their linear genomic distance) are preferentially ligated.
+  \item \textbf{Biotin pull-down:} Shear the ligated DNA, pull down biotinylated junctions with streptavidin beads, and prepare a paired-end sequencing library.
+  \item \textbf{Sequencing and mapping:} Each read pair represents a contact between two genomic loci. Map each end independently to the reference genome to identify the interacting pair.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  scale=0.85,
+  box/.style={draw, rounded corners=3pt, thick, minimum width=3cm, minimum height=0.8cm, align=center, font=\scriptsize},
+  arrow/.style={-{Stealth[length=2.5mm]}, thick, MidnightBlue},
+  dna/.style={very thick},
+  biotin/.style={circle, fill=Goldenrod, minimum size=4pt, inner sep=0pt}
+]
+
+% Title
+\node[font=\bfseries\small, MidnightBlue] at (6, 10) {Hi-C: Proximity Ligation Principle};
+
+% Step 1: Crosslinked chromatin
+\node[font=\scriptsize\bfseries, MidnightBlue] at (0.5, 8.8) {1. Crosslink};
+\draw[dna, BrickRed] (0, 8) to[bend left=30] (2, 8.5);
+\draw[dna, MidnightBlue] (0.5, 7.5) to[bend right=20] (2.5, 7.8);
+% Crosslink X
+\node[font=\tiny, OliveGreen] at (1.2, 8.1) {$\times$};
+\draw[OliveGreen, thick] (1, 8.3) -- (1.4, 7.9);
+\draw[OliveGreen, thick] (1, 7.9) -- (1.4, 8.3);
+
+% Step 2: Restriction digest
+\node[font=\scriptsize\bfseries, MidnightBlue] at (4.5, 8.8) {2. Digest};
+\draw[dna, BrickRed] (3.5, 8.2) -- (4.3, 8.2);
+\draw[dna, BrickRed, dashed] (4.3, 8.2) -- (4.7, 8.2);
+\draw[dna, BrickRed] (4.7, 8.2) -- (5.5, 8.2);
+\draw[dna, MidnightBlue] (3.5, 7.6) -- (4.3, 7.6);
+\draw[dna, MidnightBlue, dashed] (4.3, 7.6) -- (4.7, 7.6);
+\draw[dna, MidnightBlue] (4.7, 7.6) -- (5.5, 7.6);
+\node[font=\tiny] at (4.5, 7.2) {RE cuts};
+
+% Step 3: Biotin fill-in
+\node[font=\scriptsize\bfseries, MidnightBlue] at (8.5, 8.8) {3. Biotin fill-in};
+\draw[dna, BrickRed] (7.5, 8.2) -- (8.2, 8.2);
+\node[biotin] at (8.35, 8.2) {};
+\draw[dna, BrickRed] (8.5, 8.2) -- (9.5, 8.2);
+\draw[dna, MidnightBlue] (7.5, 7.6) -- (8.2, 7.6);
+\node[biotin] at (8.35, 7.6) {};
+\draw[dna, MidnightBlue] (8.5, 7.6) -- (9.5, 7.6);
+\node[font=\tiny, Goldenrod!80!black] at (8.35, 7.2) {Biotin};
+
+% Step 4: Proximity ligation
+\node[font=\scriptsize\bfseries, MidnightBlue] at (2, 5.8) {4. Proximity ligation};
+\draw[dna, BrickRed] (0.5, 5) -- (1.8, 5);
+\node[biotin] at (1.95, 5) {};
+\draw[dna, MidnightBlue] (2.1, 5) -- (3.5, 5);
+\node[font=\tiny] at (2, 4.6) {Chimeric junction};
+\draw[thick, OliveGreen, decorate, decoration={brace, amplitude=3pt}] (0.5, 5.2) -- (3.5, 5.2);
+\node[font=\tiny, OliveGreen, above] at (2, 5.4) {Ligation product};
+
+% Step 5: Purify and sequence
+\node[font=\scriptsize\bfseries, MidnightBlue] at (7, 5.8) {5. Shear, pull-down, sequence};
+\draw[dna, BrickRed] (5.5, 5) -- (6.5, 5);
+\node[biotin] at (6.65, 5) {};
+\draw[dna, MidnightBlue] (6.8, 5) -- (7.8, 5);
+% Read arrows
+\draw[{Stealth}-, thick, BrickRed!70] (5.5, 4.5) -- (6.3, 4.5);
+\node[font=\tiny, BrickRed!70] at (5.9, 4.2) {Read 1};
+\draw[-{Stealth}, thick, MidnightBlue!70] (7, 4.5) -- (7.8, 4.5);
+\node[font=\tiny, MidnightBlue!70] at (7.4, 4.2) {Read 2};
+
+% Step 6: Contact map
+\node[font=\scriptsize\bfseries, MidnightBlue] at (4.5, 2.8) {6. Contact frequency map};
+% Draw a small contact map
+\draw[thick] (2.5, 0) rectangle (6.5, 2.5);
+% Diagonal
+\draw[very thick, BrickRed!50] (2.5, 2.5) -- (6.5, 0);
+% TAD triangles
+\fill[MidnightBlue!15] (2.5, 2.5) -- (3.5, 2.5) -- (2.5, 1.5) -- cycle;
+\fill[MidnightBlue!25] (3.5, 2.5) -- (5, 2.5) -- (5, 1) -- (3.5, 1) -- cycle;
+\fill[MidnightBlue!15] (5, 1) -- (6.5, 1) -- (6.5, 0) -- (5, 0) -- cycle;
+% Labels
+\node[font=\tiny] at (4.5, -0.3) {Genomic position};
+\node[font=\tiny, rotate=90] at (2.1, 1.25) {Genomic position};
+\node[font=\tiny, MidnightBlue] at (3.0, 1.8) {TAD};
+\node[font=\tiny, MidnightBlue] at (4.25, 1.5) {TAD};
+
+% Biotin legend
+\node[biotin] at (9, 1.5) {};
+\node[font=\tiny, right] at (9.2, 1.5) {= Biotin};
+
+\end{tikzpicture}
+\caption[Hi-C proximity ligation principle.]{The Hi-C method. (1) Cells are crosslinked with formaldehyde to preserve spatial proximity. (2) Chromatin is digested with a restriction enzyme. (3) Overhangs are filled in with biotinylated nucleotides. (4) Spatially proximal fragments are ligated, creating chimeric junctions. (5) DNA is sheared, biotinylated junctions are pulled down, and paired-end sequencing is performed. (6) Read pairs are mapped to the genome to generate a contact frequency matrix (heatmap), where TADs appear as prominent triangles along the diagonal.}
+\label{fig:3dgenome:hic-principle}
+\end{figure}
+
+\subsection{In Situ Hi-C vs.\ Dilution Hi-C}
+\label{subsec:3dgenome:insitu-dilution}
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Dilution Hi-C (original method):} After restriction digestion, chromatin is highly diluted before ligation to promote intra-molecular (proximity) ligation over random inter-molecular ligation. This reduces noise but requires large cell numbers and has lower efficiency.
+  \item \textbf{In situ Hi-C:} Ligation is performed inside intact nuclei, which naturally constrains ligation to spatially proximal fragments without the need for dilution. This produces higher-quality contact maps with less noise and is now the standard approach.
+\end{itemize}
+
+\subsection{Resolution and Sequencing Depth}
+\label{subsec:3dgenome:resolution}
+
+The resolution of a Hi-C contact map depends on sequencing depth:
+
+\begin{table}[htbp]
+\centering
+\caption{Hi-C resolution as a function of sequencing depth (human genome).}
+\label{tab:3dgenome:resolution}
+\small
+\begin{tabular}{l c l}
+\toprule
+\textbf{Resolution} & \textbf{Read Pairs Required} & \textbf{Features Resolved} \\
+\midrule
+1\megabase{} & $\sim$10 million & A/B compartments \\
+100\kilobase{} & $\sim$100 million & TADs \\
+40\kilobase{} & $\sim$300--500 million & TADs, sub-TADs \\
+10\kilobase{} & $\sim$1 billion & Chromatin loops \\
+5\kilobase{} & $\sim$2--3 billion & Fine loop architecture \\
+1\kilobase{} & $\sim$10+ billion & Micro-C level detail \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{warningbox}
+Hi-C is one of the most sequencing-intensive methods in genomics. Achieving 1\kilobase{} resolution across a human genome requires $>$10 billion read pairs, costing tens of thousands of dollars. Most published Hi-C datasets are at 5--40\kilobase{} resolution. When designing a Hi-C experiment, carefully consider the resolution needed for your biological question and budget accordingly.
+\end{warningbox}
+
+\subsection{Hi-C Library Preparation Kits}
+\label{subsec:3dgenome:hic-kits}
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Arima Hi-C:} Uses a cocktail of multiple restriction enzymes for finer fragmentation, achieving higher resolution per sequencing read. Widely used for both chromatin conformation and genome scaffolding.
+  \item \textbf{Dovetail Omni-C:} Uses a sequence-independent chromatin fragmentation approach (DNase-based rather than restriction enzymes), eliminating restriction enzyme bias and providing more uniform coverage. Can be used for both 3D genome mapping and genome assembly scaffolding.
+  \item \textbf{Phase Genomics ProxiMeta:} Hi-C kits optimised for metagenome deconvolution and assembly.
+\end{itemize}
+
+%% ============================================================
+\section{Micro-C}
+\label{sec:3dgenome:microc}
+
+\textbf{Micro-C} replaces the restriction enzyme in Hi-C with micrococcal nuclease (MNase), which digests linker DNA between nucleosomes. This achieves \textbf{nucleosome-level resolution} ($\sim$200\basepair{}):
+
+\begin{itemize}[itemsep=2pt]
+  \item Improved resolution at short-range interactions ($<$ 10\kilobase{}).
+  \item Reveals fine-scale chromatin folding features (``stripes,'' ``dots'') not visible in standard Hi-C.
+  \item Better signal-to-noise ratio for loop detection at moderate sequencing depths.
+  \item Requires similar sequencing depths to Hi-C for genome-wide maps but provides superior resolution per read.
+\end{itemize}
+
+\begin{tipbox}
+For new chromatin conformation experiments where fine-scale loop detection is important, Micro-C offers advantages over restriction enzyme-based Hi-C. However, Hi-C remains the more established method with the larger existing dataset ecosystem and better standardised analysis pipelines.
+\end{tipbox}
+
+%% ============================================================
+\section{Targeted and Enrichment-Based 3C Methods}
+\label{sec:3dgenome:targeted}
+
+\subsection{Capture Hi-C / Promoter Capture Hi-C}
+\label{subsec:3dgenome:capture-hic}
+
+Standard Hi-C distributes sequencing reads across all pairwise contacts genome-wide, making it expensive to achieve high resolution at specific loci. \textbf{Capture Hi-C} enriches Hi-C libraries for contacts involving specific regions of interest using hybridisation capture:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Promoter Capture Hi-C (PCHi-C):} Uses capture probes targeting all annotated gene promoters. Identifies enhancer--promoter interactions at specific genes without the cost of deep genome-wide Hi-C.
+  \item \textbf{Region Capture Hi-C:} Capture probes target specific genomic regions (e.g., disease-associated loci) to map their interaction partners.
+  \item Achieves high resolution ($\sim$1--4 restriction fragment resolution) at target loci with modest sequencing (100--200M read pairs).
+\end{itemize}
+
+\subsection{HiChIP and PLAC-seq}
+\label{subsec:3dgenome:hichip}
+
+HiChIP and PLAC-seq combine chromatin conformation capture with ChIP to map \textbf{contacts at specific protein binding sites or histone modifications}:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{H3K27ac HiChIP:} The most widely used variant. Maps contacts between active regulatory elements (enhancers and promoters marked by H3K27ac), directly identifying active enhancer--promoter loops.
+  \item \textbf{Cohesin HiChIP (SMC1A/RAD21):} Maps contacts at cohesin-mediated loops, identifying architectural loop anchors.
+  \item \textbf{CTCF HiChIP:} Maps contacts at CTCF binding sites, revealing insulator-mediated loops and TAD boundaries.
+  \item Requires far fewer reads than genome-wide Hi-C (50--200M per sample) because the antibody enrichment focuses sequencing depth on informative contacts.
+\end{itemize}
+
+\subsection{ChIA-PET}
+\label{subsec:3dgenome:chiapet}
+
+Chromatin Interaction Analysis by Paired-End Tag sequencing (ChIA-PET) is an earlier method similar to HiChIP that uses ChIP followed by proximity ligation and paired-end tag sequencing. ChIA-PET was pioneered for CTCF and RNA Pol II and has been largely superseded by HiChIP due to the latter's simpler protocol and higher efficiency.
+
+%% ============================================================
+\section{Long-Read and Alternative 3D Genome Methods}
+\label{sec:3dgenome:alternative}
+
+\subsection{Pore-C (Oxford Nanopore)}
+\label{subsec:3dgenome:porec}
+
+Pore-C combines proximity ligation with nanopore long-read sequencing to capture \textbf{multi-way chromatin contacts}:
+
+\begin{itemize}[itemsep=2pt]
+  \item Standard Hi-C reads contain only one ligation junction per read pair (pairwise contact). Pore-C long reads ($>$10\kilobase{}) can span \textbf{multiple ligation junctions}, revealing multi-way contacts (three or more fragments ligated together).
+  \item Multi-way contacts provide information about \textbf{chromatin hubs}---regions where multiple genomic loci converge in 3D space simultaneously.
+  \item Also useful for \textbf{genome scaffolding} in de novo assembly.
+\end{itemize}
+
+\subsection{SPRITE}
+\label{subsec:3dgenome:sprite}
+
+Split-Pool Recognition of Interactions by Tag Extension (SPRITE) captures multi-way chromatin contacts without proximity ligation:
+
+\begin{enumerate}[itemsep=2pt]
+  \item Crosslink cells and fragment chromatin.
+  \item Split crosslinked chromatin complexes into 96-well plates and add a unique barcode (tag) in each well.
+  \item Pool and re-split into new plates for additional rounds of barcoding.
+  \item After multiple rounds, each chromatin complex carries a unique combination of barcodes (a ``barcode string'') that identifies all fragments in the same complex.
+  \item Sequence and group fragments by shared barcode strings to identify multi-way contacts.
+\end{enumerate}
+
+SPRITE can detect \textbf{higher-order interactions} (contacts among many loci simultaneously) and has revealed hub-like structures associated with nuclear bodies (nucleolus, nuclear speckles).
+
+\subsection{GAM (Genome Architecture Mapping)}
+\label{subsec:3dgenome:gam}
+
+GAM slices nuclei into thin cryosections, extracts DNA from each section, and sequences it. Loci that are spatially proximal are more likely to appear in the same nuclear section. By sequencing many sections, a contact frequency map is reconstructed. GAM does not require proximity ligation and can also detect multi-way contacts. It has been particularly useful for mapping \textbf{lamina-associated domains (LADs)}---regions of the genome that interact with the nuclear lamina and are typically transcriptionally silent.
+
+\subsection{DNA-FISH and Live Imaging}
+\label{subsec:3dgenome:imaging}
+
+While not sequencing-based, imaging methods provide important complementary information:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{DNA-FISH:} Fluorescence in situ hybridisation with locus-specific probes allows direct measurement of spatial distances between genomic loci in individual cells. Validates Hi-C-predicted contacts.
+  \item \textbf{Multiplexed FISH (ORCA, chromatin tracing):} Sequential rounds of hybridisation and imaging map the 3D positions of hundreds to thousands of genomic loci in single cells, providing single-cell 3D genome structure data.
+  \item \textbf{Live-cell imaging:} CRISPR-Cas9-based labelling or MS2/PP7 RNA tagging enables real-time tracking of locus dynamics in living cells.
+\end{itemize}
+
+%% ============================================================
+\section{Comprehensive Comparison of 3D Genome Methods}
+\label{sec:3dgenome:comparison}
+
+\begin{table}[htbp]
+\centering
+\caption[Comparison of 3D genome profiling methods.]{Comparison of major methods for mapping three-dimensional genome organisation.}
+\label{tab:3dgenome:comparison}
+\small
+\begin{tabularx}{\textwidth}{l c c c X}
+\toprule
+\textbf{Method} & \textbf{Resolution} & \textbf{Read Pairs} & \textbf{Multi-way?} & \textbf{Key Features} \\
+\midrule
+Hi-C & 1 kb--1 Mb & 100M--3B & No (pairwise) & Gold standard; genome-wide all-vs-all \\
+\addlinespace
+Micro-C & $\sim$200 bp & 100M--3B & No & Nucleosome resolution; superior short-range \\
+\addlinespace
+Capture Hi-C & 1--4 RE fragments & 100--200M & No & Targeted enrichment; cost-effective for loci \\
+\addlinespace
+HiChIP & 5--10 kb & 50--200M & No & ChIP + proximity ligation; active loops \\
+\addlinespace
+ChIA-PET & 5--10 kb & 50--200M & No & Earlier version of HiChIP; largely replaced \\
+\addlinespace
+Pore-C & $\sim$1 kb & 50--200M reads & Yes & Long-read; multi-way contacts \\
+\addlinespace
+SPRITE & $\sim$1 Mb & Variable & Yes & Ligation-free; nuclear body hubs \\
+\addlinespace
+GAM & $\sim$30 kb & Variable & Yes & Cryosectioning; no ligation; LADs \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ============================================================
+\section{Bioinformatics Workflow for Hi-C}
+\label{sec:3dgenome:bioinformatics}
+
+\subsection{Analysis Overview}
+\label{subsec:3dgenome:analysis-overview}
+
+Hi-C data analysis follows a distinct pipeline from other sequencing assays because each read pair represents a chromatin contact rather than a contiguous genomic fragment:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Read alignment:} Each mate of a read pair is aligned independently to the reference genome (because the two ends may originate from different chromosomes or distant loci). Aligners: BWA-MEM (with chimeric read handling), chromap, or the aligner built into specific pipelines.
+  \item \textbf{Contact pair identification:} Valid Hi-C contacts (``pairs'') are identified from read pairs that map to different restriction fragments. Invalid pairs (self-ligations, dangling ends, PCR duplicates) are filtered.
+  \item \textbf{Contact matrix generation:} Valid pairs are binned into a contact frequency matrix at a chosen resolution (bin size). Common formats: \texttt{.cool} (cooler), \texttt{.hic} (Juicer), or \texttt{.mcool} (multi-resolution cooler).
+  \item \textbf{Normalisation:} The raw contact matrix contains biases from GC content, mappability, restriction site density, and other factors. Normalisation methods include:
+    \begin{itemize}[itemsep=1pt]
+      \item \textbf{ICE (Iterative Correction and Eigenvector decomposition):} Matrix balancing that equalises the total signal per row/column. The most widely used method. Implemented in cooler.
+      \item \textbf{KR (Knight-Ruiz):} A faster matrix balancing algorithm. Default in Juicer.
+      \item \textbf{VC (Vanilla Coverage):} Simple normalisation by the product of row and column sums.
+    \end{itemize}
+  \item \textbf{Feature calling:}
+    \begin{itemize}[itemsep=1pt]
+      \item \textbf{Compartments:} PCA on the contact correlation matrix (cooltools or HOMER).
+      \item \textbf{TADs:} TopDom, Arrowhead (Juicer), HiCExplorer \texttt{hicFindTADs}, or insulation score methods.
+      \item \textbf{Loops:} HICCUPS (Juicer), Mustache, Chromosight, or cooltools \texttt{dots}.
+    \end{itemize}
+  \item \textbf{Visualisation:} HiGlass (web-based interactive viewer), Juicebox (desktop application), HiCExplorer \texttt{hicPlotMatrix}, or cooltools for programmatic access.
+  \item \textbf{Integration:} Overlay Hi-C contacts with epigenomic tracks (ATAC-seq, ChIP-seq, RNA-seq) to link 3D structure to function.
+\end{enumerate}
+
+The following subsections describe the key computational methods for normalisation, TAD calling, compartment identification, and polymer physics models in greater detail.
+
+\subsection{Contact Matrix Normalisation Methods}
+\label{subsec:3dgenome:normalisation}
+
+Raw Hi-C contact matrices contain systematic biases arising from variable restriction site density, GC content, mappability, and chromatin accessibility across the genome. Normalisation removes these biases to produce matrices that more faithfully represent true contact frequencies. Three major normalisation approaches are in common use.
+
+\subsubsection{ICE (Iterative Correction and Eigenvector Decomposition)}
+\label{subsubsec:3dgenome:ice}
+
+ICE, implemented in the \software{cooler} ecosystem, is the most widely used normalisation method. It is based on the assumption that, in the absence of systematic biases, each genomic locus should participate in approximately the same total number of contacts. The algorithm proceeds iteratively:
+
+\begin{enumerate}[itemsep=2pt]
+  \item Let $\mathbf{M}$ be the raw $N \times N$ contact matrix, where $M_{ij}$ is the number of contacts between bins $i$ and $j$.
+  \item At each iteration, compute the total contacts (row/column sum) for each bin: $S_i = \sum_j M_{ij}$.
+  \item Divide each row and column by the square root of its sum to produce a partially corrected matrix:
+\end{enumerate}
+\begin{equation}
+\label{eq:3dgenome:ice-step}
+M_{ij}^{(t+1)} = \frac{M_{ij}^{(t)}}{\sqrt{S_i^{(t)} \cdot S_j^{(t)}}}
+\end{equation}
+\begin{enumerate}[resume, itemsep=2pt]
+  \item Repeat until convergence, defined as the point where all row and column sums are approximately equal.
+  \item The final normalised matrix $\tilde{\mathbf{M}}$ has balanced margins (equal row/column sums), and the bias vector $\mathbf{b}$ (product of all per-iteration normalisation factors) captures the per-bin biases.
+\end{enumerate}
+
+Bins with very low contact counts (e.g., unmappable or repetitive regions) are excluded from balancing by applying a \textbf{mad-max filter}: bins whose log-transformed total counts deviate by more than a threshold (default: 5 median absolute deviations) from the median are masked.
+
+\subsubsection{KR (Knight--Ruiz) Balancing}
+\label{subsubsec:3dgenome:kr}
+
+The Knight--Ruiz (KR) algorithm achieves the same goal as ICE---equalising row and column sums---but uses a faster, mathematically rigorous matrix balancing procedure. KR finds diagonal matrices $\mathbf{D}_1$ and $\mathbf{D}_2$ such that the normalised matrix $\tilde{\mathbf{M}} = \mathbf{D}_1 \mathbf{M} \mathbf{D}_2$ has equal row sums and equal column sums. For symmetric matrices (as in Hi-C), $\mathbf{D}_1 = \mathbf{D}_2 = \mathbf{D}$, and the balanced matrix is:
+\begin{equation}
+\label{eq:3dgenome:kr}
+\tilde{M}_{ij} = \frac{M_{ij}}{d_i \cdot d_j}
+\end{equation}
+where $d_i$ are the diagonal elements of $\mathbf{D}$, found by an iterative algorithm that converges faster than ICE. KR normalisation is the default in \software{Juicer} and produces results very similar to ICE.
+
+\subsubsection{VC (Vanilla Coverage) Normalisation}
+\label{subsubsec:3dgenome:vc}
+
+VC normalisation is the simplest approach: each contact count is divided by the product of the marginal sums of its row and column:
+\begin{equation}
+\label{eq:3dgenome:vc}
+\tilde{M}_{ij} = \frac{M_{ij}}{S_i \cdot S_j} \times C
+\end{equation}
+where $S_i = \sum_j M_{ij}$, $S_j = \sum_i M_{ij}$, and $C$ is a constant (e.g., the total number of contacts) to keep values in a reasonable range. VC is a single-step procedure (no iteration) and is fast, but it over-corrects for highly interacting loci and is less robust than ICE or KR. It is mainly used as a baseline or for quick exploratory analyses.
+
+\begin{tipbox}
+For most analyses, ICE (cooler) or KR (Juicer) normalisation is recommended. The two methods produce highly concordant results ($r > 0.99$ for most genomic regions). The choice is often driven by the analysis ecosystem: use ICE with the cooler/cooltools pipeline, and KR with the Juicer pipeline. Always exclude low-coverage bins from normalisation to prevent artefacts from unmappable regions.
+\end{tipbox}
+
+\subsection{TAD Calling Algorithms}
+\label{subsec:3dgenome:tad-calling}
+
+Topologically associating domains (TADs) are self-interacting chromosomal regions where loci interact more frequently with each other than with loci in neighbouring domains. TAD boundaries are enriched for CTCF binding sites and often demarcate regulatory neighbourhoods. Two principal algorithms for TAD identification are the insulation score and the directionality index.
+
+\subsubsection{Insulation Score}
+\label{subsubsec:3dgenome:insulation}
+
+The insulation score, originally proposed by Crane et al., quantifies the degree of insulation at each genomic bin by examining the average interaction frequency in a square diamond window centred on the bin's position along the matrix diagonal:
+
+\begin{enumerate}[itemsep=2pt]
+  \item For each bin $i$, define a diamond-shaped window spanning $w$ bins upstream and $w$ bins downstream of $i$. This window captures contacts \textit{across} position $i$---i.e., interactions between the region upstream of $i$ and the region downstream.
+  \item Compute the insulation score as the mean contact frequency within this diamond:
+\end{enumerate}
+\begin{equation}
+\label{eq:3dgenome:insulation-score}
+\text{IS}(i) = \log_2\!\left(\frac{1}{w^2}\sum_{i-w \leq a < i}\;\sum_{i < b \leq i+w} M_{a,b}\right)
+\end{equation}
+\begin{enumerate}[resume, itemsep=2pt]
+  \item Normalise the insulation scores to the genome-wide mean.
+  \item TAD boundaries correspond to \textbf{local minima} in the insulation score profile---positions where cross-boundary interactions are depleted relative to within-domain interactions.
+  \item The depth of the minimum (``boundary strength'') quantifies how strong the insulation is at each boundary.
+\end{enumerate}
+
+The window size $w$ (in bins) is a critical parameter. Smaller windows ($\sim$100--250\kilobase{}) detect smaller TADs; larger windows ($\sim$500\kilobase{}--1\megabase{}) detect larger domains. The insulation score method is implemented in \software{cooltools insulation}.
+
+\subsubsection{Directionality Index}
+\label{subsubsec:3dgenome:di}
+
+The directionality index (DI), introduced by Dixon et al., captures the asymmetry between upstream and downstream interactions at each bin. Within a TAD, bins near the upstream boundary interact preferentially downstream (toward the domain interior), while bins near the downstream boundary interact preferentially upstream:
+
+\begin{equation}
+\label{eq:3dgenome:di}
+\text{DI}(i) = \left(\frac{B_i - A_i}{|B_i - A_i|}\right) \cdot \frac{(A_i - E)^2 + (B_i - E)^2}{E}
+\end{equation}
+where $A_i = \sum_{j=i-w}^{i-1} M_{ij}$ is the total upstream contact frequency, $B_i = \sum_{j=i+1}^{i+w} M_{ij}$ is the total downstream contact frequency, and $E = (A_i + B_i)/2$ is the expected value under the null hypothesis of no directional bias.
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{DI $> 0$} (downstream bias): the bin interacts more with downstream neighbours, indicating the upstream portion of a TAD.
+  \item \textbf{DI $< 0$} (upstream bias): the bin interacts more with upstream neighbours, indicating the downstream portion of a TAD.
+  \item \textbf{DI $\approx 0$}: no directional preference (interior of a TAD or inter-TAD region).
+  \item A \textbf{hidden Markov model} is then applied to the DI profile to segment the genome into domains. Transitions from negative to positive DI correspond to TAD boundaries.
+\end{itemize}
+
+The DI approach is implemented in the original \software{Juicer/Arrowhead} tool and in \software{HiCExplorer hicFindTADs}.
+
+\subsection{Compartment Analysis}
+\label{subsec:3dgenome:compartments}
+
+At the megabase scale, the genome is partitioned into two types of compartments: \textbf{A compartments} (active, gene-rich, open chromatin) and \textbf{B compartments} (inactive, gene-poor, closed chromatin). These compartments manifest as a ``checkerboard'' (plaid) pattern in the Hi-C contact matrix.
+
+\subsubsection{Eigenvector Decomposition}
+\label{subsubsec:3dgenome:eigenvector}
+
+Compartments are identified by \textbf{principal component analysis (PCA)} of the observed/expected (O/E) contact correlation matrix:
+
+\begin{enumerate}[itemsep=2pt]
+  \item Compute the expected contact frequency $E_{ij}$ for each pair of bins as a function of genomic distance (the average contact frequency at that distance).
+  \item Construct the O/E matrix: $\text{OE}_{ij} = M_{ij} / E_{ij}$.
+  \item Compute the \textbf{Pearson correlation matrix} of the O/E matrix: each row $i$ of the O/E matrix defines a contact profile for bin $i$, and the correlation matrix captures the similarity of contact profiles between pairs of bins.
+  \item Perform eigendecomposition of the correlation matrix. The \textbf{first eigenvector (PC1)} captures the strongest pattern of co-variation in contact profiles, which corresponds to the A/B compartment structure.
+  \item Bins with \textbf{positive PC1 values} belong to one compartment, and bins with \textbf{negative PC1 values} belong to the other.
+\end{enumerate}
+
+\textbf{A/B assignment.} The sign of the eigenvector is arbitrary (PCA does not assign biological labels). To resolve this ambiguity, the eigenvector is correlated with GC content or gene density: the compartment with higher GC content and gene density is labelled \textbf{A} (active), and the other is labelled \textbf{B} (inactive). In most cell types:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{A compartments:} euchromatic, high gene density, high GC content, enriched for H3K27ac and H3K4me1, actively transcribed.
+  \item \textbf{B compartments:} heterochromatic, low gene density, low GC content, enriched for H3K9me3 or H3K27me3, often lamina-associated.
+\end{itemize}
+
+Compartment analysis is performed at coarse resolution (50--250\kilobase{} bins) and is implemented in \software{cooltools eigs-cis} and \software{Juicer eigenvector}.
+
+\subsection{Polymer Physics Models of Chromatin Folding}
+\label{subsec:3dgenome:polymer-physics}
+
+The three-dimensional folding of chromatin can be described using concepts from \textbf{polymer physics}. These models provide a theoretical framework for interpreting the distance-dependent decay of contact frequencies observed in Hi-C data.
+
+\subsubsection{Contact Probability Scaling}
+
+A fundamental observation from Hi-C data is that the probability of two loci being in contact decreases as a power law with increasing genomic distance:
+\begin{equation}
+\label{eq:3dgenome:contact-scaling}
+P(s) \propto s^{-\gamma}
+\end{equation}
+where $P(s)$ is the contact probability at genomic separation $s$ (in base pairs) and $\gamma$ is the scaling exponent. The value of $\gamma$ reveals information about the polymer organisation of chromatin:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Equilibrium globule} (random polymer in confinement): $\gamma \approx 1.5$. In this model, the polymer has reached thermodynamic equilibrium, and distant loci have very low contact probability. Early Hi-C experiments showed that chromatin does \textit{not} behave as an equilibrium globule.
+  \item \textbf{Fractal globule}: $\gamma \approx 1.0$. The fractal globule is a \textbf{knot-free} polymer conformation that has not reached equilibrium. It is characterised by self-similar organisation at multiple scales and the absence of topological entanglements. The original Lieberman-Aiden et al.\ (2009) Hi-C study found $\gamma \approx 1.08$ for human chromatin, closely matching fractal globule predictions.
+  \item \textbf{Loop extrusion model}: $\gamma$ varies with scale. At short ranges ($<$ 100\kilobase{}), $\gamma$ is influenced by loop extrusion dynamics; at intermediate ranges (100\kilobase{}--10\megabase{}), $\gamma \approx 0.75$--$1.0$; at very long ranges ($>$ 10\megabase{}), $\gamma$ reflects compartmentalisation.
+\end{itemize}
+
+\subsubsection{Loop Extrusion Model}
+
+The \textbf{loop extrusion model} is the current leading framework for explaining TAD formation and loop establishment:
+
+\begin{enumerate}[itemsep=2pt]
+  \item A \textbf{cohesin ring complex} (SMC1/SMC3/RAD21/SA1--2) loads onto chromatin and begins \textbf{actively extruding a loop} by translocating along the chromatin fibre in both directions.
+  \item As cohesin moves, the chromatin on either side of the loading site is progressively reeled through the ring, forming an expanding loop.
+  \item When a cohesin subunit encounters a \textbf{CTCF protein bound in convergent orientation} (the CTCF motifs at the two anchors point toward each other: $\rightarrow \cdots \leftarrow$), loop extrusion is \textbf{blocked}. This stalling creates a stable loop with CTCF-bound anchors.
+  \item Loops formed by convergent CTCF sites correspond to the bright ``dots'' seen at the corners of TADs in Hi-C contact maps.
+  \item The loop extrusion process dynamically maintains TAD structures and is essential for proper enhancer--promoter regulation by confining regulatory contacts within domains.
+\end{enumerate}
+
+\begin{keyconcept}[title={The Loop Extrusion Paradigm}]
+Loop extrusion by cohesin, blocked by convergent CTCF sites, explains three key features of 3D genome organisation simultaneously: (1) TAD boundaries coincide with convergent CTCF sites, (2) TAD structure is lost upon cohesin degradation (but restored upon cohesin recovery), and (3) CTCF site deletions or orientation inversions alter loop structure in predictable ways. This model has been validated by acute protein degradation experiments (auxin-inducible degron systems for RAD21 and CTCF), polymer simulations, and CRISPR-mediated CTCF site editing.
+\end{keyconcept}
+
+\subsection{Snakemake Workflow}
+\label{subsec:3dgenome:snakemake}
+
+\begin{lstlisting}[language=Python, caption={Snakemake workflow for Hi-C analysis.}, label={lst:3dgenome:snakemake}]
+# Snakefile for Hi-C analysis
+configfile: "config.yaml"
+
+SAMPLES = config["samples"]
+GENOME = config["genome_fasta"]
+GENOME_INDEX = config["genome_bwa_index"]
+CHROMSIZES = config["chromsizes"]
+RESOLUTION = config["resolution"]  # e.g., 10000
+
+rule all:
+    input:
+        expand("results/cool/{sample}.mcool", sample=SAMPLES),
+        expand("results/compartments/{sample}_compartments.bed",
+               sample=SAMPLES),
+        expand("results/tads/{sample}_tads.bed",
+               sample=SAMPLES),
+        expand("results/loops/{sample}_loops.bedpe",
+               sample=SAMPLES),
+        expand("results/plots/{sample}_contact_map.png",
+               sample=SAMPLES),
+        "results/multiqc/multiqc_report.html"
+
+rule align_hic:
+    input:
+        r1 = "raw_data/{sample}_R1.fastq.gz",
+        r2 = "raw_data/{sample}_R2.fastq.gz"
+    output:
+        pairs = "results/pairs/{sample}.pairs.gz",
+        stats = "results/pairs/{sample}.stats"
+    threads: 16
+    resources:
+        mem_mb = 64000
+    conda: "envs/hic.yaml"
+    shell:
+        """
+        # Align with BWA-MEM, parse to pairs format
+        # using pairtools for chimeric read handling
+        bwa mem -t {threads} -SP5M {GENOME_INDEX} \
+            {input.r1} {input.r2} \
+        | pairtools parse --min-mapq 30 \
+            --chroms-path {CHROMSIZES} \
+            --walks-policy 5unique \
+            --output-stats {output.stats} \
+        | pairtools sort --nproc {threads} \
+        | pairtools dedup \
+            --max-mismatch 3 \
+            --mark-dups \
+            --output - \
+        | pairtools select '(chrom1 != "chrM") and \
+            (chrom2 != "chrM")' \
+        | pairtools split \
+            --output-pairs {output.pairs}
+        """
+
+rule create_cool:
+    input:
+        pairs = "results/pairs/{sample}.pairs.gz"
+    output:
+        cool = "results/cool/{sample}.cool"
+    params:
+        resolution = RESOLUTION
+    conda: "envs/hic.yaml"
+    shell:
+        """
+        cooler cload pairs \
+            -c1 2 -p1 3 -c2 4 -p2 5 \
+            --assembly hg38 \
+            {CHROMSIZES}:{params.resolution} \
+            {input.pairs} {output.cool}
+        """
+
+rule balance_and_zoomify:
+    input:
+        cool = "results/cool/{sample}.cool"
+    output:
+        mcool = "results/cool/{sample}.mcool"
+    conda: "envs/hic.yaml"
+    shell:
+        """
+        cooler balance {input.cool} --force
+        cooler zoomify {input.cool} \
+            --resolutions 1000,5000,10000,25000,50000,\
+100000,250000,500000,1000000 \
+            --balance \
+            --out {output.mcool}
+        """
+
+rule call_compartments:
+    input:
+        mcool = "results/cool/{sample}.mcool"
+    output:
+        compartments = "results/compartments/{sample}_compartments.bed",
+        eigenvector = "results/compartments/{sample}_eigenvector.bw"
+    params:
+        resolution = 100000
+    conda: "envs/hic.yaml"
+    shell:
+        """
+        cooltools eigs-cis \
+            {input.mcool}::resolutions/{params.resolution} \
+            --n-eigs 3 \
+            -o results/compartments/{wildcards.sample}
+
+        # Convert eigenvector to BED for A/B assignment
+        python scripts/eigenvector_to_compartments.py \
+            results/compartments/{wildcards.sample}.cis.vecs.tsv \
+            {output.compartments}
+        """
+
+rule call_tads:
+    input:
+        mcool = "results/cool/{sample}.mcool"
+    output:
+        tads = "results/tads/{sample}_tads.bed",
+        insulation = "results/tads/{sample}_insulation.bw"
+    params:
+        resolution = 25000,
+        window = 500000
+    conda: "envs/hic.yaml"
+    shell:
+        """
+        cooltools insulation \
+            {input.mcool}::resolutions/{params.resolution} \
+            --window-pixels {params.window} \
+            -o results/tads/{wildcards.sample}_insulation.tsv
+
+        python scripts/insulation_to_tads.py \
+            results/tads/{wildcards.sample}_insulation.tsv \
+            {output.tads}
+        """
+
+rule call_loops:
+    input:
+        mcool = "results/cool/{sample}.mcool"
+    output:
+        loops = "results/loops/{sample}_loops.bedpe"
+    params:
+        resolution = 10000
+    conda: "envs/hic.yaml"
+    shell:
+        """
+        mustache -f {input.mcool} \
+            -r {params.resolution} \
+            -o {output.loops} \
+            -pt 0.05 -st 0.88
+        """
+
+rule plot_contact_map:
+    input:
+        mcool = "results/cool/{sample}.mcool"
+    output:
+        plot = "results/plots/{sample}_contact_map.png"
+    params:
+        resolution = 25000,
+        region = config.get("plot_region", "chr1:50000000-55000000")
+    conda: "envs/hic.yaml"
+    shell:
+        """
+        hicPlotMatrix --matrix {input.mcool} \
+            --region {params.region} \
+            --log1p \
+            --colorMap RdYlBu_r \
+            --outFileName {output.plot} \
+            --dpi 300
+        """
+
+rule multiqc:
+    input:
+        expand("results/pairs/{sample}.stats", sample=SAMPLES)
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "envs/multiqc.yaml"
+    shell:
+        """
+        multiqc results/ -o results/multiqc --force
+        """
+\end{lstlisting}
+
+\subsection{Nextflow Workflow}
+\label{subsec:3dgenome:nextflow}
+
+\begin{lstlisting}[language=Java, caption={Nextflow DSL2 workflow for Hi-C analysis.}, label={lst:3dgenome:nextflow}]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl=2
+
+params.reads       = "raw_data/*_R{1,2}.fastq.gz"
+params.genome      = "reference/genome.fa"
+params.bwa_index   = "reference/genome"
+params.chromsizes  = "reference/chromsizes.txt"
+params.resolution  = 10000
+params.outdir      = "results"
+params.plot_region = "chr1:50000000-55000000"
+
+process ALIGN_AND_PARSE {
+    tag "$sample_id"
+    cpus 16
+    memory '64 GB'
+    publishDir "${params.outdir}/pairs", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.pairs.gz"),   emit: pairs
+    path "${sample_id}.stats",             emit: stats
+
+    script:
+    """
+    bwa mem -t ${task.cpus} -SP5M \
+        ${params.bwa_index} \
+        ${reads[0]} ${reads[1]} \
+    | pairtools parse --min-mapq 30 \
+        --chroms-path ${params.chromsizes} \
+        --walks-policy 5unique \
+        --output-stats ${sample_id}.stats \
+    | pairtools sort --nproc ${task.cpus} \
+    | pairtools dedup --max-mismatch 3 \
+        --mark-dups --output - \
+    | pairtools select \
+        '(chrom1 != "chrM") and (chrom2 != "chrM")' \
+    | pairtools split \
+        --output-pairs ${sample_id}.pairs.gz
+    """
+}
+
+process CREATE_COOLER {
+    tag "$sample_id"
+    publishDir "${params.outdir}/cool", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(pairs)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.mcool"),      emit: mcool
+
+    script:
+    """
+    cooler cload pairs \
+        -c1 2 -p1 3 -c2 4 -p2 5 \
+        --assembly hg38 \
+        ${params.chromsizes}:${params.resolution} \
+        ${pairs} ${sample_id}.cool
+
+    cooler balance ${sample_id}.cool --force
+
+    cooler zoomify ${sample_id}.cool \
+        --resolutions 1000,5000,10000,25000,50000,\
+100000,250000,500000,1000000 \
+        --balance \
+        --out ${sample_id}.mcool
+    """
+}
+
+process CALL_COMPARTMENTS {
+    tag "$sample_id"
+    publishDir "${params.outdir}/compartments",
+               mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(mcool)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_compartments.bed"),
+                                           emit: compartments
+    path "${sample_id}*",                  emit: all_files
+
+    script:
+    """
+    cooltools eigs-cis \
+        ${mcool}::resolutions/100000 \
+        --n-eigs 3 \
+        -o ${sample_id}
+
+    python ${projectDir}/scripts/eigenvector_to_compartments.py \
+        ${sample_id}.cis.vecs.tsv \
+        ${sample_id}_compartments.bed
+    """
+}
+
+process CALL_TADS {
+    tag "$sample_id"
+    publishDir "${params.outdir}/tads", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(mcool)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_tads.bed"),   emit: tads
+
+    script:
+    """
+    cooltools insulation \
+        ${mcool}::resolutions/25000 \
+        --window-pixels 500000 \
+        -o ${sample_id}_insulation.tsv
+
+    python ${projectDir}/scripts/insulation_to_tads.py \
+        ${sample_id}_insulation.tsv \
+        ${sample_id}_tads.bed
+    """
+}
+
+process CALL_LOOPS {
+    tag "$sample_id"
+    publishDir "${params.outdir}/loops", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(mcool)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_loops.bedpe"),
+                                           emit: loops
+
+    script:
+    """
+    mustache -f ${mcool} \
+        -r ${params.resolution} \
+        -o ${sample_id}_loops.bedpe \
+        -pt 0.05 -st 0.88
+    """
+}
+
+process PLOT_CONTACT_MAP {
+    tag "$sample_id"
+    publishDir "${params.outdir}/plots", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(mcool)
+
+    output:
+    path "${sample_id}_contact_map.png"
+
+    script:
+    """
+    hicPlotMatrix --matrix ${mcool} \
+        --region ${params.plot_region} \
+        --log1p --colorMap RdYlBu_r \
+        --outFileName ${sample_id}_contact_map.png \
+        --dpi 300
+    """
+}
+
+// Main workflow
+workflow {
+    reads_ch = Channel
+        .fromFilePairs(params.reads,
+                       checkIfExists: true)
+
+    ALIGN_AND_PARSE(reads_ch)
+    CREATE_COOLER(ALIGN_AND_PARSE.out.pairs)
+    CALL_COMPARTMENTS(CREATE_COOLER.out.mcool)
+    CALL_TADS(CREATE_COOLER.out.mcool)
+    CALL_LOOPS(CREATE_COOLER.out.mcool)
+    PLOT_CONTACT_MAP(CREATE_COOLER.out.mcool)
+}
+\end{lstlisting}
+
+\begin{tipbox}
+Several established Hi-C processing pipelines are available and well-maintained:
+\begin{itemize}[itemsep=1pt]
+  \item \textbf{Juicer:} Developed by the Aiden lab. Produces \texttt{.hic} format files. Includes Arrowhead (TADs), HICCUPS (loops), and compartment analysis.
+  \item \textbf{HiC-Pro:} Standalone pipeline that handles alignment, filtering, and contact matrix generation. Outputs can be converted to \texttt{.cool} or \texttt{.hic} format.
+  \item \textbf{pairtools + cooler + cooltools:} The ``Open2C'' ecosystem. A modular, Python-based toolkit that represents the modern standard for Hi-C data processing.
+  \item \textbf{nf-core/hic:} A Nextflow pipeline for Hi-C data that handles alignment through feature calling.
+\end{itemize}
+For most new projects, the pairtools/cooler/cooltools ecosystem is recommended due to its flexibility, active development, and integration with the Python scientific computing stack.
+\end{tipbox}
+
+\subsection{Visualisation}
+\label{subsec:3dgenome:visualisation}
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{HiGlass:} Interactive, web-based viewer for multi-resolution contact maps. Supports \texttt{.mcool} and \texttt{.hic} formats. Allows side-by-side comparison of multiple samples and overlay of 1D genomic tracks (genes, ChIP-seq, ATAC-seq). The most versatile viewer for exploration.
+  \item \textbf{Juicebox:} Desktop application (Java) from the Aiden lab. Directly reads \texttt{.hic} files. Includes built-in annotations for loops, TADs, and compartments. User-friendly for browsing specific regions.
+  \item \textbf{HiCExplorer:} Command-line tools (\texttt{hicPlotMatrix}, \texttt{hicPlotTADs}) for generating publication-quality figures. Supports plotting contact maps with overlaid TAD boundaries and 1D tracks (gene expression, histone marks, etc.).
+  \item \textbf{cooltools:} Python library for programmatic analysis and plotting. Integrates with matplotlib and the broader Python data science ecosystem.
+  \item \textbf{Cooler/HiGlass ecosystem:} The \texttt{.mcool} format (multi-resolution cooler) allows seamless zooming from chromosome-scale to kilobase-scale views.
+\end{itemize}
+
+\subsection{Integration with Other Epigenomic Data}
+\label{subsec:3dgenome:integration}
+
+The greatest biological insight comes from integrating 3D genome data with other data types:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Hi-C + ATAC-seq:} Identify which accessible regulatory elements are in physical contact, linking enhancers to their target promoters.
+  \item \textbf{Hi-C + H3K27ac ChIP/CUT\&Tag:} Distinguish active enhancer--promoter loops from structural loops.
+  \item \textbf{Hi-C + RNA-seq:} Correlate expression changes with changes in 3D genome topology.
+  \item \textbf{Hi-C + GWAS data:} Map disease-associated non-coding variants to their target genes via 3D contacts. A variant in an enhancer may loop to a distant promoter, and Hi-C/HiChIP can identify that connection.
+  \item \textbf{Hi-C + DNA methylation:} Examine the relationship between chromatin topology and the DNA methylation landscape.
+\end{itemize}
+
+\begin{keyconcept}[title={Linking Non-Coding Variants to Target Genes}]
+Genome-wide association studies (GWAS) identify genetic variants associated with disease risk, but $>$90\% of these variants are in non-coding regions. Connecting a non-coding variant to its target gene requires evidence that the variant's region physically contacts a gene promoter. Hi-C, HiChIP (especially H3K27ac HiChIP), and Promoter Capture Hi-C provide this evidence by mapping the 3D contacts between variant-containing enhancers and gene promoters. This approach has been transformative for interpreting GWAS results and identifying therapeutic targets.
+\end{keyconcept}
+
+%% ============================================================
+\section{Experimental Design Considerations}
+\label{sec:3dgenome:design}
+
+\begin{keyconcept}[title={Choosing a 3D Genome Method}]
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Genome-wide, all-vs-all contacts:} Hi-C or Micro-C.
+  \item \textbf{Active enhancer--promoter loops:} H3K27ac HiChIP or PLAC-seq.
+  \item \textbf{Specific loci of interest:} Capture Hi-C or 4C-seq (one-vs-all from a single viewpoint).
+  \item \textbf{Multi-way contacts:} Pore-C, SPRITE, or GAM.
+  \item \textbf{Nucleosome-level resolution:} Micro-C.
+  \item \textbf{Genome assembly scaffolding (dual purpose):} Hi-C with Arima or Omni-C kit.
+\end{itemize}
+\end{keyconcept}
+
+Key design parameters:
+
+\begin{enumerate}[itemsep=3pt]
+  \item \textbf{Cell numbers:} Hi-C typically requires 1--5 million cells. HiChIP requires 500K--5M cells depending on the antibody and mark abundance. Low-input Hi-C protocols can work with fewer cells but sacrifice resolution.
+  \item \textbf{Replicates:} At least 2 biological replicates, which can be pooled to increase sequencing depth. Use HiCRep (stratum-adjusted correlation coefficient) to assess reproducibility between replicates.
+  \item \textbf{Sequencing depth:} See \cref{tab:3dgenome:resolution}. For TAD-level analysis, 300--500 million valid pairs is a reasonable target. For loop calling, aim for $\geq$ 1 billion.
+  \item \textbf{Restriction enzyme:} 4-cutter enzymes (DpnII, MboI) provide higher resolution than 6-cutters (HindIII) because they cut more frequently. Multi-enzyme cocktails (Arima kit) provide the finest fragmentation.
+  \item \textbf{Crosslinking:} Standard formaldehyde crosslinking (1\%, 10 min). Dual crosslinking (formaldehyde + EGS/DSG) can improve capture of long-range interactions.
+\end{enumerate}
+
+\begin{warningbox}
+Hi-C and related methods are among the most technically demanding and expensive sequencing-based assays. A single human Hi-C library at loop-level resolution requires $\sim$1 billion valid read pairs, which costs thousands of dollars in sequencing alone. Before embarking on a Hi-C experiment, carefully consider whether a more targeted approach (HiChIP, Capture Hi-C, or even mining existing publicly available Hi-C datasets from your cell type of interest) would answer your biological question at lower cost.
+\end{warningbox}
+
+%% ============================================================
+\section{Chapter Summary}
+\label{sec:3dgenome:summary}
+
+The three-dimensional organisation of the genome is a critical layer of gene regulation. Chromosomes are organised hierarchically into territories, A/B compartments, topologically associating domains (TADs), and chromatin loops, with CTCF and cohesin playing central roles in loop formation through the loop extrusion mechanism. Hi-C and its variants (Micro-C, HiChIP, Capture Hi-C, Pore-C) provide genome-wide maps of chromatin contacts at resolutions ranging from megabases to nucleosomes, depending on sequencing depth and the specific method used. The bioinformatics pipeline---alignment with chimeric read handling, contact matrix generation and normalisation, and feature calling for compartments, TADs, and loops---requires specialised tools (pairtools, cooler, cooltools, or Juicer) distinct from standard genomics pipelines. Integration of 3D genome data with chromatin accessibility, histone modifications, DNA methylation, and gene expression data provides the most complete picture of how the epigenome controls cell identity, and is essential for interpreting the functional impact of non-coding genetic variants identified by genome-wide association studies.

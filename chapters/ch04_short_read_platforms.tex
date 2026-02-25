@@ -1,0 +1,683 @@
+\chapter{Short-Read Sequencing Platforms}
+\label{ch:shortread}
+
+Short-read sequencing---the generation of millions to billions of relatively short DNA sequence reads, typically 50--600 bases in length---remains the workhorse of modern genomics. Since the commercialisation of the first massively parallel sequencing instruments in the mid-2000s, short-read platforms have driven an extraordinary collapse in the cost of DNA sequencing, from roughly \$100 million per human genome (Sanger-era) to well under \$200 today. This chapter provides a comprehensive survey of the platforms available, beginning with the dominant Illumina ecosystem and extending to the growing number of competitors that have entered the market.
+
+\section{Illumina: The Dominant Platform}
+\label{sec:illumina}
+
+\subsection{Historical Context and Market Position}
+
+Illumina Inc.\ (San Diego, California) has dominated the short-read sequencing market since approximately 2010, when its HiSeq~2000 platform became the instrument of choice for large genome centres worldwide. The company's origins trace back to the work of Shankar Balasubramanian and David Klenerman at the University of Cambridge, who developed the sequencing-by-synthesis (SBS) chemistry that underpins all Illumina instruments. Their company, Solexa, was founded in 1998 and acquired by Illumina in 2007 for \$600~million.
+
+By the mid-2010s, Illumina controlled an estimated 80--90\% of the global sequencing market by revenue. Although new competitors have emerged, Illumina remains the reference standard against which all other short-read platforms are measured.
+
+\begin{keyconcept}[title={Illumina's Core Innovation}]
+Illumina's key innovation is the combination of \textbf{bridge amplification} on a solid surface (creating clonal clusters of identical DNA molecules) with \textbf{reversible-terminator sequencing by synthesis} (incorporating one fluorescently labelled nucleotide per cycle and imaging the entire flow cell). This massively parallel approach enables billions of DNA fragments to be sequenced simultaneously.
+\end{keyconcept}
+
+\subsection{Chemistry: Bridge Amplification and Cluster Generation}
+
+The Illumina sequencing workflow begins with a prepared DNA library---fragments of double-stranded DNA flanked by platform-specific adapter sequences. The critical steps that occur on the flow cell are:
+
+\begin{enumerate}[label=\textbf{Step \arabic*:}, leftmargin=2.5cm]
+  \item \textbf{Library denaturation and loading.} The double-stranded library is denatured into single strands and loaded onto the flow cell at a carefully controlled concentration. Too much library leads to overlapping clusters (overclustering); too little wastes capacity.
+
+  \item \textbf{Hybridisation to lawn oligos.} The flow cell surface is coated with a dense lawn of two types of oligonucleotides (P5 and P7) that are complementary to the adapter sequences on the library fragments. Single-stranded library molecules hybridise to these oligos.
+
+  \item \textbf{Extension and bridge formation.} A polymerase extends from the surface-bound oligo, creating a double-stranded bridge. The original template is washed away after denaturation, leaving the covalently attached copy.
+
+  \item \textbf{Bridge amplification.} The newly synthesised strand bends over and hybridises to an adjacent surface oligo of the complementary type, forming a bridge. Polymerase extension creates a double-stranded bridge, which is denatured to yield two surface-bound single strands. This process repeats through approximately 35 cycles of isothermal amplification.
+
+  \item \textbf{Cluster formation.} Each original library molecule generates a clonal cluster of roughly 1{,}000 identical copies, tightly localised on the flow cell surface. These clusters are the unit of signal detection during sequencing.
+
+  \item \textbf{Linearisation.} One strand orientation is selectively cleaved, leaving a lawn of single-stranded molecules all oriented in the same direction, ready for the sequencing primer to hybridise.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  oligo/.style={thick, draw=OliveGreen!70!black},
+  template/.style={thick, draw=BrickRed!80},
+  newstrand/.style={thick, draw=MidnightBlue!80},
+  surface/.style={fill=gray!15, draw=gray!40, minimum height=0.4cm},
+  label/.style={font=\small\sffamily},
+]
+
+% --- Panel A: Hybridisation ---
+\node[label, font=\bfseries\sffamily] at (0, 3.4) {A. Hybridisation};
+\fill[gray!15] (-1.5, 0) rectangle (1.5, 0.3);
+\draw[gray!50, thick] (-1.5, 0.3) -- (1.5, 0.3);
+% Surface oligos
+\draw[oligo] (-1.0, 0.3) -- (-1.0, 1.2) node[above, font=\tiny, OliveGreen!70!black] {P5};
+\draw[oligo] (0, 0.3) -- (0, 1.2) node[above, font=\tiny, OliveGreen!70!black] {P7};
+\draw[oligo] (1.0, 0.3) -- (1.0, 1.2) node[above, font=\tiny, OliveGreen!70!black] {P5};
+% Template hybridising
+\draw[template, decorate, decoration={snake, amplitude=0.5mm, segment length=3mm}]
+  (-1.0, 1.2) -- (-1.0, 2.8);
+\node[label, BrickRed!80, font=\tiny] at (-0.3, 2.0) {template};
+
+% --- Panel B: Bridge Formation ---
+\begin{scope}[xshift=4.5cm]
+\node[label, font=\bfseries\sffamily] at (0, 3.4) {B. Bridge};
+\fill[gray!15] (-1.5, 0) rectangle (1.5, 0.3);
+\draw[gray!50, thick] (-1.5, 0.3) -- (1.5, 0.3);
+\draw[oligo] (-1.0, 0.3) -- (-1.0, 1.0);
+\draw[oligo] (0.5, 0.3) -- (0.5, 1.0);
+% Bridge arc
+\draw[newstrand, thick] (-1.0, 1.0) .. controls (-0.5, 2.8) and (0.0, 2.8) .. (0.5, 1.0);
+\node[label, MidnightBlue!80, font=\tiny] at (-0.25, 2.5) {bridge};
+\end{scope}
+
+% --- Panel C: Denaturation ---
+\begin{scope}[xshift=9cm]
+\node[label, font=\bfseries\sffamily] at (0, 3.4) {C. Cluster};
+\fill[gray!15] (-1.8, 0) rectangle (1.8, 0.3);
+\draw[gray!50, thick] (-1.8, 0.3) -- (1.8, 0.3);
+% Multiple strands representing a cluster
+\foreach \x/\col in {-1.4/MidnightBlue, -0.9/BrickRed, -0.4/MidnightBlue, 0.1/BrickRed, 0.6/MidnightBlue, 1.1/BrickRed, 1.5/MidnightBlue} {
+  \draw[\col!70, thick] (\x, 0.3) -- (\x, 1.0+rand*0.4);
+}
+\node[label, font=\tiny] at (0, 2.2) {${\sim}1{,}000$ copies};
+\draw[<->, thin, gray] (-1.5, -0.2) -- (1.6, -0.2) node[midway, below, font=\tiny] {${\sim}1\,\mu$m};
+\end{scope}
+
+% Arrows between panels
+\draw[->, very thick, gray!60] (1.8, 1.5) -- (2.8, 1.5);
+\draw[->, very thick, gray!60] (6.3, 1.5) -- (7.0, 1.5);
+
+\end{tikzpicture}
+\caption[Illumina bridge amplification]{Schematic of Illumina bridge amplification. (A)~A single-stranded library molecule hybridises to a surface oligo. (B)~After extension, the strand bends to form a bridge to an adjacent oligo. (C)~Repeated cycles generate a clonal cluster of ${\sim}1{,}000$ identical copies.}
+\label{fig:bridge_amp}
+\end{figure}
+
+\subsection{Sequencing by Synthesis with Reversible Terminators}
+
+Once clusters have been generated, the actual sequencing proceeds through iterative cycles of nucleotide incorporation and imaging:
+
+\begin{enumerate}[label=\textbf{Cycle step \arabic*:}, leftmargin=3.0cm]
+  \item \textbf{Incorporation.} All four nucleotides (A, C, G, T) are flowed across the flow cell simultaneously. Each nucleotide carries (i)~a fluorescent dye and (ii)~a 3\textquotesingle-\textit{O}-azidomethyl blocking group that prevents incorporation of more than one nucleotide per cycle. The polymerase incorporates exactly one complementary nucleotide at each cluster.
+
+  \item \textbf{Wash.} Unincorporated nucleotides are washed away.
+
+  \item \textbf{Imaging.} The flow cell is excited with a laser, and a high-resolution camera captures the fluorescent emission from every cluster. Each cluster emits a colour corresponding to the base just incorporated.
+
+  \item \textbf{Cleavage.} A chemical cleavage step removes both the fluorescent dye and the 3\textquotesingle\ blocking group, regenerating a free 3\textquotesingle-OH ready for the next incorporation.
+\end{enumerate}
+
+This cycle repeats for every base of the read. A $2 \times 150$\basepair\ run therefore requires ${\sim}300$ of these cycles (plus additional cycles for index reads).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >=Stealth,
+  node distance=1.8cm,
+  boxstep/.style={draw=MidnightBlue!70, fill=MidnightBlue!8, rounded corners=4pt,
+    minimum width=3.2cm, minimum height=1.0cm, align=center, font=\small\sffamily},
+  arr/.style={->, thick, MidnightBlue!60},
+]
+
+\node[boxstep] (inc) {Incorporate\\fluorescent nucleotide};
+\node[boxstep, right=of inc] (wash) {Wash away\\unincorporated};
+\node[boxstep, right=of wash] (image) {Image\\flow cell};
+\node[boxstep, below=1.2cm of image] (cleave) {Cleave dye\\+ blocker};
+
+\draw[arr] (inc) -- (wash);
+\draw[arr] (wash) -- (image);
+\draw[arr] (image) -- (cleave);
+\draw[arr] (cleave) -| (inc) node[midway, below, font=\tiny\sffamily, text=gray] {repeat $n$ cycles};
+
+% Nucleotide detail
+\node[below=2.5cm of wash, draw=gray!50, fill=gray!5, rounded corners, inner sep=6pt, font=\footnotesize] (detail) {
+  \begin{tabular}{cl}
+    \textcolor{ForestGreen}{\Large$\bullet$} & A -- green \\
+    \textcolor{BrickRed}{\Large$\bullet$} & T -- red \\
+    \textcolor{MidnightBlue}{\Large$\bullet$} & C -- blue \\
+    \textcolor{Goldenrod}{\Large$\bullet$} & G -- yellow \\
+  \end{tabular}
+};
+\node[above=0pt of detail, font=\sffamily\footnotesize\bfseries, gray] {Four-channel detection};
+
+\end{tikzpicture}
+\caption[Illumina SBS cycle]{The four-step Illumina sequencing-by-synthesis (SBS) cycle. Each cycle adds exactly one base to every cluster, enabling massively parallel read extension.}
+\label{fig:sbs_cycle}
+\end{figure}
+
+\subsection{Two-Channel vs Four-Channel Chemistry}
+\label{sec:twochannel}
+
+Originally, Illumina instruments used \textbf{four-channel chemistry} (4dye/4image), in which each of the four nucleotides carries a spectrally distinct fluorescent dye and each cycle requires four separate images (one per excitation/emission channel). This approach provides unambiguous base identification and is still used on certain instruments such as the NovaSeq~6000 (on some flow cell types) and the older HiSeq series.
+
+To reduce imaging time and cost, Illumina introduced \textbf{two-channel chemistry} (2dye/2image), used on the NextSeq, MiniSeq, and NovaSeq~X series. In this scheme:
+
+\begin{itemize}[nosep]
+  \item \textbf{A} is labelled with \textbf{green dye only} (channel~1 positive, channel~2 negative).
+  \item \textbf{C} is labelled with \textbf{both green and red dyes} (both channels positive).
+  \item \textbf{T} is labelled with \textbf{red dye only} (channel~1 negative, channel~2 positive).
+  \item \textbf{G} is \textbf{unlabelled} (both channels negative; identified by absence of signal).
+\end{itemize}
+
+\begin{warningbox}[title={G-Base Calling in Two-Channel Chemistry}]
+Because G~bases are identified by the \emph{absence} of signal, libraries with very high GC content (or low-diversity libraries such as amplicons) can cause problems on two-channel instruments. If most clusters incorporate G at the same cycle, the software cannot distinguish ``no signal because G'' from ``no signal because the cluster is gone.'' Low-diversity libraries should be spiked with PhiX (a balanced-composition control library) at 20--50\% on two-channel platforms.
+\end{warningbox}
+
+\subsection{Patterned vs Non-Patterned Flow Cells}
+\label{sec:patterned}
+
+A second major evolution in Illumina hardware was the introduction of \textbf{patterned flow cells}. In traditional non-patterned flow cells (used on MiSeq, HiSeq~2500, and earlier instruments), clusters form at random positions and must be located computationally during the first few cycles. This random seeding limits cluster density because clusters that are too close together merge and become unreadable.
+
+Patterned flow cells, introduced with the HiSeq~3000/4000 and continued in the NovaSeq and NextSeq~1000/2000 series, feature billions of nanowells arranged in a regular grid. Each nanowell captures exactly one library molecule (ideally), producing evenly spaced, uniform clusters. Benefits include:
+
+\begin{itemize}[nosep]
+  \item \textbf{Higher cluster density} (and therefore higher output per flow cell).
+  \item \textbf{More uniform cluster size}, improving base-calling accuracy.
+  \item \textbf{Simplified imaging}, since cluster locations are known \textit{a priori}.
+  \item \textbf{Faster run times}, because fewer imaging frames are needed.
+\end{itemize}
+
+A disadvantage of patterned flow cells is increased sensitivity to index hopping (discussed in \cref{ch:libprep}), necessitating the use of unique dual indexes (UDIs).
+
+
+\subsection{Cluster Density Optimisation}
+\label{subsec:shortread:cluster-density}
+
+Optimal cluster density is critical for maximising data output while maintaining quality. The relationship between loading concentration, cluster density, and data quality involves a fundamental trade-off:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Under-clustering:} Too few clusters per unit area wastes expensive flow cell real estate. The number of reads is proportional to density, so under-loading linearly reduces output.
+  \item \textbf{Over-clustering:} Too many library molecules per nanowell (patterned) or too many overlapping clusters (non-patterned) produce mixed signals that fail quality filtering.
+\end{itemize}
+
+For patterned flow cells (NovaSeq, NextSeq 1000/2000), the Poisson statistics of molecular loading govern the fraction of wells with exactly one template. If $\lambda$ is the average number of molecules per well:
+
+\begin{equation}
+P(\text{monoclonal well}) = P(k=1) = \lambda e^{-\lambda}
+\label{eq:shortread:poisson-loading}
+\end{equation}
+
+This is maximised at $\lambda = 1$, where $P(k=1) = e^{-1} \approx 36.8\%$, while $P(k=0) \approx 36.8\%$ (empty wells) and $P(k \geq 2) \approx 26.4\%$ (polyclonal wells). In practice, manufacturers use exclusion amplification (ExAmp) to increase the effective monoclonal fraction by allowing one template to colonise the well before others, achieving effective occupancy rates of 60--80\%.
+
+\begin{keyconcept}[title={Cluster Density and Data Quality}]
+Cluster density is specified in units of thousands of clusters per mm$^2$ (K/mm$^2$). Typical target densities are:
+\begin{itemize}[nosep]
+  \item \textbf{MiSeq (non-patterned):} 800--1,200 K/mm$^2$
+  \item \textbf{NovaSeq 6000 S4:} 200--270 K/mm$^2$ (per surface, patterned)
+  \item \textbf{NovaSeq X Plus 25B:} $\sim$3,500 K/mm$^2$ (patterned)
+\end{itemize}
+The percentage of clusters passing filter (\%PF) drops sharply when density exceeds the optimal range and is the primary metric for detecting loading problems.
+\end{keyconcept}
+
+
+\subsection{Phasing and Pre-Phasing Error Models}
+\label{subsec:shortread:phasing}
+
+A key source of error in Illumina sequencing is the gradual loss of synchrony among the $\sim$1,000 copies within each cluster. Over successive SBS cycles, two types of desynchronisation occur:
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Phasing (lagging)] A fraction $p$ of molecules in a cluster fail to incorporate a nucleotide in a given cycle and ``fall behind'' by one base. These lagging molecules will incorporate one cycle late, contributing a shifted signal.
+  \item[Pre-phasing (leading)] A fraction $q$ of molecules incorporate an extra nucleotide (the 3$'$ blocking group fails or is removed prematurely) and ``run ahead'' by one base.
+\end{description}
+
+After $n$ cycles, the fraction of molecules still in perfect synchrony with the intended cycle is approximately:
+
+\begin{equation}
+f(n) = (1 - p - q)^n
+\label{eq:shortread:phasing}
+\end{equation}
+
+For typical Illumina phasing ($p \approx 0.1$--$0.25\%$) and pre-phasing ($q \approx 0.05$--$0.15\%$) rates:
+
+\begin{table}[htbp]
+\centering
+\caption[Signal decay due to phasing.]{Fraction of molecules in synchrony as a function of cycle number, assuming $p = 0.20\%$ and $q = 0.10\%$.}
+\label{tab:shortread:phasing}
+\small
+\begin{tabular}{ccl}
+\toprule
+\textbf{Cycle $n$} & \textbf{In-phase fraction} & \textbf{Quality impact} \\
+\midrule
+1 & 99.7\% & Negligible \\
+50 & 98.5\% & Minimal \\
+100 & 97.0\% & Slight degradation \\
+150 & 95.5\% & Noticeable quality drop \\
+200 & 94.1\% & Moderate degradation \\
+300 & 91.2\% & Significant (R2 of $2 \times 150$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This phasing-induced signal decay is the primary reason why quality scores decline toward the end of Illumina reads, and why Read~2 of a paired-end run typically has slightly lower quality than Read~1 (it is sequenced after additional cycles including the index reads). The basecaller software applies a matrix correction at each cycle to computationally deconvolve the phased signal.
+
+
+\subsection{Two-Channel Signal Deconvolution}
+\label{subsec:shortread:signal-deconvolution}
+
+In two-channel chemistry, each cluster produces a two-dimensional signal vector $(I_{\text{green}}, I_{\text{red}})$ at each cycle. The base call is determined by which of the four quadrants the signal falls into:
+
+\begin{table}[htbp]
+\centering
+\caption[Two-channel base calling scheme.]{Signal intensity patterns for two-channel base calling.}
+\label{tab:shortread:twochannel}
+\small
+\begin{tabular}{cccl}
+\toprule
+\textbf{Base} & \textbf{Green ($I_1$)} & \textbf{Red ($I_2$)} & \textbf{Classification} \\
+\midrule
+A & High & Low & Green-only \\
+C & High & High & Both channels \\
+G & Low & Low & Neither channel \\
+T & Low & High & Red-only \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The classification boundary between ``high'' and ``low'' is not fixed but is recalibrated at each cycle and each tile using the empirical distribution of intensities. The quality score reflects the distance from the classification boundary: a signal that falls clearly in the A~quadrant receives a high Q~score, while a signal near the boundary between A and G receives a lower Q~score.
+
+Because G~bases produce no signal, the basecaller must distinguish G from cluster loss, low signal due to phasing, or optical noise. This is accomplished by tracking each cluster's signal trajectory across cycles---a cluster that consistently produces signal at most cycles but is dark at the current cycle is called G with high confidence.
+
+
+\subsection{Index Hopping: Rates and Mitigation}
+\label{subsec:shortread:index-hopping}
+
+Index hopping (index switching) occurs when free adapter molecules in the pooled library recombine with other library molecules during the ExAmp on-instrument cluster generation. The rate depends on the platform:
+
+\begin{table}[htbp]
+\centering
+\caption{Index hopping rates by platform and mitigation strategy.}
+\label{tab:shortread:index-hopping}
+\small
+\begin{tabularx}{\textwidth}{l c X}
+\toprule
+\textbf{Platform} & \textbf{Typical rate} & \textbf{Mitigation} \\
+\midrule
+MiSeq (bridge amp) & $<$0.01\% & Not a concern \\
+HiSeq 2500 (bridge amp) & $<$0.01\% & Not a concern \\
+NovaSeq 6000 (ExAmp) & 0.1--2.0\% & Use UDIs; filter hopped reads \\
+NovaSeq X (ExAmp v2) & 0.01--0.1\% & Greatly reduced; UDIs recommended \\
+NextSeq 1000/2000 & $<$0.01\% & Bridge amplification; minimal \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Unique Dual Indexes (UDIs)} solve the index hopping problem by assigning each sample a unique combination of i7 and i5 indexes. With combinatorial dual indexing (CDI), where i7 and i5 indexes are reused across samples in different combinations, a hopped read may be misassigned to the wrong sample. With UDIs, a hopped read will carry an i7 from one sample and an i5 from another---a combination not present in any legitimate sample---and can be computationally discarded.
+
+\begin{warningbox}
+For any experiment on a patterned flow cell where sample cross-contamination is unacceptable (e.g., clinical diagnostics, rare variant detection, single-cell experiments), always use UDIs. Combinatorial indexing is only acceptable on platforms that use bridge amplification (MiSeq, NextSeq 1000/2000).
+\end{warningbox}
+
+
+\subsection{Platform Hierarchy}
+\label{sec:illumina_platforms}
+
+Illumina offers a portfolio of instruments spanning a wide range of throughput and cost. The major current-generation platforms (as of early 2026) are:
+
+\subsubsection{MiSeq and MiSeq\texorpdfstring{\texttrademark}{(TM)} Dx}
+
+The MiSeq is Illumina's smallest benchtop sequencer, designed for targeted and small-scale experiments. It uses non-patterned flow cells and four-channel chemistry.
+
+\begin{itemize}[nosep]
+  \item \textbf{Read lengths:} up to $2 \times 300$\basepair\ (the longest paired-end reads in the Illumina ecosystem).
+  \item \textbf{Output:} 0.3--15 Gb per run (depending on the kit version: Nano, Micro, v2, v3).
+  \item \textbf{Reads per run:} 1--25 million clusters (single-read equivalents).
+  \item \textbf{Run time:} 5--55 hours.
+  \item \textbf{Error rate:} $<0.1$\% per base (substitution-dominated).
+  \item \textbf{Typical applications:} 16S/ITS amplicon sequencing, small targeted panels, microbial genomes, validation studies, HLA typing.
+\end{itemize}
+
+The MiSeq~Dx is the FDA-cleared clinical version, used in regulated diagnostic laboratories.
+
+\subsubsection{NextSeq 1000 and NextSeq 2000}
+
+The NextSeq~1000/2000 are mid-throughput benchtop instruments using patterned flow cells and two-channel chemistry. They replaced the NextSeq~500/550 series.
+
+\begin{itemize}[nosep]
+  \item \textbf{Read lengths:} up to $2 \times 150$\basepair\ (NextSeq~2000 supports $2 \times 300$\basepair\ with the P1 300-cycle kit).
+  \item \textbf{Output:} 30--360 Gb per flow cell (P1, P2, P3 cartridges of increasing capacity).
+  \item \textbf{Reads per run:} 100~million to 1.2~billion clusters.
+  \item \textbf{Run time:} 11--48 hours.
+  \item \textbf{DRAGEN on-instrument:} built-in FPGA-accelerated secondary analysis (alignment, variant calling).
+  \item \textbf{Typical applications:} gene panels, exomes, small genomes, single-cell gene expression (10x Genomics), \gls{RNA-seq}, \gls{ATAC-seq}, low-pass \gls{WGS}.
+\end{itemize}
+
+\subsubsection{NovaSeq X and NovaSeq X Plus}
+
+The NovaSeq~X series, launched in 2023 as successors to the NovaSeq~6000, are Illumina's highest-throughput instruments, designed for production-scale sequencing.
+
+\begin{itemize}[nosep]
+  \item \textbf{Read lengths:} up to $2 \times 150$\basepair.
+  \item \textbf{Output:} 1.3~Tb (10B flow cell) to 16~Tb (25B flow cell, NovaSeq~X~Plus with two flow cells running simultaneously).
+  \item \textbf{Reads per run:} up to 25~billion clusters per flow cell (25B).
+  \item \textbf{Run time:} approximately 13 hours (10B) to 48 hours (25B $2 \times 150$\basepair).
+  \item \textbf{Cost:} approximately \$2--4 per Gb; roughly \$200 for a 30$\times$ human genome.
+  \item \textbf{Flow cell types:} 1.5B, 10B, and 25B (referring to billions of nanowells).
+  \item \textbf{DRAGEN on-instrument:} full secondary analysis pipeline.
+  \item \textbf{Typical applications:} large-scale population \gls{WGS}, clinical whole-genome/exome sequencing, large \gls{RNA-seq} projects, single-cell atlases, \gls{WGBS}.
+\end{itemize}
+
+\begin{tipbox}[title={Choosing an Illumina Flow Cell}]
+The 25B flow cell is only cost-effective when you have enough libraries to fill it. Running a single \gls{WGS} sample on a 25B flow cell wastes capacity. Many facilities use the 10B flow cell for routine work and the 25B for large population-scale projects or when many samples are multiplexed together.
+\end{tipbox}
+
+\subsection{Illumina Error Profile}
+
+Illumina platforms produce predominantly \textbf{substitution errors}, with a raw per-base error rate of approximately 0.1--0.5\%. The most common systematic errors include:
+
+\begin{itemize}[nosep]
+  \item \textbf{GGC motif errors:} elevated substitution rates in GGC trinucleotide contexts.
+  \item \textbf{Quality score drop at read ends:} accumulation of incomplete cleavage (phasing) and leading/lagging strand effects.
+  \item \textbf{Index hopping:} on patterned flow cells with exclusion amplification (ExAmp), free adapters can re-hybridise to the wrong nanowell during cluster generation, causing barcode misassignment.
+\end{itemize}
+
+Insertions and deletions (indels) are rare on Illumina, making the platform well-suited for \gls{SNV} detection but potentially less reliable for homopolymer-length estimation compared to long-read technologies.
+
+
+\section{MGI / BGI DNBSEQ}
+\label{sec:mgi}
+
+MGI Tech (a subsidiary of the BGI Group, Shenzhen, China) has developed a distinct sequencing chemistry and is Illumina's most significant competitor by installed base, particularly in China and parts of Asia and Europe.
+
+\subsection{DNA Nanoball (DNB) Technology}
+
+Rather than bridge amplification, MGI uses \textbf{rolling circle amplification (RCA)} to generate signal:
+
+\begin{enumerate}[nosep]
+  \item Library molecules are circularised by ligation of a splint oligonucleotide.
+  \item A polymerase with strand-displacement activity performs rolling circle amplification, producing a long concatemer of 200--400 copies of the original molecule, which collapses into a compact \textbf{DNA nanoball} (DNB) roughly 200~nm in diameter.
+  \item DNBs are loaded onto a patterned silicon chip with billions of positively charged spots arranged in a regular grid. Each spot captures a single DNB by electrostatic attraction.
+\end{enumerate}
+
+\begin{keyconcept}[title={DNA Nanoballs vs Clusters}]
+Unlike Illumina clusters, which are formed \emph{on} the flow cell, DNBs are formed \emph{before} loading. This means DNB formation and chip loading are decoupled, offering independent quality-control checkpoints. DNBs are also inherently clonal (derived from a single circular template), virtually eliminating index hopping.
+\end{keyconcept}
+
+\subsection{Combinatorial Probe-Anchor Synthesis (cPAS)}
+
+MGI's sequencing chemistry, called \textbf{cPAS} (Combinatorial Probe-Anchor Synthesis), differs from Illumina's \gls{SBS}:
+
+\begin{enumerate}[nosep]
+  \item An anchor probe hybridises to a known adapter sequence adjacent to the DNA to be sequenced.
+  \item A pool of fluorescently labelled sequencing probes (each representing a specific base) competes for hybridisation to the target position.
+  \item After imaging, the anchor--probe complex is stripped, and a new anchor shifted by one base is applied.
+\end{enumerate}
+
+The net result is similar to \gls{SBS}: one base is read per cycle per DNB, and the error profile is dominated by substitutions.
+
+\subsection{DNBSEQ Platforms}
+
+\begin{description}[style=nextline, font=\bfseries]
+  \item[DNBSEQ-G400 (MGISEQ-2000)] A mid-throughput benchtop instrument. Up to $2 \times 200$\basepair\ reads; 60--720 Gb per run; two independent flow cell positions. Competes with the Illumina NextSeq.
+
+  \item[DNBSEQ-T7] A high-throughput production sequencer. Up to $2 \times 150$\basepair; up to 6~Tb per run with four flow cells; approximately 24-hour run time. Competes with the NovaSeq~6000/X.
+
+  \item[DNBSEQ-T20$\times$2] The latest ultra-high-throughput platform (launched 2024--2025). Two independent sequencing modules, each running two flow cells. Combined output exceeding 10~Tb per run. Aimed at population-scale whole-genome projects.
+
+  \item[DNBSEQ-G99] A compact, low-throughput benchtop system designed for clinical panels and targeted sequencing. Competes with the MiSeq.
+\end{description}
+
+\begin{tipbox}[title={Intellectual Property Considerations}]
+MGI and Illumina have been involved in extensive patent litigation. Before purchasing MGI instruments, verify the current intellectual property landscape in your jurisdiction. In some markets, licensing agreements are in place; in others, restrictions may apply.
+\end{tipbox}
+
+
+\section{Element Biosciences AVITI}
+\label{sec:element}
+
+Element Biosciences (San Diego, California) entered the market in 2022 with the AVITI system, offering what the company terms \textbf{avidity sequencing}.
+
+\subsection{Avidity Sequencing Chemistry}
+
+The AVITI chemistry is based on the following key principles:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Rolling circle amplification on the flow cell.} Like MGI, Element uses rolling circle amplification rather than bridge amplification. Library molecules are circularised and then amplified directly on the flow cell surface, producing compact polony (polymerase colony) structures.
+
+  \item \textbf{Avidity base calling.} Rather than labelling individual nucleotides, Element uses multivalent binding of labelled polymer--nucleotide conjugates. The avidity (multipoint binding) of the polymer to the polony provides high signal-to-noise with natural, unmodified nucleotides used for actual incorporation.
+
+  \item \textbf{Non-destructive chemistry.} The labelling polymer is removed after imaging without altering the DNA, potentially reducing cycle-to-cycle artefacts.
+\end{enumerate}
+
+\subsection{AVITI Specifications}
+
+\begin{itemize}[nosep]
+  \item \textbf{Read lengths:} $2 \times 75$\basepair\ to $2 \times 300$\basepair.
+  \item \textbf{Output:} up to 300~Gb per flow cell; the instrument runs two flow cells independently, yielding up to 600~Gb per run.
+  \item \textbf{Reads:} up to 1~billion reads per flow cell.
+  \item \textbf{Run time:} 16--48 hours depending on read length.
+  \item \textbf{Error rate:} $<0.5$\% raw error; primarily substitutions.
+  \item \textbf{Cost:} approximately \$1.50--2.50 per Gb, positioning it competitively with the NextSeq~2000 and lower NovaSeq~X tiers.
+  \item \textbf{Key differentiator:} Flexible, independent flow cell operation; low instrument cost (approximately \$289{,}000 list price at launch); open library-prep compatibility.
+\end{itemize}
+
+\begin{keyconcept}[title={AVITI's Value Proposition}]
+Element positions the AVITI as a ``democratisation'' platform---an instrument with high-end data quality at a lower capital cost than a NovaSeq, with the flexibility to run different experiments on its two independent flow cells simultaneously.
+\end{keyconcept}
+
+
+\section{Ultima Genomics}
+\label{sec:ultima}
+
+Ultima Genomics (Newark, California) made headlines in 2022 when it announced a target cost of \$1 per Gb---later refined to approximately \$1 per genome at scale.
+
+\subsection{UG~100 Platform}
+
+The Ultima sequencing approach differs substantially from other short-read platforms:
+
+\begin{itemize}[nosep]
+  \item \textbf{Natural nucleotide chemistry.} Instead of reversible terminators, the UG~100 uses \emph{natural} (unmodified) nucleotides. Each sequencing cycle flows a single nucleotide species across the flow cell. The polymerase incorporates as many of that nucleotide as the template requires, and the signal from a reporting chemistry indicates \emph{how many} bases were incorporated.
+
+  \item \textbf{Open, circular flow cell.} The flow cell is a large, spinning silicon wafer. Library amplification is performed off-instrument, and DNA polonies are deposited on the wafer surface.
+
+  \item \textbf{High density, single-colour detection.} The simplified chemistry enables very high feature density and reduced imaging requirements.
+\end{itemize}
+
+\subsection{Specifications and Considerations}
+
+\begin{itemize}[nosep]
+  \item \textbf{Read length:} approximately 300\basepair\ single-end reads.
+  \item \textbf{Output:} up to 20~Tb per run.
+  \item \textbf{Error profile:} dominated by \textbf{homopolymer-length errors} (systematic miscounting of consecutive identical bases), unlike the substitution errors of Illumina and MGI. This is a direct consequence of the single-nucleotide flow chemistry.
+  \item \textbf{Applications:} the platform is particularly suited for applications that are tolerant of single-end reads and where cost per base is paramount, such as population-scale \gls{WGS} and large association studies.
+\end{itemize}
+
+\begin{warningbox}[title={Homopolymer Errors on Ultima}]
+Because the UG~100 uses natural nucleotides in a flow-based scheme, errors in homopolymer runs (e.g., AAAA\ldots) are the dominant error mode. Bioinformatics pipelines designed for Illumina substitution errors may need adjustment. Ultima provides custom variant-calling tools to handle this error profile.
+\end{warningbox}
+
+
+\section{Singular Genomics G4}
+\label{sec:singular}
+
+Singular Genomics (San Diego, California) developed the G4 platform, a benchtop sequencer designed for mid-throughput applications. The instrument uses four independent flow cells, each of which can be started and stopped independently, providing high flexibility for laboratories running diverse projects.
+
+\subsection{Chemistry and Specifications}
+
+\begin{itemize}[nosep]
+  \item \textbf{Chemistry:} sequencing by synthesis with fluorescent reversible terminators (conceptually similar to Illumina's approach).
+  \item \textbf{Read lengths:} up to $2 \times 150$\basepair.
+  \item \textbf{Output:} up to 120~Gb per flow cell; 480~Gb with four flow cells.
+  \item \textbf{Reads:} up to 400~million reads per flow cell.
+  \item \textbf{Run time:} approximately 8--22 hours per flow cell.
+  \item \textbf{Key differentiator:} four independent flow cells on a single instrument, allowing mixed experiment types and staggered starts.
+\end{itemize}
+
+\begin{warningbox}[title={Singular Genomics Status}]
+Singular Genomics filed for bankruptcy in late 2023 and ceased operations. The G4 is included here for completeness, as some instruments remain in the field, and the technology illustrates alternative design choices. However, no ongoing support, consumable supply, or development is expected.
+\end{warningbox}
+
+
+\section{Comprehensive Platform Comparison}
+\label{sec:shortread_comparison}
+
+\Cref{tab:shortread_comparison} provides a side-by-side comparison of the major short-read sequencing platforms available as of early 2026.
+
+\begin{table}[htbp]
+\centering
+\caption[Short-read sequencing platform comparison]{Comparison of current short-read sequencing platforms. Values are approximate and may vary with kit versions, software updates, and run configurations.}
+\label{tab:shortread_comparison}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright}X c c c c@{}}
+\toprule
+\textbf{Platform} & \textbf{Vendor} & \textbf{Max Read Length} & \textbf{Output/Run} & \textbf{Cost/Gb} & \textbf{Run Time} \\
+\midrule
+MiSeq v3          & Illumina   & $2\times300$\basepair & 15~Gb   & \$100--200  & 5--55\,h   \\
+NextSeq 2000 (P3) & Illumina   & $2\times150$\basepair & 360~Gb  & \$15--30    & 11--48\,h  \\
+NovaSeq X (10B)   & Illumina   & $2\times150$\basepair & 1.3~Tb  & \$2--4      & 13--24\,h  \\
+NovaSeq X Plus (25B) & Illumina & $2\times150$\basepair & 16~Tb  & \$2--3      & 24--48\,h  \\
+\addlinespace
+DNBSEQ-G99        & MGI/BGI    & $2\times150$\basepair & 15~Gb   & \$60--120   & 12--24\,h  \\
+DNBSEQ-G400       & MGI/BGI    & $2\times200$\basepair & 720~Gb  & \$8--15     & 24--48\,h  \\
+DNBSEQ-T7         & MGI/BGI    & $2\times150$\basepair & 6~Tb    & \$3--5      & 24\,h      \\
+DNBSEQ-T20$\times$2 & MGI/BGI  & $2\times150$\basepair & 10+~Tb  & \$2--3      & 24\,h      \\
+\addlinespace
+AVITI             & Element Bio & $2\times300$\basepair & 600~Gb  & \$1.50--2.50& 16--48\,h \\
+\addlinespace
+UG 100            & Ultima      & ${\sim}300$\basepair\ SE & 20~Tb & \$1--2     & 20\,h      \\
+\addlinespace
+G4\fmark{*}       & Singular    & $2\times150$\basepair & 480~Gb  & \$10--20    & 8--22\,h   \\
+\bottomrule
+\multicolumn{6}{@{}l}{\footnotesize\fmark{*}Singular Genomics ceased operations in late 2023. Included for reference.} \\
+\end{tabularx}
+\end{table}
+
+
+\section{How to Choose a Short-Read Platform}
+\label{sec:choosing}
+
+Selecting the right short-read platform involves balancing multiple factors. The following decision framework can guide your choice:
+
+\subsection{Throughput Requirements}
+
+\begin{itemize}[nosep]
+  \item \textbf{Low throughput} ($<20$~Gb): MiSeq, DNBSEQ-G99. Ideal for amplicons, small panels, microbial genomes.
+  \item \textbf{Mid throughput} (20--600~Gb): NextSeq~2000, DNBSEQ-G400, AVITI. Ideal for exomes, targeted panels, \gls{RNA-seq}, single-cell.
+  \item \textbf{High throughput} ($>600$~Gb): NovaSeq~X, DNBSEQ-T7/T20, Ultima UG~100. Ideal for \gls{WGS}, population studies, large cohorts.
+\end{itemize}
+
+\subsection{Read Length Requirements}
+
+\begin{itemize}[nosep]
+  \item \textbf{Short reads} ($2 \times 50$--$100$\basepair): sufficient for most \gls{RNA-seq}, \gls{ChIP-seq}, \gls{ATAC-seq}.
+  \item \textbf{Medium reads} ($2 \times 150$\basepair): the standard for \gls{WGS} and exome sequencing.
+  \item \textbf{Long short-reads} ($2 \times 250$--$300$\basepair): essential for amplicon sequencing (16S, ITS) where forward and reverse reads must overlap to form a contiguous amplicon. MiSeq and AVITI offer the longest paired-end reads.
+\end{itemize}
+
+\subsection{Budget and Capital Expenditure}
+
+\begin{itemize}[nosep]
+  \item \textbf{Instrument cost:} ranges from ${\sim}$\$100K (MiSeq) to ${\sim}$\$1M+ (NovaSeq~X~Plus). The AVITI has a competitive list price of ${\sim}$\$289K.
+  \item \textbf{Cost per Gb:} inversely correlated with throughput. High-throughput instruments are cheapest per Gb but require high sample volumes to be cost-effective.
+  \item \textbf{Service contracts and consumables:} ongoing costs can equal or exceed the instrument cost over 3--5 years.
+\end{itemize}
+
+\subsection{Data Ecosystem and Compatibility}
+
+\begin{itemize}[nosep]
+  \item \textbf{Software compatibility:} most bioinformatics tools were developed and validated on Illumina data. Newer platforms may require modified parameters or dedicated tools.
+  \item \textbf{Library prep compatibility:} Illumina has the broadest library preparation ecosystem. MGI and Element require platform-specific adapters or adapter conversion steps.
+  \item \textbf{Regulatory status:} for clinical applications, consider whether the platform has IVD (in vitro diagnostic) clearance in your jurisdiction.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  decision/.style={diamond, draw=MidnightBlue!70, fill=MidnightBlue!8,
+    inner sep=1pt, aspect=2.5, align=center, font=\small\sffamily},
+  result/.style={rectangle, draw=OliveGreen!70, fill=OliveGreen!8,
+    rounded corners=4pt, minimum height=0.8cm, align=center, font=\small\sffamily},
+  arr/.style={->, thick, gray!70},
+  lbl/.style={font=\tiny\sffamily, text=gray},
+]
+
+\node[decision] (q1) at (0,0) {Throughput\\needed?};
+\node[decision] (q2a) at (-5,-2.5) {Read length\\$>200$\basepair?};
+\node[decision] (q2b) at (0,-2.5) {Application?};
+\node[decision] (q2c) at (5,-2.5) {Budget\\priority?};
+
+\node[result] (r1) at (-6.5,-5) {MiSeq};
+\node[result] (r2) at (-3.5,-5) {DNBSEQ-G99};
+\node[result] (r3a) at (-2,-5) {NextSeq 2000\\AVITI};
+\node[result] (r3b) at (2,-5) {DNBSEQ-G400};
+\node[result] (r4) at (3.8,-5) {NovaSeq X\\DNBSEQ-T7};
+\node[result] (r5) at (6.5,-5) {Ultima UG100};
+
+\draw[arr] (q1) -- node[lbl, left] {$<$20 Gb} (q2a);
+\draw[arr] (q1) -- node[lbl, right] {20--600 Gb} (q2b);
+\draw[arr] (q1) -- node[lbl, right] {$>$600 Gb} (q2c);
+
+\draw[arr] (q2a) -- node[lbl, left] {Yes} (r1);
+\draw[arr] (q2a) -- node[lbl, right] {No} (r2);
+\draw[arr] (q2b) -- node[lbl, left] {Diverse} (r3a);
+\draw[arr] (q2b) -- node[lbl, right] {Standard} (r3b);
+\draw[arr] (q2c) -- node[lbl, left] {Quality} (r4);
+\draw[arr] (q2c) -- node[lbl, right] {Cost} (r5);
+
+\end{tikzpicture}
+\caption[Short-read platform decision guide]{Simplified decision flowchart for selecting a short-read sequencing platform. Real decisions involve additional factors including existing infrastructure, bioinformatics support, and vendor relationships.}
+\label{fig:shortread_decision}
+\end{figure}
+
+\subsection{Practical Considerations}
+
+\begin{protocolbox}[title={Platform Selection Checklist}]
+Before committing to a platform, evaluate:
+\begin{enumerate}[nosep]
+  \item What is my sample throughput per month (number of samples $\times$ required coverage)?
+  \item Do I need paired-end reads, and what length?
+  \item What is my budget for capital equipment vs.\ consumables?
+  \item What bioinformatics tools and pipelines does my team use, and are they validated for this platform's data?
+  \item Do I need clinical/regulatory certification?
+  \item Is there local service and support from the vendor?
+  \item Can I share instrument time with collaborators to improve utilisation?
+\end{enumerate}
+\end{protocolbox}
+
+
+\section{Performance Metrics and Quality Considerations}
+\label{sec:quality_metrics}
+
+When evaluating short-read platform performance, several key metrics are commonly reported:
+
+\begin{description}[style=nextline, font=\bfseries]
+  \item[Q30 (Phred score $\geq$ 30)] The percentage of bases called with at least 99.9\% accuracy. Modern Illumina instruments routinely exceed 85--90\% bases $\geq$~Q30 for $2 \times 150$\basepair\ reads.
+
+  \item[Cluster passing filter (\%PF)] The fraction of clusters that pass quality filters during the first 25 cycles. Values below 70--80\% indicate library or loading problems.
+
+  \item[Error rate by cycle] A cycle-by-cycle plot of mismatch rate against a known reference (often PhiX). Useful for diagnosing phasing problems or chemistry issues.
+
+  \item[Duplication rate] The fraction of reads that are PCR or optical duplicates. High duplication reduces the effective unique coverage and is influenced by library complexity and loading concentration.
+
+  \item[Insert size distribution] For paired-end libraries, the distribution of distances between the two reads of a pair. A tight, symmetric distribution centred on the expected fragment size indicates good library quality.
+\end{description}
+
+\begin{tipbox}[title={PhiX Spike-In}]
+Always include a small fraction (1--5\%) of PhiX control library in your sequencing run. PhiX provides a balanced-composition, known-sequence control that enables:
+\begin{itemize}[nosep]
+  \item Calibration of colour balance and focus.
+  \item An independent estimate of the per-base error rate.
+  \item Diversity boosting for low-complexity libraries (increase to 20--50\% for amplicons on two-channel systems).
+\end{itemize}
+\end{tipbox}
+
+
+\section{The Future of Short-Read Sequencing}
+\label{sec:shortread_future}
+
+Several trends are shaping the near-term future of short-read sequencing:
+
+\begin{itemize}
+  \item \textbf{Continued cost reduction.} The \$100 genome is now achievable in research settings, and further cost decreases will enable routine clinical \gls{WGS} at population scale.
+
+  \item \textbf{Integration of on-instrument analysis.} Illumina's DRAGEN technology and equivalents from other vendors are moving secondary analysis (alignment, variant calling) directly onto the instrument, reducing turnaround time and bioinformatics infrastructure requirements.
+
+  \item \textbf{Increased competition.} The entry of Element, Ultima, and strengthening of MGI provides laboratories with genuine alternatives, driving innovation and price competition.
+
+  \item \textbf{Longer short reads.} Platforms are pushing toward longer reads ($2 \times 300$\basepair\ and beyond) to improve \textit{de novo} assembly and amplicon analysis while retaining the high accuracy of short-read chemistry.
+
+  \item \textbf{Clinical adoption.} Regulatory clearance for sequencing platforms and companion diagnostic assays will continue to expand, making short-read sequencing increasingly mainstream in clinical care.
+\end{itemize}
+
+\section{Summary}
+
+Short-read sequencing platforms provide the throughput, accuracy, and cost-effectiveness needed for the vast majority of genomics applications. Illumina remains the dominant player, but MGI, Element Biosciences, and Ultima Genomics offer compelling alternatives with distinct technical approaches. When selecting a platform, consider your throughput needs, read length requirements, budget, and bioinformatics compatibility. The field continues to evolve rapidly, with competition driving costs down and capabilities up.

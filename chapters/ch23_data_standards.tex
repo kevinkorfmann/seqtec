@@ -1,0 +1,898 @@
+\chapter{Data Standards, Sharing, and Reproducibility}
+\label{ch:datastandards}
+
+\begin{keyconcept}
+Genomics data has maximal value when it is shared openly, described with rich metadata, stored in standardised formats, and produced by reproducible methods. Data sharing is not merely a journal requirement---it is a fundamental pillar of the scientific process that enables reuse, meta-analysis, validation, and discovery far beyond the original study. This chapter describes the repositories, standards, and best practices for making NGS data findable, accessible, interoperable, and reusable.
+\end{keyconcept}
+
+\section{Why Data Sharing and Standards Matter}
+\label{sec:datastandards:why}
+
+The genomics community generates petabytes of data annually. Without standards and public repositories, this data would be siloed in individual laboratories, inaccessible for reuse, and lost when hard drives fail or students graduate. The benefits of data sharing are substantial:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Reproducibility:} Independent researchers can verify published results using the original data.
+  \item \textbf{Discovery:} Public datasets enable new analyses that the original authors did not envision. Many high-impact papers are entirely based on re-analysis of public data.
+  \item \textbf{Meta-analysis:} Combining data across studies increases statistical power and reveals patterns invisible in individual datasets.
+  \item \textbf{Training resources:} Public data provides invaluable training material for bioinformatics education.
+  \item \textbf{Cost savings:} Reusing existing data avoids redundant sequencing of the same biological materials.
+  \item \textbf{Equity:} Open data enables researchers in resource-limited settings to participate in cutting-edge genomics research.
+\end{itemize}
+
+Most funding agencies (NIH, ERC, Wellcome Trust, BBSRC, DFG) and journals (Nature, Science, Cell, PNAS, Genome Biology, etc.) now mandate data deposition in public repositories as a condition of funding or publication.
+
+%=============================================================================
+\section{Public Repositories for Raw Sequencing Data}
+\label{sec:datastandards:raw}
+%=============================================================================
+
+\subsection{The International Nucleotide Sequence Database Collaboration (INSDC)}
+
+The three primary archives for raw sequencing data are part of the INSDC, which synchronizes data globally:
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=4pt]
+  \item[NCBI SRA (Sequence Read Archive)]
+  The largest raw sequencing data archive, hosted by the US National Center for Biotechnology Information. SRA stores raw reads in a compressed format and provides programmatic access via the SRA Toolkit. As of 2026, SRA contains over 80 petabases of data from millions of experiments.
+
+  \item[ENA (European Nucleotide Archive)]
+  The European counterpart to SRA, hosted by EMBL-EBI. ENA stores the same data (mirrored from SRA) and provides a more flexible submission interface. ENA additionally stores assembled sequences and functional annotations.
+
+  \item[DDBJ (DNA Data Bank of Japan)]
+  Japan's nucleotide archive, operated by the National Institute of Genetics. Also mirrors INSDC data.
+\end{description}
+
+Data submitted to any one of these archives is automatically shared with the other two within 24--48 hours. You only need to submit once.
+
+\subsection{How to Submit Data to SRA/ENA}
+
+Data submission requires three levels of metadata organized in a hierarchical structure:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{BioProject:} A top-level umbrella describing the overall research project. Contains a title, description, and organism. Each publication typically corresponds to one BioProject.
+  \item \textbf{BioSample:} Describes each biological sample (organism, tissue type, genotype, treatment, collection date). One BioSample per biological unit (e.g., per patient, per cell line).
+  \item \textbf{Experiment / Run:} Links a BioSample to a library preparation strategy and sequencing run. Contains library metadata (insert size, read length, platform, instrument model) and the actual FASTQ files.
+\end{enumerate}
+
+\begin{lstlisting}[language=bash,caption={Submitting data to SRA using the SRA Toolkit.},label=lst:sra-submit]
+# Register BioProject and BioSamples via NCBI Submission Portal
+# https://submit.ncbi.nlm.nih.gov/
+
+# Upload FASTQ files using the SRA submission tool or Aspera
+# Using Aspera (much faster than FTP for large files)
+ascp -i ~/.aspera/connect/etc/asperaweb_id_dsa.openssh \
+  -QT -l 1000m -k 1 \
+  sample1_R1.fastq.gz sample1_R2.fastq.gz \
+  subasp@upload.ncbi.nlm.nih.gov:uploads/your_key_folder/
+
+# Alternative: submit via ENA using their Webin-CLI tool
+java -jar webin-cli.jar -context reads \
+  -manifest manifest.txt \
+  -userName Webin-XXXXX -password XXXXX \
+  -submit
+\end{lstlisting}
+
+\subsection{How to Download Data from SRA/ENA}
+
+\begin{lstlisting}[language=bash,caption={Downloading data from SRA.},label=lst:sra-download]
+# Using fasterq-dump (faster successor to fastq-dump)
+fasterq-dump --split-files --threads 8 SRR12345678
+# Produces: SRR12345678_1.fastq and SRR12345678_2.fastq
+gzip SRR12345678_*.fastq
+
+# Download multiple accessions with a loop
+while read acc; do
+  fasterq-dump --split-files --threads 8 "$acc"
+  gzip "${acc}"_*.fastq
+done < accession_list.txt
+
+# Alternative: download directly from ENA (already in FASTQ format)
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR123/078/SRR12345678/SRR12345678_1.fastq.gz
+
+# Programmatic access with pysradb (Python)
+pip install pysradb
+pysradb metadata --detailed SRP123456
+pysradb download -t 8 SRP123456
+\end{lstlisting}
+
+\begin{tipbox}[title={ENA vs SRA for Downloads}]
+Downloading from ENA is often faster and more convenient than from SRA, because ENA provides files directly in FASTQ format (no conversion needed), while SRA stores data in its own SRA format requiring conversion with \texttt{fasterq-dump}. ENA also provides direct FTP and Aspera download links.
+\end{tipbox}
+
+\subsection{Snakemake Workflow for SRA Data Download}
+
+\begin{lstlisting}[language=Python,caption={Snakemake workflow for downloading SRA data.},label=lst:smk-sra]
+# Snakefile -- Download data from SRA
+configfile: "config.yaml"
+
+ACCESSIONS = config["sra_accessions"]
+
+rule all:
+    input:
+        expand("data/{acc}_1.fastq.gz", acc=ACCESSIONS),
+        expand("data/{acc}_2.fastq.gz", acc=ACCESSIONS)
+
+rule download_sra:
+    output:
+        r1="data/{acc}_1.fastq.gz",
+        r2="data/{acc}_2.fastq.gz"
+    threads: 8
+    conda: "envs/sra.yaml"
+    shell:
+        """
+        fasterq-dump --split-files --threads {threads} \
+          --outdir data/ {wildcards.acc}
+        gzip data/{wildcards.acc}_1.fastq
+        gzip data/{wildcards.acc}_2.fastq
+        """
+\end{lstlisting}
+
+\subsection{Nextflow Workflow for SRA Data Download}
+
+\begin{lstlisting}[language=Java,caption={Nextflow process for downloading SRA data.},label=lst:nf-sra]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+params.accessions = "accession_list.txt"
+params.outdir     = "data"
+
+process DOWNLOAD_SRA {
+    tag "${accession}"
+    publishDir "${params.outdir}", mode: 'copy'
+    cpus 8
+
+    input:  val(accession)
+    output: tuple val(accession), path("*.fastq.gz"), emit: fastq
+
+    script:
+    """
+    fasterq-dump --split-files --threads ${task.cpus} ${accession}
+    gzip *.fastq
+    """
+}
+
+workflow {
+    accessions_ch = Channel
+        .fromPath(params.accessions)
+        .splitText()
+        .map { it.trim() }
+
+    DOWNLOAD_SRA(accessions_ch)
+}
+\end{lstlisting}
+
+%=============================================================================
+\section{Processed Data Repositories}
+\label{sec:datastandards:processed}
+%=============================================================================
+
+Beyond raw sequencing data, processed results (gene expression matrices, called peaks, variant lists) are deposited in specialized repositories:
+
+\subsection{Gene Expression Omnibus (GEO)}
+
+NCBI GEO is the most widely used repository for processed functional genomics data. A GEO submission typically includes:
+\begin{itemize}[nosep]
+  \item Processed data files (count matrices, normalized expression values, peak files)
+  \item Sample metadata (conditions, treatments, organism, tissue)
+  \item A link to the corresponding SRA submission for raw data
+\end{itemize}
+
+GEO assigns \textbf{GSE} accessions (for series/datasets) and \textbf{GSM} accessions (for individual samples). Researchers can browse and download GEO data via the web interface or programmatically using the \texttt{GEOquery} R package.
+
+\subsection{ArrayExpress / BioStudies}
+
+EMBL-EBI's equivalent to GEO, now transitioning to the BioStudies platform. ArrayExpress/BioStudies stores processed data with rich metadata in the MAGE-TAB format. Data is cross-referenced with ENA for raw reads.
+
+\subsection{Consortium Data Portals}
+
+Several large-scale consortia maintain their own data portals with curated, consistently processed datasets:
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[ENCODE (Encyclopedia of DNA Elements)]
+  Gold-standard ChIP-seq, ATAC-seq, RNA-seq, and Hi-C datasets with uniform processing pipelines. The ENCODE portal (\texttt{encodeproject.org}) provides downloadable processed files (BigWig, BED, BAM) and comprehensive quality metrics. ENCODE data quality standards serve as benchmarks for the field.
+
+  \item[Roadmap Epigenomics]
+  Comprehensive epigenomic maps (histone modifications, DNA methylation, chromatin accessibility) across 111 human tissues and cell types. Data available from the Roadmap Epigenomics portal.
+
+  \item[GTEx (Genotype-Tissue Expression)]
+  Gene expression data across 54 human tissues from nearly 1,000 post-mortem donors. GTEx is the primary resource for understanding tissue-specific gene expression and expression quantitative trait loci (eQTLs).
+
+  \item[TCGA / GDC (The Cancer Genome Atlas / Genomic Data Commons)]
+  Multi-omics data (WGS, WES, RNA-seq, methylation, miRNA, proteomics) for over 11,000 tumors across 33 cancer types. Accessible through the NCI Genomic Data Commons portal. Some data requires dbGaP access approval due to patient privacy.
+
+  \item[Human Cell Atlas (HCA)]
+  A global effort to create reference single-cell maps of every cell type in the human body. Data available through the HCA Data Portal.
+
+  \item[CellxGene]
+  A platform maintained by the Chan Zuckerberg Initiative for exploring and downloading curated single-cell datasets. Provides interactive visualization and standardized AnnData (h5ad) downloads.
+
+  \item[UCSC Genome Browser and Table Browser]
+  Comprehensive genome annotations, conservation tracks, regulatory elements, and variation data. The Table Browser allows bulk download of genomic tracks in BED, BigWig, and other formats.
+
+  \item[Ensembl and BioMart]
+  Genome annotations, gene models, orthology information, and variation data for hundreds of species. BioMart provides a powerful query interface for programmatic data retrieval.
+\end{description}
+
+%=============================================================================
+\section{Reference Genomes and Annotations}
+\label{sec:datastandards:references}
+%=============================================================================
+
+Consistent use of reference genomes and gene annotations is essential for reproducibility and cross-study comparability.
+
+\subsection{Where to Download References}
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[GENCODE]
+  The gold standard for human and mouse gene annotations. Provides comprehensive annotations including protein-coding genes, lncRNAs, pseudogenes, and other non-coding elements. Available from \texttt{gencodegenes.org}. Current release: GENCODE v46 (human) based on GRCh38.
+
+  \item[Ensembl]
+  Annotations for hundreds of species. Ensembl annotations for human are closely related to GENCODE but follow a different release numbering. Available from \texttt{ensembl.org}.
+
+  \item[RefSeq (NCBI)]
+  NCBI's curated reference sequence database. RefSeq annotations tend to be more conservative (fewer predicted transcripts) than GENCODE. Used in clinical settings where annotation confidence is prioritized.
+
+  \item[UCSC Genome Browser]
+  Downloads for genome sequences, annotations, and tracks at \texttt{hgdownload.soe.ucsc.edu}.
+\end{description}
+
+\subsection{GENCODE vs RefSeq}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of GENCODE and RefSeq annotations.}
+\label{tab:gencode-vs-refseq}
+\small
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+\textbf{Feature} & \textbf{GENCODE} & \textbf{RefSeq} \\
+\midrule
+Provider & EMBL-EBI / Wellcome Sanger & NCBI \\
+Approach & Comprehensive (manual + automated) & Curated (conservative) \\
+Transcript count & Higher (more predicted isoforms) & Lower (more stringent evidence) \\
+Identifier format & ENSG/ENST (Ensembl IDs) & NM\_, NR\_, XM\_ (RefSeq IDs) \\
+Non-coding genes & Extensive annotation & More conservative \\
+Clinical use & Research standard & Often preferred in clinical settings \\
+Update frequency & Biannual releases & Continuous updates \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{warningbox}[title={Mixing References Is Dangerous}]
+Never mix genome builds or annotation versions within a single analysis. Using a GRCh37 VCF with a GRCh38 annotation file, or a GENCODE GTF with RefSeq gene names, can produce incorrect or uninterpretable results. Document the exact genome build, annotation source, and release version in every analysis.
+\end{warningbox}
+
+\subsection{Genome Builds and LiftOver}
+
+When comparing results across studies that used different genome builds (e.g., GRCh37/hg19 vs GRCh38/hg38), coordinate conversion is necessary:
+
+\begin{lstlisting}[language=bash,caption={Converting coordinates between genome builds with liftOver.},label=lst:liftover]
+# Download the chain file for hg19 -> hg38 conversion
+wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/hg19ToHg38.over.chain.gz
+
+# Convert BED coordinates from hg19 to hg38
+liftOver input_hg19.bed hg19ToHg38.over.chain.gz \
+  output_hg38.bed unmapped.bed
+
+# In R, use rtracklayer
+library(rtracklayer)
+chain <- import.chain("hg19ToHg38.over.chain")
+gr_hg38 <- liftOver(gr_hg19, chain)
+\end{lstlisting}
+
+%=============================================================================
+\section{Metadata Standards}
+\label{sec:datastandards:metadata}
+%=============================================================================
+
+Metadata---data about data---is what makes raw sequencing files interpretable. Without knowing the organism, tissue type, experimental condition, library preparation method, and sequencing parameters, a FASTQ file is just a meaningless stream of letters.
+
+\subsection{Key Metadata Standards}
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[MINSEQE (Minimum Information about a high-throughput Nucleotide Sequencing Experiment)]
+  The community standard for NGS metadata, analogous to MIAME for microarrays. MINSEQE specifies the minimum information needed to interpret and reproduce a sequencing experiment: (1) raw data, (2) processed data, (3) experiment design including sample descriptions, (4) experimental protocols, and (5) data processing protocols.
+
+  \item[MIAME (Minimum Information About a Microarray Experiment)]
+  The historical predecessor to MINSEQE, established for microarray experiments. Many of its principles apply to sequencing experiments.
+
+  \item[Dublin Core]
+  A general-purpose metadata standard (title, creator, date, description, identifier) used for cataloguing research outputs. Forms the basis for many repository metadata schemas.
+\end{description}
+
+\subsection{Ontologies for Standardized Terminology}
+
+Free-text metadata fields (e.g., ``brain tissue,'' ``brain,'' ``cerebral cortex'') create inconsistencies that hinder data integration. Ontologies provide controlled vocabularies:
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[EFO (Experimental Factor Ontology)]
+  Standardized terms for experimental variables: diseases, cell types, anatomical locations, organisms, and assay types. Used by GEO, ArrayExpress, and GWAS Catalog.
+
+  \item[OBI (Ontology for Biomedical Investigations)]
+  Terms for experimental protocols, instruments, and data transformation processes.
+
+  \item[CL (Cell Ontology)]
+  Standardized cell type names. Essential for single-cell studies where consistent cell type labelling is critical for cross-study comparisons.
+
+  \item[UBERON]
+  Cross-species anatomical ontology. Enables comparison of tissues across organisms (e.g., human ``liver'' maps to mouse ``liver'').
+\end{description}
+
+%=============================================================================
+\section{FAIR Principles}
+\label{sec:datastandards:fair}
+%=============================================================================
+
+The \textbf{FAIR principles} provide a framework for making data maximally useful:
+
+\begin{keyconcept}[title={FAIR Data Principles}]
+\begin{description}[font=\bfseries, itemsep=3pt]
+  \item[Findable] Data should have globally unique, persistent identifiers (DOIs, accession numbers). Rich metadata should be registered in searchable resources.
+  \item[Accessible] Data should be retrievable using standardised, open protocols. Even if data access requires authentication (e.g., for patient data), the metadata should always be accessible.
+  \item[Interoperable] Data should use standardised formats (FASTQ, BAM, VCF) and controlled vocabularies (ontologies). This enables integration across datasets and tools.
+  \item[Reusable] Data should include clear provenance information, usage licenses, and detailed metadata following community standards. This enables meaningful reuse for new purposes.
+\end{description}
+\end{keyconcept}
+
+For NGS data, FAIR compliance means:
+\begin{itemize}[itemsep=2pt]
+  \item Submitting raw data to SRA/ENA with complete BioProject/BioSample metadata.
+  \item Using standard file formats (FASTQ, BAM, VCF, BED, BigWig) rather than custom formats.
+  \item Providing processing code in public repositories (GitHub/GitLab) with DOIs (Zenodo).
+  \item Using ontology terms rather than free text for sample descriptions.
+  \item Publishing under open-access licenses when possible.
+\end{itemize}
+
+%=============================================================================
+\section{Reproducibility in Bioinformatics}
+\label{sec:datastandards:reproducibility}
+%=============================================================================
+
+Computational reproducibility---the ability to regenerate the same results from the same input data---remains a significant challenge in bioinformatics. Studies have shown that a large fraction of published bioinformatics analyses cannot be reproduced, even by the original authors, due to undocumented software versions, missing code, or unavailable data.
+
+\subsection{Pillars of Computational Reproducibility}
+
+\begin{enumerate}[itemsep=3pt]
+  \item \textbf{Version pinning for software:} Record the exact version of every tool used. A Conda environment file (\texttt{environment.yml}) or container image digest provides this.
+
+  \item \textbf{Version pinning for reference data:} Record the exact genome build (e.g., GRCh38 patch 14), annotation version (e.g., GENCODE v44), and database versions (e.g., dbSNP b156, gnomAD v4.0).
+
+  \item \textbf{Containers (Docker, Singularity):} Package the complete software environment---operating system, libraries, and tools---into a portable, immutable image. The same container produces identical results regardless of the host system.
+
+  \item \textbf{Workflow managers (Snakemake, Nextflow):} Encode the complete analysis pipeline as executable code. The workflow file serves as a precise, machine-readable protocol.
+
+  \item \textbf{Literate programming:} Combine narrative, code, and results in a single document using R Markdown, Quarto, or Jupyter notebooks. This ensures that figures and tables in a manuscript can be traced directly to the code that generated them.
+
+  \item \textbf{Code repositories:} Host all analysis code on GitHub or GitLab. Tag specific commits corresponding to publication versions.
+
+  \item \textbf{Zenodo:} Archive code repositories on Zenodo to obtain a DOI. GitHub repositories can change or be deleted; Zenodo provides permanent archival with a citable DOI.
+\end{enumerate}
+
+\subsection{Example Reproducible Project Structure}
+
+\begin{lstlisting}[caption={Recommended directory structure for a reproducible bioinformatics project.},label=lst:project-structure]
+my_ngs_project/
+|-- README.md                  # Project description and instructions
+|-- LICENSE                    # Open-source license (e.g., MIT, GPL)
+|-- Snakefile                  # Main Snakemake workflow (or main.nf)
+|-- nextflow.config            # Nextflow configuration (if using NF)
+|-- config.yaml                # Project-specific parameters
+|-- envs/                      # Conda environment files
+|   |-- align.yaml
+|   |-- count.yaml
+|   |-- deseq2.yaml
+|-- containers/                # Dockerfiles (if not using Biocontainers)
+|   |-- Dockerfile
+|-- scripts/                   # Custom analysis scripts
+|   |-- run_deseq2.R
+|   |-- plot_figures.R
+|   |-- run_scanpy.py
+|-- notebooks/                 # Exploratory analyses
+|   |-- exploration.Rmd
+|   |-- qc_report.ipynb
+|-- data/                      # Raw data (NOT committed to Git)
+|   |-- README.md              # How to obtain the data
+|-- ref/                       # Reference files (NOT committed to Git)
+|   |-- README.md              # Download URLs and versions
+|-- results/                   # Pipeline outputs (NOT committed to Git)
+|-- .gitignore                 # Exclude data/, results/, ref/
+\end{lstlisting}
+
+\subsection{Snakemake Example for Reproducible Analysis}
+
+\begin{lstlisting}[language=Python,caption={Snakemake workflow for a reproducible project with containers.},label=lst:smk-repro]
+# Snakefile -- Reproducible analysis with containers
+configfile: "config.yaml"
+
+# Use Singularity containers for every rule
+singularity: "docker://continuumio/miniconda3:latest"
+
+rule all:
+    input:
+        "results/final_report.html"
+
+rule align:
+    input:
+        r1="data/{sample}_R1.fastq.gz",
+        r2="data/{sample}_R2.fastq.gz"
+    output:
+        "results/aligned/{sample}.bam"
+    threads: 16
+    container:
+        "docker://biocontainers/bwa:v0.7.17_cv1"
+    shell:
+        """
+        bwa mem -t {threads} {config[reference]} \
+          {input.r1} {input.r2} \
+          | samtools sort -o {output} -
+        """
+
+rule report:
+    input:
+        expand("results/aligned/{s}.bam", s=config["samples"])
+    output:
+        "results/final_report.html"
+    container:
+        "docker://rocker/tidyverse:4.3.2"
+    script:
+        "scripts/generate_report.Rmd"
+\end{lstlisting}
+
+\subsection{Nextflow Example for Reproducible Analysis}
+
+\begin{lstlisting}[language=Java,caption={Nextflow workflow with container-based reproducibility.},label=lst:nf-repro]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+params.reads  = "data/*_{R1,R2}.fastq.gz"
+params.ref    = "ref/GRCh38.fa"
+params.outdir = "results"
+
+process ALIGN {
+    container 'biocontainers/bwa:v0.7.17_cv1'
+    cpus 16
+    publishDir "${params.outdir}/aligned", mode: 'copy'
+
+    input:
+        tuple val(sample_id), path(reads)
+        path(ref)
+
+    output:
+        tuple val(sample_id), path("*.sorted.bam"), emit: bam
+
+    script:
+    def (r1, r2) = reads
+    """
+    bwa mem -t ${task.cpus} ${ref} ${r1} ${r2} \
+      | samtools sort -o ${sample_id}.sorted.bam -
+    """
+}
+
+process REPORT {
+    container 'rocker/tidyverse:4.3.2'
+    publishDir "${params.outdir}", mode: 'copy'
+
+    input:  path(bams)
+    output: path("final_report.html")
+
+    script:
+    """
+    Rscript -e "rmarkdown::render('${projectDir}/scripts/report.Rmd', \
+      output_dir = '.')"
+    """
+}
+
+workflow {
+    reads_ch = Channel.fromFilePairs(params.reads, checkIfExists: true)
+    ref_ch   = Channel.value(file(params.ref))
+
+    ALIGN(reads_ch, ref_ch)
+    REPORT(ALIGN.out.bam.map { it[1] }.collect())
+}
+\end{lstlisting}
+
+%=============================================================================
+\section{Data Management Plans}
+\label{sec:datastandards:dmp}
+%=============================================================================
+
+Most funding agencies require a Data Management Plan (DMP) as part of grant applications. A DMP describes how data will be generated, managed, shared, and preserved.
+
+\subsection{What Funding Agencies Require}
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[NIH (USA)]
+  Since January 2023, the NIH Data Management and Sharing Policy requires all funded research to submit a DMP describing: (1) data types generated, (2) data standards and metadata, (3) preservation and access plans, (4) timeline for sharing, and (5) oversight. Genomic data must be shared through approved repositories (SRA, GEO, dbGaP for controlled-access data).
+
+  \item[ERC (European Research Council)]
+  Requires compliance with the EU Open Science policy. Research data should be ``as open as possible, as closed as necessary.'' Open access to publications and FAIR data sharing are expected.
+
+  \item[Wellcome Trust (UK)]
+  Expects all research outputs, including data and code, to be shared openly. Requires a DMP and supports data deposition costs.
+\end{description}
+
+\subsection{Storage Considerations}
+
+\begin{table}[htbp]
+\centering
+\caption{Typical data volumes and storage requirements for NGS projects.}
+\label{tab:storage}
+\small
+\begin{tabularx}{\textwidth}{@{}l l l X@{}}
+\toprule
+\textbf{Data Type} & \textbf{Size per Sample} & \textbf{Compression} & \textbf{Storage Notes} \\
+\midrule
+FASTQ (30$\times$ WGS) & 60--90 Gb & gzip: 3--4$\times$ & Archive in SRA; delete local copies after verification \\
+BAM (30$\times$ WGS) & 50--80 Gb & CRAM: 30--60\% smaller & Regenerable from FASTQ; archive or delete \\
+VCF & 0.1--1 Gb & bgzip + tabix & Small; retain permanently \\
+RNA-seq FASTQ & 3--8 Gb & gzip & Archive in SRA \\
+scRNA-seq (h5ad) & 0.5--5 Gb & zlib compressed & Retain processed object \\
+BigWig tracks & 0.1--1 Gb & Pre-compressed & Retain for visualization \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Data Retention Strategy}]
+Not all data needs to be kept permanently. Raw FASTQ files should be archived in SRA/ENA (free, permanent storage). Intermediate files (unsorted BAMs, temporary files) can be deleted after the pipeline completes. Final processed results (VCFs, count matrices, peak files) should be retained locally and deposited in GEO or equivalent. BAM files can often be regenerated from FASTQ, so consider deleting them after analysis if storage is limited.
+\end{tipbox}
+
+\subsection{Data Security and Patient Consent}
+
+Genomic data from human subjects requires careful attention to privacy and consent:
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[HIPAA (USA)]
+  The Health Insurance Portability and Accountability Act governs the use and disclosure of protected health information. Genomic data linked to patient identifiers is subject to HIPAA. De-identification is required for open sharing; controlled-access repositories (dbGaP) are used for data that cannot be fully de-identified.
+
+  \item[GDPR (EU)]
+  The General Data Protection Regulation classifies genetic data as ``special category'' personal data, subject to strict processing requirements. Explicit consent, data minimization, and purpose limitation principles apply. Cross-border data transfer requires specific legal mechanisms.
+
+  \item[Controlled-access repositories]
+  Human genomic data that poses re-identification risk is deposited in controlled-access repositories (dbGaP in the US, EGA in Europe). Researchers must apply for access, agree to data use conditions, and have their institution sign a data access agreement.
+\end{description}
+
+\begin{warningbox}[title={Genomic Data Is Inherently Identifiable}]
+Even ``de-identified'' genomic data can potentially be re-identified by matching variant patterns to public genealogy databases or other genomic datasets. A study demonstrated that individuals could be re-identified from as few as 75 independent SNPs. Always follow your institution's IRB guidelines and obtain appropriate consent for data sharing.
+\end{warningbox}
+
+\subsection{HIPAA vs GDPR Detailed Comparison}
+\label{subsec:datastandards:hipaa-gdpr}
+
+Researchers working with human genomic data must navigate different regulatory frameworks depending on the jurisdiction. \Cref{tab:hipaa-gdpr} compares the two most important frameworks.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of HIPAA (USA) and GDPR (EU) for genomic data.}
+\label{tab:hipaa-gdpr}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+\textbf{Aspect} & \textbf{HIPAA (USA)} & \textbf{GDPR (EU)} \\
+\midrule
+Scope & Applies to ``covered entities'' (healthcare providers, insurers) and their business associates & Applies to all organisations processing personal data of EU residents, regardless of location \\
+\addlinespace
+Genomic data classification & Protected Health Information (PHI) when linked to identifiers; not explicitly classified as a special category & Explicitly classified as ``genetic data'' under Article 9 (special category), requiring additional safeguards \\
+\addlinespace
+Consent requirements & Authorization required for use/disclosure; research exemption via IRB-approved waiver possible & Explicit consent required for processing genetic data; broad consent for future research possible under certain conditions \\
+\addlinespace
+De-identification & Safe Harbor (remove 18 identifiers) or Expert Determination method; de-identified data is no longer PHI & Pseudonymisation reduces risk but data remains ``personal data'' under GDPR; full anonymisation (irreversible) removes GDPR obligations \\
+\addlinespace
+Breach notification & Within 60 days to HHS and affected individuals; without unreasonable delay & Within 72 hours to supervisory authority; without undue delay to affected individuals if high risk \\
+\addlinespace
+Cross-border data transfer & No specific restrictions within the US; international transfers follow institutional policy & Transfers outside EU/EEA require adequacy decision, Standard Contractual Clauses (SCCs), or Binding Corporate Rules \\
+\addlinespace
+Penalties & Up to \$1.9 million per violation category per year; criminal penalties possible & Up to 4\% of global annual turnover or \texteuro 20 million, whichever is higher \\
+\addlinespace
+Right to deletion & No general right to deletion of PHI; retention required for specified periods & ``Right to be forgotten'' (Article 17); individuals can request deletion of their genetic data \\
+\addlinespace
+Research exemption & Common Rule (45 CFR 46) provides exemptions for de-identified data and IRB-waived consent & Research exemption available under Article 89, subject to appropriate safeguards \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Practical Implications for Genomics Researchers}]
+If your study involves collaborators or participants across US and EU jurisdictions, you must comply with \textit{both} HIPAA and GDPR. In practice, this means: (1) obtain explicit consent that satisfies GDPR requirements (which are stricter), (2) use controlled-access repositories (dbGaP, EGA) for data sharing, (3) implement data processing agreements for cross-border transfers, and (4) consult your institutional privacy officer before beginning the study.
+\end{tipbox}
+
+\subsection{Controlled Access Repositories and Federated Analysis}
+\label{subsec:datastandards:controlledaccess}
+
+Human genomic data that cannot be fully de-identified is deposited in controlled-access repositories. Access requires a formal application, institutional approval, and a signed data access agreement.
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[dbGaP (Database of Genotypes and Phenotypes, USA)]
+  Operated by NCBI. Hosts individual-level genotype and phenotype data from NIH-funded studies (GWAS, WGS, WES, RNA-seq). Access is granted by the relevant Data Access Committee (DAC) after institutional sign-off. Typical approval time: 2--6 weeks. Cloud access is available through the NHGRI AnVIL platform and the NCI Cancer Research Data Commons.
+
+  \item[EGA (European Genome-phenome Archive)]
+  Operated by EMBL-EBI and the Centre for Genomic Regulation (CRG). The European counterpart to dbGaP. Hosts individual-level data from European and international studies. Access is controlled by study-specific DACs appointed by the data generators.
+
+  \item[DDBJ-JGA (Japanese Genotype-phenome Archive)]
+  Operated by DDBJ/NIG in Japan. Hosts controlled-access data from Japanese research projects. Functions similarly to dbGaP and EGA.
+\end{description}
+
+\begin{keyconcept}[title={Federated Analysis: Data Stays, Compute Moves}]
+Traditional data sharing requires downloading data to local infrastructure, creating security risks and bandwidth bottlenecks. \textbf{Federated analysis} inverts this model: instead of moving data to the researcher, the researcher's analysis code moves to the data.
+
+The \textbf{GA4GH} (Global Alliance for Genomics and Health) is developing standards that enable federated analysis:
+\begin{description}[nosep, font=\bfseries]
+  \item[Beacon API] Allows querying whether a specific variant exists in a dataset without revealing individual-level data. Beacon v2 supports richer queries (phenotypes, cohort-level statistics).
+  \item[Passports] A standard for researcher identity and access credentials that enables single sign-on across federated data nodes.
+  \item[DRS (Data Repository Service)] A standardised API for locating and accessing data objects across distributed repositories.
+  \item[TES/WES (Task/Workflow Execution Service)] Standards for submitting analysis workflows to remote compute platforms where the data resides.
+\end{description}
+\end{keyconcept}
+
+\subsection{Cross-Repository Data Discovery}
+\label{subsec:datastandards:crossrepo}
+
+Public genomic data is distributed across multiple repositories (GEO, SRA, ENA, DDBJ, ArrayExpress). Finding relevant datasets requires searching across these sources.
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[NCBI Entrez (unified search)]
+  The NCBI Entrez system provides a single search interface across all NCBI databases (SRA, GEO, BioProject, BioSample, PubMed). Use the \texttt{esearch} and \texttt{efetch} command-line tools from Entrez Direct, or the \texttt{rentrez} R package for programmatic access.
+
+  \item[BioProject/BioSample hierarchy]
+  Every INSDC submission is organised into a BioProject (study-level) and BioSample (sample-level) hierarchy. Searching by BioProject accession retrieves all associated runs, samples, and metadata. This hierarchy connects raw data (SRA), processed data (GEO), and publications (PubMed).
+
+  \item[EBI Search]
+  EMBL-EBI provides a similar unified search across ENA, ArrayExpress/BioStudies, UniProt, and other EBI resources.
+
+  \item[SRA Run Selector]
+  The NCBI SRA Run Selector allows filtering and downloading metadata for all runs associated with a BioProject, enabling programmatic selection of specific samples.
+\end{description}
+
+\begin{lstlisting}[language=bash,caption={Searching across repositories with NCBI Entrez Direct.},label=lst:entrez-search]
+# Install Entrez Direct
+sh -c "$(curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)"
+
+# Search SRA for human ATAC-seq datasets from 2024-2025
+esearch -db sra -query "ATAC-seq[Strategy] AND Homo sapiens[Organism] \
+  AND 2024:2025[Publication Date]" | \
+  efetch -format runinfo | head -20
+
+# Find all SRA runs for a specific BioProject
+esearch -db sra -query "PRJNA123456[BioProject]" | \
+  efetch -format runinfo > runinfo.csv
+
+# Search GEO for scRNA-seq datasets in a specific tissue
+esearch -db gds -query "scRNA-seq AND brain AND Homo sapiens" | \
+  efetch -format summary | head -50
+\end{lstlisting}
+
+\begin{lstlisting}[language=R,caption={Programmatic GEO search with the GEOquery R package.},label=lst:geo-search]
+library(GEOquery)
+
+# Download a GEO dataset and explore metadata
+gse <- getGEO("GSE123456", GSEMatrix = TRUE)
+metadata <- pData(gse[[1]])
+head(metadata[, c("title", "geo_accession", "source_name_ch1")])
+
+# Search GEO using rentrez
+library(rentrez)
+search_results <- entrez_search(
+  db = "gds",
+  term = "scRNA-seq[Title] AND Homo sapiens[Organism] AND 2024[PDAT]",
+  retmax = 50
+)
+cat("Found", search_results$count, "datasets\n")
+\end{lstlisting}
+
+\subsection{Long-Term Storage Cost Modelling}
+\label{subsec:datastandards:storagecost}
+
+Genomic data volumes grow faster than storage costs decline, making storage cost modelling essential for long-term project planning.
+
+\begin{table}[htbp]
+\centering
+\caption{AWS S3 storage tiers and approximate costs (as of 2025). Costs vary by region.}
+\label{tab:s3-tiers}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l c c c X@{}}
+\toprule
+\textbf{Storage Tier} & \textbf{Cost/TB/month} & \textbf{Retrieval Cost} & \textbf{Retrieval Time} & \textbf{Best For} \\
+\midrule
+S3 Standard & \$23 & Free & Instant & Active analysis data \\
+\addlinespace
+S3 Infrequent Access (IA) & \$12.50 & \$0.01/GB & Instant & Intermediate files accessed occasionally \\
+\addlinespace
+S3 Glacier Instant & \$4 & \$0.03/GB & Instant & Processed results archive \\
+\addlinespace
+S3 Glacier Flexible & \$3.60 & \$0.03/GB & 3--5 hours & Raw data archive \\
+\addlinespace
+S3 Glacier Deep Archive & \$0.99 & \$0.02/GB & 12--48 hours & Long-term archival (FASTQ, old BAM) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{CRAM vs BAM compression:} CRAM files use reference-based compression, typically achieving 40--60\% of the corresponding BAM file size. For a 30$\times$ WGS sample, a BAM file of $\sim$70~GB becomes a CRAM file of $\sim$30--40~GB. Over many samples and years, this compression translates to substantial savings:
+
+\begin{equation}
+\label{eq:storage-cost}
+\text{Annual storage cost} = V \cdot r \cdot C_{\text{tier}} \cdot 12
+\end{equation}
+
+where $V$ is the data volume in TB, $r$ is the compression ratio (1.0 for BAM, $\sim$0.5 for CRAM, $\sim$0.3 for FASTQ.gz), and $C_{\text{tier}}$ is the monthly cost per TB for the chosen storage tier.
+
+\begin{lstlisting}[language=Python,caption={Storage cost projection for a sequencing facility.},label=lst:storage-cost]
+# Storage cost projection for 100 WGS samples per year
+samples_per_year = 100
+bam_size_tb = 0.07      # 70 GB per sample
+cram_size_tb = 0.035     # ~50% of BAM
+fastq_size_tb = 0.09     # 90 GB compressed FASTQ
+
+# Storage tier costs (USD per TB per month)
+tiers = {
+    "S3 Standard":       23.0,
+    "S3 IA":             12.5,
+    "Glacier Flexible":  3.6,
+    "Deep Archive":      0.99,
+}
+
+# Strategy: keep BAM in Standard for 3 months, then
+# convert to CRAM in IA; archive FASTQ in Deep Archive
+# (FASTQ already in SRA, so local copy is backup)
+annual_bam_active = samples_per_year * bam_size_tb * 23.0 * 3
+annual_cram_ia = samples_per_year * cram_size_tb * 12.5 * 9
+annual_fastq_archive = samples_per_year * fastq_size_tb * 0.99 * 12
+
+total = annual_bam_active + annual_cram_ia + annual_fastq_archive
+print(f"Annual storage cost: ${total:,.0f}")
+print(f"  Active BAM (3 months):    ${annual_bam_active:,.0f}")
+print(f"  CRAM in IA (9 months):    ${annual_cram_ia:,.0f}")
+print(f"  FASTQ Deep Archive (12m): ${annual_fastq_archive:,.0f}")
+\end{lstlisting}
+
+\begin{tipbox}[title={When to Store Raw vs Processed Data}]
+\begin{itemize}[nosep]
+  \item \textbf{Always archive raw FASTQ in SRA/ENA} (free, permanent, public or embargoed).
+  \item \textbf{Store CRAM instead of BAM} for long-term retention---convert with \texttt{samtools view -C -T ref.fa -o out.cram in.bam}.
+  \item \textbf{Delete intermediate files} (unsorted BAMs, temporary indices) after pipeline completion.
+  \item \textbf{Retain final results permanently} (VCF, count matrices, peak files, h5ad)---these are small and expensive to regenerate.
+  \item \textbf{Consider regenerability:} If a file can be regenerated from archived inputs in under 24 hours of compute, it may not be worth storing long-term.
+\end{itemize}
+\end{tipbox}
+
+%=============================================================================
+\section{Community Standards and Consortia}
+\label{sec:datastandards:standards}
+%=============================================================================
+
+Several international consortia have established quality standards and best practices that serve as benchmarks for the field:
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[ENCODE Consortium]
+  ENCODE has established detailed quality standards for ChIP-seq, ATAC-seq, RNA-seq, and other assays. Their standards specify minimum replicates, sequencing depth, quality metrics (e.g., IDR for ChIP-seq, TSS enrichment for ATAC-seq), and data processing pipelines. The ENCODE quality metrics are widely adopted by the community as benchmarks for new experiments.
+
+  \item[IHEC (International Human Epigenome Consortium)]
+  Coordinates the generation of reference epigenome maps across multiple countries. IHEC standards specify data quality requirements for histone ChIP-seq, DNA methylation, and chromatin accessibility assays.
+
+  \item[Human Cell Atlas (HCA)]
+  Establishing standards for single-cell data: recommended protocols, metadata standards, cell type annotation guidelines, and data formats.
+
+  \item[GA4GH (Global Alliance for Genomics and Health)]
+  Develops standards and frameworks for responsible genomic data sharing. Key outputs include:
+  \begin{itemize}[nosep]
+    \item \textbf{htsget:} Protocol for streaming BAM/CRAM/VCF data from remote servers.
+    \item \textbf{Beacon:} Protocol for querying the existence of specific variants across federated databases without transferring raw data.
+    \item \textbf{DRS (Data Repository Service):} Standardized API for accessing data objects across repositories.
+    \item \textbf{WES (Workflow Execution Service):} Standardized API for running workflows on remote compute platforms.
+    \item \textbf{Phenopackets:} Standardized format for clinical phenotype data linked to genomic findings.
+  \end{itemize}
+\end{description}
+
+%=============================================================================
+\section{The Data Lifecycle}
+\label{sec:datastandards:lifecycle}
+%=============================================================================
+
+\Cref{fig:data-lifecycle} illustrates the complete lifecycle of NGS data, from experimental planning through long-term archival and reuse.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  phase/.style={
+    draw=#1!70, fill=#1!10, rounded corners=4pt,
+    minimum width=3cm, minimum height=1.4cm,
+    font=\sffamily\small, align=center, thick
+  },
+  arr/.style={-{Stealth[length=2.5mm]}, thick, gray!60},
+  note/.style={font=\tiny\sffamily, text=gray!70, align=center, text width=2.8cm}
+]
+
+% Circular layout
+\def\R{4.0}
+\def\N{6}
+
+\node[phase=MidnightBlue] (plan) at (90:\R) {\textbf{Plan}\\Experimental\\design};
+\node[phase=OliveGreen]   (gen)  at (30:\R) {\textbf{Generate}\\Sample prep\\+ sequencing};
+\node[phase=Goldenrod]    (proc) at (-30:\R) {\textbf{Process}\\Bioinformatics\\analysis};
+\node[phase=BrickRed]     (ana)  at (-90:\R) {\textbf{Analyze}\\Statistics +\\interpretation};
+\node[phase=purple]       (share) at (-150:\R) {\textbf{Share}\\Publish +\\deposit data};
+\node[phase=teal]         (reuse) at (150:\R) {\textbf{Reuse}\\Meta-analysis\\+ discovery};
+
+% Arrows forming a cycle
+\draw[arr] (plan) -- (gen);
+\draw[arr] (gen) -- (proc);
+\draw[arr] (proc) -- (ana);
+\draw[arr] (ana) -- (share);
+\draw[arr] (share) -- (reuse);
+\draw[arr] (reuse) -- (plan);
+
+% Central label
+\node[font=\sffamily\bfseries, text=MidnightBlue, align=center] at (0,0) {Data\\Lifecycle};
+
+% Outer annotations
+\node[note] at (60:\R+1.5) {DMP, power analysis,\\replicates, depth};
+\node[note] at (0:\R+1.5) {QC, extract, library\\prep, sequence};
+\node[note] at (-60:\R+1.5) {Workflow manager,\\containers, Git};
+\node[note] at (-120:\R+1.5) {DESeq2, peak calling,\\variant annotation};
+\node[note] at (-180:\R+1.5) {SRA, GEO, GitHub,\\Zenodo, paper};
+\node[note] at (120:\R+1.5) {New hypotheses,\\methods development};
+
+\end{tikzpicture}
+\caption[The NGS data lifecycle.]{The data lifecycle for NGS projects. Data flows from planning through generation, processing, analysis, sharing, and reuse. The cycle is iterative: reuse of public data generates new hypotheses that drive new experiments. Each phase has associated standards, tools, and best practices described throughout this book.}
+\label{fig:data-lifecycle}
+\end{figure}
+
+%=============================================================================
+\section{Practical Data Submission Checklist}
+\label{sec:datastandards:checklist}
+%=============================================================================
+
+\begin{protocolbox}[title={Pre-Publication Data Submission Checklist}]
+Complete these steps before submitting your manuscript:
+\begin{enumerate}[itemsep=3pt]
+  \item \textbf{Raw data to SRA/ENA:}
+  \begin{itemize}[nosep]
+    \item Register a BioProject with a descriptive title and abstract.
+    \item Create BioSamples with complete metadata (organism, tissue, genotype, condition).
+    \item Upload FASTQ files and link to BioSamples.
+    \item Set a release date (can be set to future date for embargo until publication).
+  \end{itemize}
+
+  \item \textbf{Processed data to GEO:}
+  \begin{itemize}[nosep]
+    \item Prepare processed files (count matrices, peak BED files, BigWig tracks).
+    \item Create a GEO submission with sample-level metadata.
+    \item Link to SRA BioProject for raw data.
+  \end{itemize}
+
+  \item \textbf{Code to GitHub + Zenodo:}
+  \begin{itemize}[nosep]
+    \item Push all analysis code (Snakemake/Nextflow workflows, scripts) to GitHub.
+    \item Include a README with instructions for reproducing the analysis.
+    \item Create a Zenodo release to get a DOI for permanent archival.
+    \item Include Conda environment files or Dockerfiles.
+  \end{itemize}
+
+  \item \textbf{In the manuscript:}
+  \begin{itemize}[nosep]
+    \item Report all accession numbers (BioProject, GEO, SRA).
+    \item Report all software versions.
+    \item Report all key parameters.
+    \item Provide the GitHub/Zenodo DOI for analysis code.
+  \end{itemize}
+\end{enumerate}
+\end{protocolbox}
+
+%=============================================================================
+\section{Summary}
+\label{sec:datastandards:summary}
+%=============================================================================
+
+Responsible data management, sharing, and reproducibility practices are not optional extras---they are integral to high-quality genomics research:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Public repositories:} SRA/ENA for raw data, GEO/ArrayExpress for processed data. Data submitted to any INSDC member is automatically shared globally.
+  \item \textbf{Consortium portals:} ENCODE, GTEx, TCGA, HCA, and CellxGene provide curated, uniformly processed datasets that serve as community resources.
+  \item \textbf{Reference genomes:} Use consistent genome builds and annotations from GENCODE, Ensembl, or RefSeq. Document exact versions.
+  \item \textbf{Metadata standards:} MINSEQE defines minimum metadata requirements. Use controlled vocabularies (EFO, CL, OBI) rather than free text.
+  \item \textbf{FAIR principles:} Make data Findable (persistent identifiers), Accessible (standard protocols), Interoperable (standard formats), and Reusable (rich metadata and clear licenses).
+  \item \textbf{Reproducibility:} Pin software and reference versions, use containers and workflow managers, version-control code with Git, archive on Zenodo for DOIs, and combine code with narrative using literate programming.
+  \item \textbf{Data management plans:} Required by most funding agencies. Plan for data generation, storage, sharing, and long-term preservation from the start of the project.
+  \item \textbf{Data security:} Human genomic data requires careful attention to consent, de-identification, and controlled access. Follow HIPAA, GDPR, and institutional IRB requirements.
+  \item \textbf{Community standards:} ENCODE, IHEC, HCA, and GA4GH establish quality benchmarks and interoperability standards that benefit the entire field.
+\end{itemize}
+
+By following these standards and practices, you ensure that your sequencing data contributes not only to your immediate research goals but to the broader scientific community for years to come.

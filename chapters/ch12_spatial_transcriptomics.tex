@@ -1,0 +1,1233 @@
+% ==============================================================================
+% Chapter 12: Spatial Transcriptomics
+% ==============================================================================
+\chapter{Spatial Transcriptomics}
+\label{ch:spatial}
+
+\begin{keyconcept}
+Spatial transcriptomics measures gene expression while preserving the physical
+location of each measurement within a tissue section. By retaining spatial
+context---lost in both bulk and dissociated single-cell RNA-seq---these
+technologies reveal how cells are organized, how they communicate with their
+neighbors, and how tissue architecture relates to function and disease.
+\end{keyconcept}
+
+% ---------------------------------------------------------------------------
+\section{Why Spatial Context Matters}
+\label{sec:spatial:why}
+
+The human body is not a bag of cells: it is a precisely organized structure
+where cellular function depends critically on spatial position. Conventional
+scRNA-seq requires tissue dissociation, which destroys the spatial
+relationships between cells. This loss has several consequences:
+
+\begin{itemize}[nosep]
+  \item \textbf{Tissue architecture is invisible:} The layered organization of
+    the cortex, the crypt--villus axis of the intestine, and the zonal
+    structure of the liver cannot be observed in dissociated data.
+  \item \textbf{Cell neighborhoods are lost:} A tumor cell adjacent to a
+    cytotoxic T cell behaves differently from one surrounded by
+    immunosuppressive macrophages. Spatial context determines these
+    interactions.
+  \item \textbf{Gradients cannot be detected:} Morphogen gradients during
+    development, oxygen gradients in tumors, and signaling gradients in wound
+    healing require spatial measurement.
+  \item \textbf{Rare niches are obscured:} Stem cell niches, germinal centers,
+    and tertiary lymphoid structures are defined by their spatial organization
+    as much as by their cell type composition.
+  \item \textbf{Dissociation introduces artifacts:} Enzymatic digestion
+    activates stress-response genes and selectively loses fragile cell types
+    (neurons, adipocytes, syncytiotrophoblasts).
+\end{itemize}
+
+Spatial transcriptomics solves these problems by measuring gene expression
+\emph{in situ}---within intact tissue sections.
+
+
+% ---------------------------------------------------------------------------
+\section{Categories of Spatial Technologies}
+\label{sec:spatial:categories}
+
+Spatial transcriptomics technologies can be broadly divided into three
+categories based on their detection mechanism: sequencing-based methods that
+capture RNA at defined spatial positions, imaging-based methods that visualize
+individual RNA molecules, and in situ sequencing methods that read out RNA
+sequences directly in tissue.
+
+% TikZ diagram: Comparison of spatial transcriptomics approaches
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.5cm and 1.0cm,
+  every node/.style={font=\small},
+  category/.style={draw, rounded corners, fill=MidnightBlue!15,
+    minimum width=4.0cm, minimum height=0.9cm, align=center,
+    font=\small\bfseries},
+  platform/.style={draw, rounded corners, fill=white,
+    minimum width=3.8cm, minimum height=0.7cm, align=center,
+    font=\scriptsize},
+  arrow/.style={-{Stealth[length=5pt]}, thick, MidnightBlue!60},
+  label/.style={font=\scriptsize\itshape, text=gray!60!black},
+]
+
+% Categories
+\node[category] (seq) {Sequencing-based\\(capture spots/beads)};
+\node[category, right=2.5cm of seq] (img) {Imaging-based\\(in situ hybridization)};
+\node[category, right=2.5cm of img] (iss) {In situ sequencing};
+
+% Sequencing-based platforms
+\node[platform, below=0.6cm of seq] (visium) {10x Visium (55\,$\mu$m spots)};
+\node[platform, below=0.3cm of visium] (visiumhd) {10x Visium HD (2\,$\mu$m)};
+\node[platform, below=0.3cm of visiumhd] (slideseq) {Slide-seq V2 (10\,$\mu$m beads)};
+\node[platform, below=0.3cm of slideseq] (stereo) {Stereo-seq (nanoscale)};
+
+% Imaging-based platforms
+\node[platform, below=0.6cm of img] (merfish) {MERFISH / Vizgen (100s--1000s genes)};
+\node[platform, below=0.3cm of merfish] (xenium) {10x Xenium (100s genes)};
+\node[platform, below=0.3cm of xenium] (seqfish) {seqFISH+ (10,000+ genes)};
+\node[platform, below=0.3cm of seqfish] (cosmx) {CosMx / NanoString};
+
+% In situ sequencing
+\node[platform, below=0.6cm of iss] (issplat) {ISS / BaristaSeq};
+\node[platform, below=0.3cm of issplat] (starmap) {STARmap PLUS};
+\node[platform, below=0.3cm of starmap] (exseq) {ExSeq (expansion seq.)};
+
+% Arrows from categories to first platform
+\draw[arrow] (seq.south) -- (visium.north);
+\draw[arrow] (img.south) -- (merfish.north);
+\draw[arrow] (iss.south) -- (issplat.north);
+
+% Annotations at bottom
+\node[label, below=0.5cm of stereo] {Genome-wide; lower resolution};
+\node[label, below=0.5cm of cosmx] {Targeted; subcellular resolution};
+\node[label, below=0.5cm of exseq] {Targeted; in-tissue readout};
+
+\end{tikzpicture}
+\caption{Overview of spatial transcriptomics technology categories. Sequencing-based
+methods (left) capture RNA at spatially barcoded positions and sequence it
+off-tissue. Imaging-based methods (center) visualize individual RNA molecules
+in situ using fluorescent probes. In situ sequencing methods (right) perform
+the sequencing reaction directly within the tissue section.}
+\label{fig:spatial:overview}
+\end{figure}
+
+
+% ---------------------------------------------------------------------------
+\subsection{Sequencing-Based Spatial Methods}
+\label{sec:spatial:seqbased}
+
+These methods capture RNA from intact tissue sections onto spatially barcoded
+surfaces. The tissue is permeabilized, RNA molecules are captured by
+underlying barcoded oligonucleotides, and the resulting cDNA is sequenced
+off-tissue using standard Illumina platforms. The spatial barcode allows each
+transcript to be mapped back to its location in the tissue.
+
+\subsubsection{10x Visium}
+
+The most widely adopted spatial transcriptomics platform:
+
+\begin{protocolbox}[title={10x Visium Workflow}]
+\begin{enumerate}[nosep]
+  \item Mount a fresh-frozen or FFPE tissue section (10\,$\mu$m thick) onto a
+    Visium capture slide.
+  \item Stain and image the section (H\&E for fresh-frozen; immunofluorescence
+    for FFPE).
+  \item Permeabilize the tissue to release mRNA (fresh-frozen) or after probe
+    hybridization (FFPE).
+  \item mRNA binds to spatially barcoded oligo-dT probes printed on the slide
+    surface.
+  \item Reverse transcription incorporates the spatial barcode into cDNA.
+  \item cDNA is collected, amplified, and sequenced on Illumina.
+  \item Reads are mapped and demultiplexed by spatial barcode using
+    \software{Space Ranger}.
+\end{enumerate}
+\end{protocolbox}
+
+\textbf{Key specifications:}
+\begin{itemize}[nosep]
+  \item \textbf{Resolution:} 55\,$\mu$m diameter capture spots arranged in a
+    hexagonal grid with 100\,$\mu$m center-to-center spacing. Each spot covers
+    1--10 cells (depending on tissue and cell size).
+  \item \textbf{Gene coverage:} Genome-wide (no panel required); typically
+    $\sim$3,000--8,000 genes detected per spot.
+  \item \textbf{Capture area:} 6.5 mm $\times$ 6.5 mm, containing $\sim$5,000
+    spots.
+  \item \textbf{Sequencing depth:} 50,000--100,000 reads per spot recommended.
+  \item \textbf{Sample types:} Fresh-frozen and FFPE (with dedicated Visium
+    for FFPE workflow using probe-based capture).
+\end{itemize}
+
+\begin{warningbox}
+Visium spots are not single cells. Each 55\,$\mu$m spot typically contains
+multiple cells, creating a mixture of cell types within each spot. Computational
+deconvolution methods (see \cref{sec:spatial:deconv}) are needed to infer
+cell type composition per spot.
+\end{warningbox}
+
+\subsubsection{10x Visium HD}
+
+The next-generation Visium platform with dramatically improved resolution:
+
+\begin{itemize}[nosep]
+  \item \textbf{Resolution:} 2\,$\mu$m $\times$ 2\,$\mu$m barcoded squares,
+    providing near-single-cell or subcellular resolution.
+  \item \textbf{Binning:} Data can be analyzed at 2\,$\mu$m, 8\,$\mu$m, or
+    16\,$\mu$m resolution by binning adjacent squares.
+  \item \textbf{Gene coverage:} Genome-wide.
+  \item \textbf{Continuous tiling:} No gaps between capture positions, unlike
+    the original Visium.
+  \item \textbf{Sample types:} FFPE tissues; fresh-frozen support was added
+    subsequently.
+  \item Analyzed with \software{Space Ranger} (HD mode).
+\end{itemize}
+
+\subsubsection{Slide-seq and Slide-seqV2}
+
+\begin{itemize}[nosep]
+  \item \textbf{Principle:} A dense monolayer of DNA-barcoded 10\,$\mu$m beads
+    (``puck'') is used as the capture surface. Beads are decoded by sequential
+    hybridization (\textit{Slide-seq}) or by sequencing (Slide-seqV2) to
+    determine their spatial position.
+  \item \textbf{Resolution:} 10\,$\mu$m (near single-cell for most tissues).
+  \item \textbf{Gene detection:} Lower than Visium ($\sim$500--2,000 genes per
+    bead), but higher spatial resolution.
+  \item \textbf{Open-source:} Protocols and analysis tools are publicly
+    available.
+\end{itemize}
+
+\subsubsection{Stereo-seq (BGI)}
+
+\begin{itemize}[nosep]
+  \item \textbf{Principle:} DNA nanoball (DNB)-based spatial barcoding on a
+    patterned array. Achieves nanoscale resolution ($\sim$500\,nm spot size).
+  \item \textbf{Capture area:} Up to full tissue sections (centimeter scale).
+  \item \textbf{Resolution:} Subcellular ($\sim$0.5\,$\mu$m), binnable to any
+    desired resolution.
+  \item \textbf{Notable application:} Used to create the first spatially
+    resolved transcriptomic atlas of an entire mouse embryo (MOSTA).
+  \item \textbf{Gene coverage:} Genome-wide.
+\end{itemize}
+
+\subsubsection{Other Sequencing-Based Methods}
+
+\begin{description}[style=nextline]
+  \item[HDST (High-Definition Spatial Transcriptomics)] Uses 2\,$\mu$m
+    barcoded wells. An early demonstration of high-resolution capture-based
+    spatial transcriptomics.
+  \item[Seq-Scope] Repurposes Illumina flow cells as spatial capture surfaces,
+    achieving $\sim$0.5--1\,$\mu$m resolution with genome-wide gene coverage
+    at very low cost per unit area.
+\end{description}
+
+
+\subsection{Imaging-Based Spatial Methods (In Situ Hybridization)}
+\label{sec:spatial:imaging}
+
+Imaging-based methods detect individual RNA molecules in intact tissue by
+hybridizing fluorescent probes directly to transcripts. They achieve
+subcellular resolution and can image specific panels of 100--10,000+ genes.
+
+\subsubsection{MERFISH (Multiplexed Error-Robust FISH)}
+
+Developed by the Zhuang lab (Harvard) and commercialized by Vizgen:
+
+\begin{keyconcept}[title={How MERFISH Works}]
+\begin{enumerate}[nosep]
+  \item Design encoding probes for each target gene. Each gene is assigned a
+    unique binary barcode (e.g., a 16-bit code using a modified Hamming
+    distance error-correcting scheme).
+  \item Hybridize all encoding probes simultaneously to the tissue.
+  \item Perform multiple rounds of sequential imaging:
+    \begin{itemize}[nosep]
+      \item In each round, readout probes complementary to specific barcode
+        positions bind and fluoresce.
+      \item Image the tissue, record fluorescent spots.
+      \item Strip the readout probes (photobleach or chemically remove).
+      \item Repeat for the next round.
+    \end{itemize}
+  \item Each RNA molecule generates a pattern of ON/OFF signals across rounds,
+    spelling out its binary barcode.
+  \item Error correction (Hamming distance codes) allows identification and
+    correction of single-bit errors, dramatically reducing false positives.
+\end{enumerate}
+\end{keyconcept}
+
+\textbf{Key specifications:}
+\begin{itemize}[nosep]
+  \item \textbf{Gene panel:} 100--1,000+ genes (MERSCOPE platform from Vizgen
+    supports panels of 140--1,000 genes; custom panels possible).
+  \item \textbf{Resolution:} Single-molecule, subcellular
+    ($\sim$100\,nm localization).
+  \item \textbf{Throughput:} Millions of cells per tissue section.
+  \item \textbf{Imaging time:} 12--48 hours per tissue section depending on
+    panel size and area.
+\end{itemize}
+
+\subsubsection{seqFISH+}
+
+\begin{itemize}[nosep]
+  \item An extension of seqFISH that profiles $>$10,000 genes per cell.
+  \item Uses sequential rounds of hybridization with pseudo-color barcoding
+    (multiple fluorescent channels per round).
+  \item Achieves transcriptome-scale imaging but at lower throughput than
+    MERFISH due to the large number of imaging rounds required.
+  \item Academic protocol; not commercially available as a turnkey system.
+\end{itemize}
+
+\subsubsection{10x Xenium}
+
+The in situ platform from 10x Genomics:
+
+\begin{itemize}[nosep]
+  \item \textbf{Principle:} Padlock probe-based detection. Pairs of probes
+    hybridize to target RNA; when correctly paired, they are ligated and
+    amplified via rolling circle amplification (RCA), creating a bright
+    fluorescent spot.
+  \item \textbf{Gene panel:} Pre-designed panels (human brain, breast cancer,
+    lung, immune, multi-tissue) covering 300--500 genes, plus custom panels
+    up to 480 genes. Higher multiplex panels continue to be released.
+  \item \textbf{Resolution:} Subcellular (detects individual transcripts within
+    cells and can resolve nuclear vs.\ cytoplasmic localization).
+  \item \textbf{Throughput:} Large tissue areas (full tissue sections);
+    automated instrument with $\sim$24-hour run time per slide.
+  \item \textbf{FFPE compatible:} Works with FFPE tissues, enabling retrospective
+    spatial analysis of archival samples.
+  \item \textbf{Integrated analysis:} Results can be directly overlaid with
+    Visium data from adjacent sections for combined genome-wide + targeted
+    spatial analysis.
+\end{itemize}
+
+\subsubsection{CosMx Spatial Molecular Imager (NanoString)}
+
+\begin{itemize}[nosep]
+  \item Probe-based in situ hybridization platform.
+  \item Gene panels of 1,000--6,000 genes for RNA and 64--100 proteins
+    simultaneously (multi-omic spatial profiling).
+  \item Subcellular resolution; automated imaging system.
+  \item Compatible with FFPE tissues.
+  \item Multi-omic capability (RNA + protein in the same tissue section) is a
+    key differentiator.
+\end{itemize}
+
+\subsubsection{FISH-Based Principles}
+
+All imaging-based spatial methods rely on variations of fluorescence in situ
+hybridization (FISH):
+
+\begin{description}[style=nextline]
+  \item[Single-molecule FISH (smFISH)] The foundational method: multiple
+    fluorescent probes tile along a single RNA transcript, producing a
+    diffraction-limited spot visible under a fluorescence microscope. Detects
+    one gene per fluorescence channel (typically 3--5 genes per experiment).
+  \item[Combinatorial barcoding] MERFISH and seqFISH assign each gene a
+    binary barcode read out across multiple rounds of imaging. This
+    exponentially scales the number of genes: $n$ rounds with error correction
+    can encode thousands of genes.
+  \item[Sequential hybridization] Probes are applied, imaged, removed, and
+    replaced in successive rounds. Each round reveals a different subset of
+    genes or barcode positions.
+\end{description}
+
+
+\subsection{In Situ Sequencing}
+\label{sec:spatial:insitu}
+
+In situ sequencing (ISS) methods perform the sequencing reaction directly
+within the tissue, reading out short barcodes that identify each transcript.
+
+\begin{description}[style=nextline]
+  \item[ISS (In Situ Sequencing)] Padlock probes hybridize to target RNAs;
+    gaps are filled and ligated to form circular DNA. Rolling circle
+    amplification (RCA) creates dense DNA nanoballs that are sequenced in situ
+    by sequencing-by-ligation. Typically reads 4--5 bases (sufficient for
+    barcode identification).
+  \item[BaristaSeq] An improved ISS method with higher efficiency gap-filling
+    and sequencing-by-synthesis readout. Compatible with tissue clearing for
+    3D spatial transcriptomics.
+  \item[STARmap / STARmap PLUS] Uses SNAIL (specific amplification of nucleic
+    acids via intramolecular ligation) probes for highly multiplexed in situ
+    sequencing. STARmap PLUS scales to 1,000+ genes. Compatible with intact
+    tissue (hydrogel-embedded) for volumetric 3D spatial transcriptomics.
+  \item[ExSeq (Expansion Sequencing)] Combines expansion microscopy (physically
+    enlarging the tissue by embedding in a swellable hydrogel) with in situ
+    RNA sequencing. Achieves nanoscale resolution of RNA localization within
+    subcellular compartments (dendrites, synapses).
+\end{description}
+
+
+% ---------------------------------------------------------------------------
+\section{Comparison of Spatial Transcriptomics Platforms}
+\label{sec:spatial:comparison}
+
+\begin{table}[htbp]
+\centering
+\caption{Comprehensive comparison of spatial transcriptomics platforms.}
+\label{tab:spatial:platforms}
+\footnotesize
+\begin{tabularx}{\textwidth}{lXXXXX}
+\toprule
+\textbf{Feature} & \textbf{Visium} & \textbf{Visium HD} & \textbf{MERFISH} & \textbf{Xenium} & \textbf{Stereo-seq} \\
+\midrule
+Category & Seq-based & Seq-based & Imaging & Imaging & Seq-based \\
+Resolution & 55\,$\mu$m & 2\,$\mu$m & Subcellular & Subcellular & 0.5\,$\mu$m \\
+Gene coverage & Genome-wide & Genome-wide & 100--1,000 & 300--500 & Genome-wide \\
+Cells per section & $\sim$5,000 spots & $\sim$millions of bins & Millions & Millions & Millions \\
+FFPE compatible & Yes (v2) & Yes & Limited & Yes & Yes \\
+Instrument & None (slide) & None (slide) & MERSCOPE & Xenium Analyzer & STOmics \\
+Run time & 1--2 days (wet lab) & 1--2 days (wet lab) & 12--48 h imaging & $\sim$24 h & 1--2 days \\
+Analysis software & Space Ranger & Space Ranger & Vizgen MERSCOPE & Xenium Ranger/Explorer & STOmics tools \\
+Cost per section & \$\$\$ & \$\$\$ & \$\$\$\$ & \$\$\$ & \$\$\$ \\
+Best use case & Genome-wide discovery & High-res discovery & Targeted, subcellular & Clinical FFPE, targeted & Large-area mapping \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Extended comparison including additional platforms.}
+\label{tab:spatial:platforms_extended}
+\footnotesize
+\begin{tabularx}{\textwidth}{lXXXXX}
+\toprule
+\textbf{Feature} & \textbf{Slide-seqV2} & \textbf{seqFISH+} & \textbf{CosMx} & \textbf{STARmap PLUS} & \textbf{Seq-Scope} \\
+\midrule
+Category & Seq-based & Imaging & Imaging & In situ seq. & Seq-based \\
+Resolution & 10\,$\mu$m & Subcellular & Subcellular & Subcellular & $\sim$0.6\,$\mu$m \\
+Gene coverage & Genome-wide & 10,000+ & 1,000--6,000 & 1,000+ & Genome-wide \\
+Multi-omic & No & No & RNA + protein & No & No \\
+Commercial & No (academic) & No (academic) & Yes (NanoString) & No (academic) & No (academic) \\
+3D capable & No & Limited & No & Yes & No \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}
+Choosing a spatial technology depends on your biological question:
+\begin{itemize}[nosep]
+  \item \textbf{Unbiased discovery (genome-wide):} Visium, Visium HD, or
+    Stereo-seq.
+  \item \textbf{Targeted subcellular resolution:} MERFISH (Vizgen), Xenium
+    (10x), or CosMx (NanoString).
+  \item \textbf{FFPE clinical samples:} Xenium, Visium FFPE, or CosMx.
+  \item \textbf{Combined RNA + protein:} CosMx (NanoString).
+  \item \textbf{3D spatial transcriptomics:} STARmap PLUS or ExSeq.
+\end{itemize}
+Many studies now combine a genome-wide method (e.g., Visium HD) with a targeted
+imaging method (e.g., Xenium) on serial sections to get both breadth and
+resolution.
+\end{tipbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Computational Analysis for Spatial Transcriptomics}
+\label{sec:spatial:computation}
+
+Spatial transcriptomics data requires specialized computational methods that
+account for the spatial dimensions in addition to the gene expression matrix.
+
+\subsection{Spot Deconvolution}
+\label{sec:spatial:deconv}
+
+For Visium and other methods where each measurement captures multiple cells,
+deconvolution estimates the proportion of each cell type within each spatial
+location by leveraging a single-cell RNA-seq reference:
+
+\begin{description}[style=nextline]
+  \item[\software{cell2location}] Bayesian model that estimates absolute cell
+    type abundances per spot by decomposing the spatial expression profile into
+    a mixture of reference scRNA-seq signatures. Provides uncertainty estimates
+    and handles overdispersion. One of the most widely used and best-performing
+    methods in benchmarks.
+  \item[\software{RCTD} (Robust Cell Type Decomposition)] Part of the
+    \software{spacexr} R package. Fits a weighted regression model to estimate
+    cell type proportions. Fast and robust; handles platform-specific technical
+    differences between spatial and scRNA-seq data.
+  \item[\software{Tangram}] Deep learning-based method that maps scRNA-seq
+    cells to spatial locations by learning an optimal alignment between the
+    two modalities. Can operate at both spot (Visium) and single-cell (Xenium,
+    MERFISH) resolution.
+  \item[\software{SPOTlight}] Uses non-negative matrix factorization (NMF) to
+    decompose Visium spots into cell type proportions.
+  \item[\software{stereoscope}] Probabilistic method based on negative binomial
+    distributions for deconvolving spatial spots.
+\end{description}
+
+\begin{keyconcept}[title={Why Deconvolution Needs a scRNA-seq Reference}]
+Deconvolution is fundamentally a source-separation problem: given a mixture
+signal (the spatial spot), determine the contributing sources (cell types).
+This requires knowing what each source looks like in isolation, which comes
+from a scRNA-seq reference of the same tissue. The quality of deconvolution
+depends critically on the completeness and accuracy of the reference atlas.
+Missing cell types in the reference will be missed in the spatial data.
+\end{keyconcept}
+
+\subsubsection{Mathematical Framework for Spot Deconvolution}
+\label{subsec:spatial:deconv_math}
+
+The central idea behind methods like \software{RCTD} and
+\software{cell2location} is that the observed expression profile at each
+spatial location is a mixture of cell-type-specific expression signatures.
+Formally, for spot $s$ with observed gene expression vector $Y_s$ (a vector of
+length $G$, one entry per gene), the linear mixture model is:
+\begin{equation}
+  \label{eq:spatial:deconv_linear}
+  Y_s = \sum_{k=1}^{K} w_{sk} \cdot \mu_k + \epsilon_s
+\end{equation}
+where $K$ is the number of cell types in the reference, $\mu_k$ is the
+reference expression profile (mean expression vector) for cell type $k$,
+$w_{sk} \geq 0$ is the weight (proportion or abundance) of cell type $k$ in
+spot $s$, and $\epsilon_s$ represents noise (technical and biological).
+
+\begin{description}[style=nextline]
+  \item[\software{RCTD} formulation] Models the observed counts at each spot
+    as a weighted sum of cell-type profiles using a platform-corrected
+    regression framework. The weights $w_{sk}$ are constrained to be
+    non-negative and are estimated via maximum likelihood under a Poisson or
+    negative binomial noise model. RCTD explicitly accounts for
+    platform-specific effects (differences in capture efficiency and gene
+    detection between the spatial and scRNA-seq platforms) by estimating
+    platform-specific normalisation factors.
+  \item[\software{cell2location} formulation] Uses a hierarchical Bayesian
+    model where the expected expression at spot $s$ for gene $g$ is:
+    \begin{equation}
+      \label{eq:spatial:cell2loc}
+      \mathbb{E}[Y_{sg}] = \sum_{k=1}^{K} w_{sk} \cdot g_{kg} \cdot y_s
+    \end{equation}
+    where $g_{kg}$ is the reference expression of gene $g$ in cell type $k$
+    (estimated from the scRNA-seq data), $y_s$ is a spot-level scaling factor,
+    and $w_{sk}$ represents the absolute number of cells of type $k$ at spot
+    $s$. Bayesian inference (using variational inference in \software{Pyro})
+    provides full posterior distributions over all parameters, yielding
+    uncertainty estimates for cell type abundances---a key advantage for
+    downstream hypothesis testing.
+\end{description}
+
+\begin{tipbox}
+When choosing a deconvolution method, consider whether you need
+\emph{proportions} (what fraction of each spot is cell type $k$?) or
+\emph{absolute abundances} (how many cells of type $k$?).
+\software{RCTD} estimates proportions by default; \software{cell2location}
+estimates absolute abundances. For comparing cell type composition across spots,
+proportions suffice. For estimating total cell counts (e.g., immune infiltration
+density), absolute abundances are more informative.
+\end{tipbox}
+
+\subsection{Spatially Variable Gene Detection}
+
+Identifying genes whose expression varies as a function of spatial location,
+beyond what would be expected by chance:
+
+\begin{description}[style=nextline]
+  \item[\software{SpatialDE}] Gaussian process regression model that tests
+    whether the spatial variance component of gene expression is significant.
+    Identifies genes with spatial patterns (e.g., gradients, periodic patterns,
+    hotspots) and classifies them by spatial pattern type.
+  \item[\software{SPARK}] Spatial Pattern Recognition via Kernels. Tests for
+    spatially variable expression using a generalized linear spatial model with
+    multiple spatial kernel functions. More powerful than SpatialDE for
+    detecting diverse spatial patterns.
+  \item[\software{Moran's I}] A classical spatial autocorrelation statistic
+    applied to gene expression. Positive Moran's I indicates spatial clustering;
+    negative values indicate spatial dispersion. Simple and fast; implemented in
+    Squidpy and Giotto.
+  \item[\software{nnSVG}] Nearest-neighbor Gaussian process model for
+    identifying spatially variable genes. Scales better than SpatialDE to
+    high-resolution platforms like Visium HD.
+\end{description}
+
+\subsubsection{Moran's I: Spatial Autocorrelation in Detail}
+\label{subsec:spatial:morans_i}
+
+Moran's $I$ is the most widely used statistic for quantifying spatial
+autocorrelation of gene expression. For a gene with expression values
+$x_1, x_2, \ldots, x_n$ measured at $n$ spatial locations, Moran's $I$ is
+defined as:
+\begin{equation}
+  \label{eq:spatial:morans_i}
+  I = \frac{n}{\sum_{i} \sum_{j} w_{ij}}
+    \cdot
+    \frac{\sum_{i} \sum_{j} w_{ij}\,(x_i - \bar{x})(x_j - \bar{x})}
+         {\sum_{i} (x_i - \bar{x})^2}
+\end{equation}
+where $\bar{x} = \frac{1}{n}\sum_i x_i$ is the global mean expression,
+$w_{ij}$ is the spatial weight between locations $i$ and $j$ (typically 1 if
+$i$ and $j$ are neighbors and 0 otherwise, or a distance-decay function), and
+the double sum runs over all pairs of locations.
+
+\textbf{Interpretation:}
+\begin{itemize}[nosep]
+  \item $I > 0$: \textbf{Positive spatial autocorrelation} (clustering).
+    Nearby locations tend to have similar expression values. Values close to
+    +1 indicate strong spatial clustering.
+  \item $I \approx 0$: \textbf{No spatial autocorrelation} (random spatial
+    pattern). Expression is distributed independently of spatial position.
+  \item $I < 0$: \textbf{Negative spatial autocorrelation} (dispersion).
+    Nearby locations tend to have dissimilar expression values, forming a
+    checkerboard-like pattern. This is rare for gene expression data.
+\end{itemize}
+
+The expected value under the null hypothesis of spatial randomness is
+$\mathbb{E}[I] = -1/(n-1)$, which approaches zero for large $n$.
+Statistical significance is assessed either analytically (under normality
+assumptions) or by a permutation test that randomly shuffles expression values
+across locations and recomputes $I$ to build a null distribution.
+
+\begin{keyconcept}[title={Choosing the Spatial Weight Matrix}]
+The spatial weight matrix $W = \{w_{ij}\}$ encodes the definition of ``spatial
+proximity'' and critically affects the results:
+\begin{itemize}[nosep]
+  \item \textbf{Binary adjacency:} $w_{ij} = 1$ if spots $i$ and $j$ are direct
+    neighbors (e.g., adjacent hexagons in Visium). Simple and fast.
+  \item \textbf{KNN graph:} $w_{ij} = 1$ for the $k$ nearest neighbors of each
+    spot. Robust when spot density varies across the tissue.
+  \item \textbf{Distance decay:} $w_{ij} = f(d_{ij})$, e.g., Gaussian kernel
+    $\exp(-d_{ij}^2 / 2h^2)$ or inverse distance. Captures longer-range spatial
+    correlations (e.g., paracrine signaling gradients).
+\end{itemize}
+In \software{Squidpy}, the default spatial neighbors graph uses Delaunay
+triangulation or KNN, and Moran's $I$ is computed via
+\texttt{sq.gr.spatial\_autocorr(adata, mode="moran")}.
+\end{keyconcept}
+
+\subsection{Spatial Domain Identification}
+
+Identifying tissue regions (``spatial domains'') with coherent gene expression
+programs---analogous to clustering in scRNA-seq but incorporating spatial
+proximity:
+
+\begin{description}[style=nextline]
+  \item[\software{BayesSpace}] Bayesian approach that models spatial
+    transcriptomics data on a lattice graph, encouraging neighboring spots to
+    belong to the same cluster. Produces spatially smooth domain assignments.
+    Supports Visium and Slide-seq data.
+  \item[\software{SpaGCN}] Uses a graph convolutional network that integrates
+    gene expression, spatial coordinates, and histology image features to
+    identify spatial domains. Learns optimal representations that combine
+    molecular and morphological information.
+  \item[\software{STAGATE}] Graph attention auto-encoder that identifies spatial
+    domains by learning a latent representation that incorporates spatial
+    neighbor information via attention mechanisms.
+  \item[\software{BANKSY}] Builds a neighborhood expression matrix that
+    combines each spot's own expression with the average expression of its
+    spatial neighbors. Standard clustering on this augmented matrix produces
+    spatially coherent domains without specialized spatial algorithms.
+\end{description}
+
+\subsection{Integration with scRNA-seq}
+
+Integrating spatial transcriptomics data with scRNA-seq enables cell type
+mapping and enhances the resolution of spatial data:
+
+\begin{itemize}[nosep]
+  \item \textbf{Deconvolution} (see \cref{sec:spatial:deconv}): Infer cell type
+    proportions at each spatial location.
+  \item \textbf{Imputation:} Predict the expression of unmeasured genes in
+    targeted spatial assays (MERFISH, Xenium) by transferring information from
+    a genome-wide scRNA-seq reference. Tools: \software{Tangram},
+    \software{gimVI} (scvi-tools), \software{novoSpaRc}.
+  \item \textbf{Label transfer:} Project cell type annotations from scRNA-seq
+    reference onto spatial spots using anchor-based integration (Seurat) or
+    probabilistic assignment (cell2location, Tangram).
+\end{itemize}
+
+\subsection{Ligand--Receptor Analysis in Spatial Context}
+
+Spatial data enables direct testing of cell--cell communication hypotheses
+because the physical proximity of sender and receiver cells is known:
+
+\begin{description}[style=nextline]
+  \item[\software{stLearn}] Combines spatial distance with ligand--receptor
+    co-expression to identify spatially constrained cell--cell interactions.
+    Only considers interactions between cell types that are physically adjacent.
+  \item[\software{COMMOT}] Uses optimal transport theory to model the spatial
+    flow of signaling molecules from sender to receiver locations. Produces
+    spatial vector fields showing the direction and magnitude of each signaling
+    pathway.
+  \item[\software{MISTy}] Multi-view framework that models gene expression at
+    each spot as a function of its intrinsic state, its immediate neighborhood
+    (juxtacrine signaling), and its broader tissue context (paracrine
+    signaling). Identifies the spatial scale at which different pathways
+    operate.
+  \item[\software{Squidpy}] General-purpose spatial analysis framework (see
+    below) that includes neighborhood enrichment analysis and ligand--receptor
+    co-occurrence testing.
+\end{description}
+
+\subsubsection{Ligand--Receptor Communication Scoring: Mathematical Framework}
+\label{subsec:spatial:lr_scoring}
+
+Spatial ligand--receptor analysis quantifies the probability or strength of
+signaling between spatially proximal cell populations. The \software{CellChat}
+framework (originally developed for scRNA-seq) and the spatial extension
+\software{COMMOT} both model communication probability based on the expression
+levels of ligand and receptor genes, weighted by spatial proximity.
+
+\textbf{CellChat communication probability.} For a ligand--receptor pair
+$(L, R)$ between sender cell type $A$ and receiver cell type $B$, CellChat
+computes a communication score based on the law of mass action:
+\begin{equation}
+  \label{eq:spatial:cellchat_prob}
+  P_{L,R}^{A \to B} = \frac{\bar{x}_L^A \cdot \bar{x}_R^B}
+    {K_h + \bar{x}_L^A \cdot \bar{x}_R^B}
+\end{equation}
+where $\bar{x}_L^A$ is the average expression of ligand $L$ in sender
+population $A$, $\bar{x}_R^B$ is the average expression of receptor $R$ in
+receiver population $B$, and $K_h$ is a half-saturation constant (Hill function
+parameterization) that prevents extreme scores when expression is very high.
+For multi-subunit receptors (e.g., heterodimeric complexes), the receptor
+expression is taken as the geometric mean of subunit expression levels.
+
+\textbf{Spatial weighting in COMMOT.} The \software{COMMOT} framework extends
+ligand--receptor scoring to spatial transcriptomics by incorporating spatial
+distance as a modulating factor. For each pair of spatial locations $(i, j)$
+with distance $d_{ij}$, the spatial communication score is:
+\begin{equation}
+  \label{eq:spatial:commot_score}
+  S_{ij}^{L,R} = x_{L,i} \cdot x_{R,j} \cdot K(d_{ij})
+\end{equation}
+where $x_{L,i}$ is the expression of ligand $L$ at location $i$, $x_{R,j}$ is
+the expression of receptor $R$ at location $j$, and $K(d_{ij})$ is a spatial
+kernel function that down-weights interactions at greater distances. Common
+choices include:
+\begin{itemize}[nosep]
+  \item \textbf{Cutoff kernel:} $K(d) = \mathbf{1}[d \leq d_{\max}]$ (binary;
+    interactions only within a maximum range).
+  \item \textbf{Gaussian kernel:} $K(d) = \exp(-d^2 / 2\sigma^2)$ (smooth
+    decay with characteristic scale $\sigma$).
+\end{itemize}
+
+\software{COMMOT} uses optimal transport theory to aggregate these pairwise
+scores into \textbf{spatial communication vector fields}, showing the net
+direction and magnitude of signaling flow for each pathway across the tissue.
+These vector fields can reveal directional signaling patterns such as morphogen
+gradients or immune cell recruitment.
+
+\begin{warningbox}
+Ligand--receptor scoring in spatial transcriptomics assumes that mRNA expression
+is a reasonable proxy for protein abundance and secretion. This is not always
+true: post-transcriptional regulation, protein half-life, and secretion
+dynamics can decouple mRNA and protein levels. Spatial proteomics data (e.g.,
+from CosMx or CODEX) can provide complementary validation for key signaling
+interactions identified by transcriptomic methods.
+\end{warningbox}
+
+\subsection{Data Visualization and Analysis Frameworks}
+
+\begin{description}[style=nextline]
+  \item[\software{Squidpy}] Python package for spatial omics analysis built on
+    top of Scanpy/AnnData. Provides image processing (segmentation, feature
+    extraction), graph construction (spatial neighbors), spatial statistics
+    (Moran's I, co-occurrence, centrality scores), and interactive
+    visualization. The primary Python framework for spatial transcriptomics.
+  \item[\software{Giotto}] R and Python package providing a comprehensive suite
+    for spatial data analysis: preprocessing, spatial network construction,
+    spatial gene detection, domain identification, cell--cell interaction, and
+    visualization with interactive viewers.
+  \item[\software{Seurat} (spatial module)] Seurat v5 includes native support
+    for spatial data (Visium, Xenium, MERFISH, Slide-seq). Functions for
+    spatial feature plots, integration with scRNA-seq, and spatial
+    dimensionality reduction.
+  \item[\software{Voyager}] R/Bioconductor package implementing spatial
+    statistics methods (variograms, correlograms, Moran's I, Geary's C) for
+    spatial transcriptomics, built on the SpatialFeatureExperiment data
+    structure.
+  \item[\software{napari} + \software{spatialdata}] Python imaging viewer
+    (napari) combined with the spatialdata framework for multi-modal spatial
+    data handling (images, coordinates, annotations, expression). Enables
+    interactive exploration of spatial datasets.
+\end{description}
+
+
+% ---------------------------------------------------------------------------
+\section{Tissue Handling and Sample Preparation}
+\label{sec:spatial:tissue}
+
+Spatial transcriptomics requires careful tissue preparation---often more
+demanding than standard sequencing experiments because tissue morphology must
+be preserved.
+
+\subsection{Tissue Sectioning}
+
+\begin{itemize}[nosep]
+  \item \textbf{Fresh-frozen (FF):} Tissue is flash-frozen in OCT compound
+    (optimal cutting temperature) or isopentane. Sectioned at 10\,$\mu$m on a
+    cryostat. Best RNA quality but limited long-term storage.
+  \item \textbf{FFPE:} Formalin-fixed, paraffin-embedded. Sectioned at
+    5--10\,$\mu$m on a microtome. RNA is crosslinked and fragmented but
+    preserved indefinitely. Compatible with Visium FFPE, Xenium, CosMx.
+  \item \textbf{Section quality:} Sections must be uniform in thickness,
+    wrinkle-free, and fully adherent to the capture area. Tissue folds,
+    tears, or bubbles create artifacts in spatial data.
+\end{itemize}
+
+\subsection{Permeabilization Optimization}
+
+For sequencing-based methods (Visium), the tissue must be permeabilized to
+release mRNA while keeping it localized above its capture spot.
+
+\begin{protocolbox}[title={Visium Permeabilization Optimization}]
+A tissue optimization (TO) experiment is performed before the main experiment:
+\begin{enumerate}[nosep]
+  \item Mount serial sections on a Visium TO slide.
+  \item Permeabilize each section for a different duration (e.g., 3, 6, 12, 18,
+    24, 30 minutes).
+  \item Perform reverse transcription with fluorescent nucleotides.
+  \item Image the fluorescent cDNA footprint under a microscope.
+  \item Select the permeabilization time that maximizes signal (cDNA
+    fluorescence) while maintaining spatial resolution (sharp edges, no
+    lateral diffusion).
+\end{enumerate}
+Typical optimal permeabilization time: 6--18 minutes for most tissues, but
+varies widely (e.g., brain requires less, skeletal muscle requires more).
+\end{protocolbox}
+
+\begin{warningbox}
+Over-permeabilization causes RNA to diffuse laterally, blurring spatial
+resolution. Under-permeabilization results in poor RNA capture. Each tissue
+type requires its own optimization. Do not skip the tissue optimization step.
+\end{warningbox}
+
+\subsection{Imaging}
+
+\begin{itemize}[nosep]
+  \item \textbf{H\&E staining:} Standard histological stain for tissue
+    morphology. Used with fresh-frozen Visium. The H\&E image is registered to
+    the spatial gene expression data, allowing correlation of transcriptomic
+    patterns with morphological features.
+  \item \textbf{Immunofluorescence (IF):} Antibody-based staining for specific
+    proteins. Used with FFPE Visium and Xenium. Provides protein-level
+    information that complements the transcriptomic data.
+  \item \textbf{Cell segmentation:} For imaging-based methods, individual cells
+    must be segmented from the tissue image. Methods include DAPI-based nuclear
+    segmentation (watershed, Cellpose, StarDist) and membrane staining
+    (phalloidin, WGA). Accurate segmentation is critical for assigning
+    transcripts to individual cells.
+\end{itemize}
+
+
+% ---------------------------------------------------------------------------
+\section{Emerging Directions: Spatial Multi-Omics}
+\label{sec:spatial:emerging}
+
+\subsection{Spatial Epigenomics}
+
+\begin{description}[style=nextline]
+  \item[Spatial ATAC-seq] Methods such as spatial-ATAC-seq and
+    Spatial-CUT\&Tag map chromatin accessibility and histone modifications
+    in tissue sections. These reveal spatially resolved regulatory landscapes
+    (enhancer usage, TF binding) that complement spatial gene expression.
+  \item[10x Visium + ATAC] Emerging protocols from 10x Genomics that combine
+    gene expression and chromatin accessibility on the same Visium slide.
+\end{description}
+
+\subsection{Spatial Proteomics}
+
+\begin{description}[style=nextline]
+  \item[CODEX (CO-Detection by indEXing)] Iterative antibody staining and
+    imaging that profiles 40--60 proteins at single-cell resolution in intact
+    tissues. Uses DNA-conjugated antibodies and fluorescent reporters that
+    are sequentially activated and quenched.
+  \item[MIBI-TOF (Multiplexed Ion Beam Imaging)] Uses metal-conjugated
+    antibodies and time-of-flight mass spectrometry for highly multiplexed
+    protein imaging ($>$40 markers).
+  \item[CosMx multi-omic:] Simultaneous RNA and protein detection on the same
+    tissue section (see above).
+\end{description}
+
+\subsection{Spatial Multi-Omic Integration}
+
+The frontier of spatial biology is measuring multiple molecular layers
+(transcriptome, epigenome, proteome, metabolome) in the same tissue section
+or in serial sections from the same block:
+
+\begin{itemize}[nosep]
+  \item Serial section approaches: alternate sections for different assays
+    (e.g., Visium + Xenium + CODEX on serial 10\,$\mu$m sections).
+  \item Same-section multi-omics: CosMx (RNA + protein), Visium + IF, and
+    emerging combined ATAC + RNA spatial methods.
+  \item Computational integration: Tools such as \software{MEFISTO} (multi-omic
+    factor analysis in space and time) and \software{MOFA+} enable joint
+    analysis of spatial multi-omic datasets.
+\end{itemize}
+
+
+% ---------------------------------------------------------------------------
+\section{Snakemake Workflow for Spatial Transcriptomics}
+\label{sec:spatial:snakemake}
+
+\begin{lstlisting}[language=Python, caption={Snakemake workflow for 10x Visium
+spatial transcriptomics analysis.}, label={lst:spatial:snakemake}, float=htbp]
+# Snakefile for Spatial Transcriptomics (10x Visium)
+# ====================================================
+# Pipeline: Space Ranger -> Squidpy / Scanpy analysis
+
+import pandas as pd
+
+configfile: "config/config.yaml"
+
+samples = pd.read_csv(config["samples"], sep="\t")
+SAMPLES = samples["sample"].tolist()
+
+REFERENCE = config["spaceranger_ref"]
+
+rule all:
+    input:
+        expand("results/spaceranger/{sample}/outs/"
+               "filtered_feature_bc_matrix.h5",
+               sample=SAMPLES),
+        "results/squidpy/spatial_analysis.h5ad",
+        "results/squidpy/spatial_domains.pdf",
+        "results/deconvolution/cell2location_results.h5ad"
+
+rule spaceranger_count:
+    input:
+        fastqs="data/raw/{sample}/",
+        image="data/images/{sample}.tif",
+        reference=REFERENCE
+    output:
+        h5="results/spaceranger/{sample}/outs/"
+           "filtered_feature_bc_matrix.h5",
+        spatial="results/spaceranger/{sample}/outs/spatial/",
+        web="results/spaceranger/{sample}/outs/"
+            "web_summary.html"
+    threads: 12
+    resources:
+        mem_mb=64000
+    params:
+        outdir="results/spaceranger/{sample}",
+        slide=lambda wc: samples.loc[
+            samples["sample"] == wc.sample,
+            "slide_serial"].iloc[0],
+        area=lambda wc: samples.loc[
+            samples["sample"] == wc.sample,
+            "capture_area"].iloc[0]
+    shell:
+        """
+        spaceranger count \
+          --id={wildcards.sample} \
+          --transcriptome={input.reference} \
+          --fastqs={input.fastqs} \
+          --image={input.image} \
+          --slide={params.slide} \
+          --area={params.area} \
+          --localcores={threads} \
+          --localmem=60 \
+          --output-dir={params.outdir}
+        """
+
+rule squidpy_analysis:
+    input:
+        h5_files=expand(
+            "results/spaceranger/{sample}/outs/"
+            "filtered_feature_bc_matrix.h5",
+            sample=SAMPLES),
+        spatial_dirs=expand(
+            "results/spaceranger/{sample}/outs/spatial/",
+            sample=SAMPLES)
+    output:
+        h5ad="results/squidpy/spatial_analysis.h5ad",
+        domains="results/squidpy/spatial_domains.pdf",
+        svg_genes="results/squidpy/spatially_variable_genes.csv",
+        co_occur="results/squidpy/co_occurrence.pdf"
+    conda: "envs/squidpy.yaml"
+    script:
+        "scripts/run_squidpy.py"
+
+rule cell2location:
+    input:
+        spatial="results/squidpy/spatial_analysis.h5ad",
+        sc_ref=config["scrna_reference"]
+    output:
+        results="results/deconvolution/"
+                "cell2location_results.h5ad",
+        plots="results/deconvolution/"
+              "cell_type_maps.pdf"
+    resources:
+        mem_mb=32000
+    conda: "envs/cell2location.yaml"
+    script:
+        "scripts/run_cell2location.py"
+
+rule spatial_communication:
+    input:
+        h5ad="results/squidpy/spatial_analysis.h5ad"
+    output:
+        commot="results/communication/"
+               "spatial_signaling.h5ad",
+        plots="results/communication/"
+              "signaling_vectors.pdf"
+    conda: "envs/commot.yaml"
+    script:
+        "scripts/run_commot.py"
+\end{lstlisting}
+
+
+% ---------------------------------------------------------------------------
+\section{Nextflow Workflow for Spatial Transcriptomics}
+\label{sec:spatial:nextflow}
+
+\begin{lstlisting}[language=Java, caption={Nextflow DSL2 workflow for 10x
+Visium spatial transcriptomics analysis.},
+label={lst:spatial:nextflow}, float=htbp]
+#!/usr/bin/env nextflow
+// Spatial Transcriptomics Pipeline (Nextflow DSL2)
+// ==================================================
+// Pipeline: Space Ranger -> Squidpy -> cell2location
+
+nextflow.enable.dsl = 2
+
+params.sample_sheet = "config/samples.tsv"
+params.reference    = "resources/refdata-gex-GRCh38-2024-A"
+params.scrna_ref    = "resources/scrna_reference.h5ad"
+params.outdir       = "results"
+
+log.info """
+==========================================
+ Spatial Transcriptomics Pipeline
+==========================================
+ sample_sheet : ${params.sample_sheet}
+ reference    : ${params.reference}
+ scRNA ref    : ${params.scrna_ref}
+ outdir       : ${params.outdir}
+==========================================
+"""
+
+// Parse sample sheet
+Channel
+    .fromPath(params.sample_sheet)
+    .splitCsv(header: true, sep: '\t')
+    .map { row ->
+        tuple(
+            row.sample,
+            file(row.fastq_dir),
+            file(row.image),
+            row.slide_serial,
+            row.capture_area
+        )
+    }
+    .set { samples_ch }
+
+process SPACERANGER_COUNT {
+    tag "$sample_id"
+    publishDir "${params.outdir}/spaceranger/${sample_id}",
+        mode: 'copy'
+    cpus 12
+    memory '64 GB'
+
+    input:
+    tuple val(sample_id), path(fastqs), path(image),
+          val(slide), val(area)
+    path(reference)
+
+    output:
+    tuple val(sample_id),
+        path("outs/filtered_feature_bc_matrix.h5"),
+        path("outs/spatial/"),
+        emit: counts
+    path("outs/web_summary.html"), emit: web_summary
+
+    script:
+    """
+    spaceranger count \
+      --id=${sample_id} \
+      --transcriptome=${reference} \
+      --fastqs=${fastqs} \
+      --image=${image} \
+      --slide=${slide} \
+      --area=${area} \
+      --localcores=${task.cpus} \
+      --localmem=60
+    """
+}
+
+process SQUIDPY_ANALYSIS {
+    publishDir "${params.outdir}/squidpy", mode: 'copy'
+    cpus 4
+    memory '32 GB'
+
+    input:
+    path(h5_files)
+    path(spatial_dirs)
+
+    output:
+    path("spatial_analysis.h5ad"),          emit: h5ad
+    path("spatial_domains.pdf"),            emit: domains
+    path("spatially_variable_genes.csv"),   emit: svg
+    path("co_occurrence.pdf"),              emit: co_occur
+
+    script:
+    """
+    python ${projectDir}/bin/run_squidpy.py \
+      --input_h5 ${h5_files} \
+      --spatial_dirs ${spatial_dirs} \
+      --outdir .
+    """
+}
+
+process CELL2LOCATION {
+    publishDir "${params.outdir}/deconvolution", mode: 'copy'
+    memory '32 GB'
+    accelerator 1
+
+    input:
+    path(spatial_h5ad)
+    path(scrna_ref)
+
+    output:
+    path("cell2location_results.h5ad"), emit: results
+    path("cell_type_maps.pdf"),         emit: plots
+
+    script:
+    """
+    python ${projectDir}/bin/run_cell2location.py \
+      --spatial ${spatial_h5ad} \
+      --sc_reference ${scrna_ref} \
+      --outdir .
+    """
+}
+
+process SPATIAL_COMMUNICATION {
+    publishDir "${params.outdir}/communication", mode: 'copy'
+    memory '16 GB'
+
+    input:
+    path(spatial_h5ad)
+
+    output:
+    path("spatial_signaling.h5ad"),  emit: results
+    path("signaling_vectors.pdf"),   emit: plots
+
+    script:
+    """
+    python ${projectDir}/bin/run_commot.py \
+      --input ${spatial_h5ad} \
+      --outdir .
+    """
+}
+
+workflow {
+    reference = Channel.fromPath(params.reference)
+
+    // Space Ranger quantification
+    SPACERANGER_COUNT(samples_ch, reference.collect())
+
+    // Collect all samples for joint analysis
+    SQUIDPY_ANALYSIS(
+        SPACERANGER_COUNT.out.counts
+            .map { it[1] }.collect(),
+        SPACERANGER_COUNT.out.counts
+            .map { it[2] }.collect()
+    )
+
+    // Cell type deconvolution
+    CELL2LOCATION(
+        SQUIDPY_ANALYSIS.out.h5ad,
+        Channel.fromPath(params.scrna_ref)
+    )
+
+    // Spatial communication
+    SPATIAL_COMMUNICATION(
+        SQUIDPY_ANALYSIS.out.h5ad
+    )
+}
+\end{lstlisting}
+
+\begin{tipbox}
+For production spatial transcriptomics analysis, the \software{nf-core/spatialtranscriptomics}
+pipeline provides a Nextflow workflow supporting Space Ranger, quality control,
+normalization, clustering, and basic spatial analysis with standardized outputs.
+\end{tipbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Practical Experimental Design Considerations}
+\label{sec:spatial:design}
+
+\subsection{Choosing the Right Technology}
+
+\begin{itemize}[nosep]
+  \item \textbf{Discovery vs.\ hypothesis-driven:} If you need genome-wide
+    unbiased discovery, use a sequencing-based method (Visium, Visium HD,
+    Stereo-seq). If you have a defined gene panel, imaging-based methods
+    (MERFISH, Xenium) provide higher resolution and single-cell quantification.
+  \item \textbf{Sample type:} FFPE samples have the widest compatibility
+    (Visium FFPE, Xenium, CosMx). Fresh-frozen tissue generally yields better
+    RNA quality for sequencing-based methods.
+  \item \textbf{Resolution requirements:} If single-cell resolution is essential,
+    use imaging-based methods or Visium HD. Standard Visium (55\,$\mu$m)
+    requires computational deconvolution for cell type analysis.
+  \item \textbf{Throughput:} For large cohorts (tens to hundreds of samples),
+    consider the cost per section and instrument availability. Visium slides
+    are relatively straightforward; imaging instruments have limited throughput
+    (one section per $\sim$24 hours).
+\end{itemize}
+
+\subsection{Replication and Sample Size}
+
+\begin{itemize}[nosep]
+  \item Biological replicates (n $\geq$ 3 per condition) are needed for
+    statistical testing of spatial gene expression differences.
+  \item Technical replicates (serial sections from the same block) assess
+    within-sample variability.
+  \item Consider tissue heterogeneity: one section may not represent the entire
+    organ. Multiple sections from different regions may be needed.
+\end{itemize}
+
+\subsection{Combining Spatial and Single-Cell Data}
+
+\begin{protocolbox}[title={Recommended Multi-Modal Experimental Design}]
+For comprehensive tissue profiling, a combined approach is often optimal:
+\begin{enumerate}[nosep]
+  \item \textbf{scRNA-seq:} Generate a reference atlas of cell types from
+    dissociated tissue (10x Chromium, 5,000--10,000 cells per sample, n $\geq$ 3).
+  \item \textbf{Spatial transcriptomics (genome-wide):} Profile serial sections
+    with Visium or Visium HD for unbiased spatial gene expression mapping.
+  \item \textbf{Spatial transcriptomics (targeted):} Profile adjacent sections
+    with Xenium or MERFISH for single-cell resolution of key pathways.
+  \item \textbf{Integration:} Use cell2location or Tangram to project scRNA-seq
+    cell types onto spatial data; impute unmeasured genes in targeted data.
+\end{enumerate}
+This multi-modal approach provides genome-wide coverage (Visium), single-cell
+resolution (Xenium), and a comprehensive cell type reference (scRNA-seq).
+\end{protocolbox}
+
+
+% ---------------------------------------------------------------------------
+\section{Chapter Summary}
+\label{sec:spatial:summary}
+
+Spatial transcriptomics represents one of the most exciting frontiers in
+genomics, bridging the gap between molecular profiling and tissue biology. In
+this chapter we covered:
+
+\begin{itemize}[nosep]
+  \item Why spatial context matters: tissue architecture, cell neighborhoods,
+    gradients, and the limitations of dissociation-based methods.
+  \item Sequencing-based spatial methods: 10x Visium (55\,$\mu$m spots), Visium HD
+    (2\,$\mu$m), Slide-seqV2 (10\,$\mu$m beads), Stereo-seq (nanoscale), and
+    Seq-Scope.
+  \item Imaging-based spatial methods: MERFISH (Vizgen), seqFISH+, 10x Xenium,
+    and CosMx (NanoString), including the principles of combinatorial barcoding
+    and sequential hybridization.
+  \item In situ sequencing methods: ISS, BaristaSeq, STARmap PLUS, and ExSeq.
+  \item Comprehensive platform comparisons covering resolution, gene coverage,
+    throughput, and cost.
+  \item Computational analysis: spot deconvolution (cell2location, RCTD,
+    Tangram), spatially variable gene detection (SpatialDE, SPARK, Moran's I),
+    spatial domain identification (BayesSpace, SpaGCN, STAGATE), scRNA-seq
+    integration, and ligand--receptor analysis in spatial context (stLearn,
+    COMMOT, MISTy).
+  \item Visualization and analysis frameworks: Squidpy, Giotto, Seurat spatial
+    module, Voyager.
+  \item Tissue handling: sectioning (FF and FFPE), permeabilization
+    optimization, imaging, and cell segmentation.
+  \item Emerging directions: spatial ATAC-seq, spatial proteomics (CODEX,
+    MIBI-TOF), and multi-omic spatial integration.
+  \item Practical workflows in both Snakemake and Nextflow for Visium analysis.
+\end{itemize}
+
+Spatial transcriptomics, combined with the single-cell methods described in
+\cref{ch:scrnaseq} and the bulk approaches in \cref{ch:rnaseq}, provides a
+complete toolkit for transcriptomic analysis at every scale---from
+population-level averages to individual molecules in their native tissue
+context.

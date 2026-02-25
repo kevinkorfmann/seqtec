@@ -1,0 +1,365 @@
+\documentclass[11pt,a4paper,twoside,openright]{book}
+
+% --- Encoding and Fonts ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- Page Layout ---
+\usepackage[
+  top=2.5cm,
+  bottom=2.5cm,
+  inner=3cm,
+  outer=2.5cm,
+  headheight=14pt
+]{geometry}
+
+% --- Language ---
+\usepackage[english]{babel}
+
+% --- Colors and Graphics ---
+\usepackage[dvipsnames,svgnames,table]{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, decorations.pathmorphing, decorations.pathreplacing, fit, backgrounds}
+
+% --- Tables ---
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+
+% --- Lists ---
+\usepackage{enumitem}
+
+% --- Math ---
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% --- Code Listings ---
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!8},
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{gray!50},
+  breaklines=true,
+  breakatwhitespace=true,
+  columns=flexible,
+  keepspaces=true,
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt,
+  tabsize=2,
+  keywordstyle=\color{MidnightBlue}\bfseries,
+  stringstyle=\color{OliveGreen},
+  commentstyle=\color{gray}\itshape,
+  morekeywords={snakemake,rule,input,output,shell,params,conda,threads,resources},
+}
+
+% --- Background Image Support ---
+\usepackage{eso-pic}
+
+% --- Hyperlinks and Cross-References ---
+\usepackage[
+  colorlinks=true,
+  linkcolor=MidnightBlue,
+  citecolor=OliveGreen,
+  urlcolor=BrickRed,
+  bookmarks=true,
+  bookmarksnumbered=true,
+  pdfstartview=FitH
+]{hyperref}
+\usepackage[nameinlink,capitalise]{cleveref}
+
+% --- Bibliography ---
+\usepackage[
+  backend=biber,
+  style=numeric-comp,
+  sorting=none,
+  maxbibnames=6,
+  minbibnames=3,
+  doi=true,
+  url=false,
+  isbn=false
+]{biblatex}
+% \addbibresource{references.bib}  % Uncomment when bibliography file is created
+
+% --- Header/Footer ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\small\itshape\nouppercase{\leftmark}}
+\fancyhead[RO]{\small\itshape\nouppercase{\rightmark}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% --- Chapter and Section Styling ---
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{MidnightBlue}}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{MidnightBlue!90}}
+  {\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{MidnightBlue!80}}
+  {\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\color{MidnightBlue!70}}
+  {\thesubsubsection}{1em}{}
+
+% --- Boxes for Key Concepts, Tips, Warnings ---
+\usepackage[most]{tcolorbox}
+
+\newtcolorbox{keyconcept}[1][]{
+  colback=MidnightBlue!5,
+  colframe=MidnightBlue!70,
+  fonttitle=\bfseries,
+  title={Key Concept},
+  #1
+}
+
+\newtcolorbox{protocolbox}[1][]{
+  colback=OliveGreen!5,
+  colframe=OliveGreen!70,
+  fonttitle=\bfseries,
+  title={Protocol Summary},
+  #1
+}
+
+\newtcolorbox{warningbox}[1][]{
+  colback=BrickRed!5,
+  colframe=BrickRed!70,
+  fonttitle=\bfseries,
+  title={Important Caveat},
+  #1
+}
+
+\newtcolorbox{tipbox}[1][]{
+  colback=Goldenrod!8,
+  colframe=Goldenrod!70,
+  fonttitle=\bfseries,
+  title={Practical Tip},
+  #1
+}
+
+% --- Custom Commands ---
+\newcommand{\basepair}{\,bp}
+\newcommand{\kilobase}{\,kb}
+\newcommand{\megabase}{\,Mb}
+\newcommand{\gigabase}{\,Gb}
+\newcommand{\software}[1]{\texttt{#1}}
+\newcommand{\gene}[1]{\textit{#1}}
+\newcommand{\species}[1]{\textit{#1}}
+\newcommand{\fmark}[1]{\textsuperscript{#1}}
+
+% --- Glossary ---
+\usepackage[toc,acronym]{glossaries}
+\makeglossaries
+
+\newacronym{NGS}{NGS}{next-generation sequencing}
+\newacronym{WGS}{WGS}{whole-genome sequencing}
+\newacronym{WES}{WES}{whole-exome sequencing}
+\newacronym{RNA-seq}{RNA-seq}{RNA sequencing}
+\newacronym{scRNA-seq}{scRNA-seq}{single-cell RNA sequencing}
+\newacronym{ATAC-seq}{ATAC-seq}{Assay for Transposase-Accessible Chromatin using sequencing}
+\newacronym{ChIP-seq}{ChIP-seq}{chromatin immunoprecipitation sequencing}
+\newacronym{WGBS}{WGBS}{whole-genome bisulfite sequencing}
+\newacronym{Hi-C}{Hi-C}{high-throughput chromosome conformation capture}
+\newacronym{QC}{QC}{quality control}
+\newacronym{PCR}{PCR}{polymerase chain reaction}
+\newacronym{SBS}{SBS}{sequencing by synthesis}
+\newacronym{SMRTseq}{SMRT sequencing}{single-molecule real-time sequencing}
+\newacronym{ONT}{ONT}{Oxford Nanopore Technologies}
+\newacronym{PacBio}{PacBio}{Pacific Biosciences}
+\newacronym{UMI}{UMI}{unique molecular identifier}
+\newacronym{GEX}{GEX}{gene expression}
+\newacronym{CNV}{CNV}{copy number variation}
+\newacronym{SNV}{SNV}{single nucleotide variant}
+\newacronym{SNP}{SNP}{single nucleotide polymorphism}
+\newacronym{SV}{SV}{structural variant}
+\newacronym{indel}{indel}{insertion or deletion}
+\newacronym{BAM}{BAM}{Binary Alignment Map}
+\newacronym{VCF}{VCF}{Variant Call Format}
+\newacronym{FASTQ}{FASTQ}{FASTA with Quality}
+\newacronym{GEO}{GEO}{Gene Expression Omnibus}
+\newacronym{SRA}{SRA}{Sequence Read Archive}
+\newacronym{ENCODE}{ENCODE}{Encyclopedia of DNA Elements}
+\newacronym{CRISPR}{CRISPR}{Clustered Regularly Interspaced Short Palindromic Repeats}
+\newacronym{eDNA}{eDNA}{environmental DNA}
+\newacronym{ASV}{ASV}{amplicon sequence variant}
+\newacronym{MAG}{MAG}{metagenome-assembled genome}
+\newacronym{AMR}{AMR}{antimicrobial resistance}
+\newacronym{PPE}{PPE}{personal protective equipment}
+\newacronym{HPC}{HPC}{high-performance computing}
+
+% --- Document Info ---
+\title{
+  \vspace{-1cm}
+  {\Huge\bfseries The Complete Guide to\\[0.3cm] Next-Generation Sequencing}\\[1cm]
+  {\Large From Molecules to Meaning:\\[0.2cm]
+   Technologies, Applications, and Bioinformatics\\[0.2cm]
+   for the Modern Genomics Era}\\[2cm]
+  {\large A Comprehensive Reference}
+}
+\author{}
+\date{\today}
+
+% ============================================================
+\begin{document}
+
+% --- Front Matter ---
+\frontmatter
+
+% --- Custom Cover Page ---
+\begin{titlepage}
+\AddToShipoutPictureBG*{%
+  \AtPageLowerLeft{%
+    \includegraphics[width=\paperwidth,height=\paperheight]{heather-green-bOrMAThd09M-unsplash.jpg}%
+  }%
+}
+\newgeometry{left=3cm, right=3cm, top=2cm, bottom=2cm}
+\begin{tikzpicture}[remember picture, overlay]
+  % Semi-transparent white overlay for text readability
+  \fill[white, opacity=0.75, rounded corners=8pt]
+    ([xshift=2cm, yshift=-3cm]current page.north west)
+    rectangle
+    ([xshift=-2cm, yshift=3cm]current page.south east);
+
+  % Decorative top rule
+  \draw[MidnightBlue, line width=2pt]
+    ([xshift=3cm, yshift=-4cm]current page.north west) --
+    ([xshift=-3cm, yshift=-4cm]current page.north east);
+
+  % Title
+  \node[anchor=north, text width=17cm, align=center]
+    at ([yshift=-4.5cm]current page.north) {
+      {\fontsize{32}{40}\selectfont\bfseries\color{MidnightBlue}
+       The Complete Guide to}\\[0.6cm]
+      {\fontsize{38}{46}\selectfont\bfseries\color{MidnightBlue}
+       Next-Generation\\[0.3cm] Sequencing}
+    };
+
+  % Subtitle
+  \node[anchor=north, text width=14cm, align=center]
+    at ([yshift=-9.5cm]current page.north) {
+      {\fontsize{16}{22}\selectfont\color{MidnightBlue!80}
+       From Molecules to Meaning:\\[0.3cm]
+       Technologies, Applications, and Bioinformatics\\[0.2cm]
+       for the Modern Genomics Era}
+    };
+
+  % Decorative DNA helix motif
+  \foreach \y in {0,0.6,...,3.6} {
+    \fill[MidnightBlue, opacity=0.15] ([yshift=-12.5cm-\y cm, xshift=-0.3cm]current page.north) circle (3pt);
+    \fill[OliveGreen, opacity=0.15] ([yshift=-12.5cm-\y cm, xshift=0.3cm]current page.north) circle (3pt);
+    \draw[MidnightBlue, opacity=0.1, thin]
+      ([yshift=-12.5cm-\y cm, xshift=-0.3cm]current page.north) --
+      ([yshift=-12.5cm-\y cm, xshift=0.3cm]current page.north);
+  }
+
+  % Decorative middle rule
+  \draw[MidnightBlue!50, line width=0.8pt]
+    ([xshift=5cm, yshift=-17cm]current page.north west) --
+    ([xshift=-5cm, yshift=-17cm]current page.north east);
+
+  % Description
+  \node[anchor=north, text width=12cm, align=center]
+    at ([yshift=-18cm]current page.north) {
+      {\fontsize{13}{18}\selectfont\color{MidnightBlue!70}
+       A Comprehensive Reference}
+    };
+
+  % Decorative bottom rule
+  \draw[MidnightBlue, line width=2pt]
+    ([xshift=3cm, yshift=4cm]current page.south west) --
+    ([xshift=-3cm, yshift=4cm]current page.south east);
+
+  % Date
+  \node[anchor=south, text width=14cm, align=center]
+    at ([yshift=4.5cm]current page.south) {
+      {\large\color{MidnightBlue!60} \today}
+    };
+
+  % Photo credit (small, bottom corner)
+  \node[anchor=south east, font=\tiny, text=gray!50]
+    at ([xshift=-2.2cm, yshift=2.5cm]current page.south east) {
+      Background: Heather Green / Unsplash
+    };
+\end{tikzpicture}
+\restoregeometry
+\end{titlepage}
+
+\input{chapters/preface}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+% --- Main Matter ---
+\mainmatter
+
+% Part I: Foundations
+\part{Foundations}
+\input{chapters/ch01_introduction}
+\input{chapters/ch02_molecular_biology}
+\input{chapters/ch03_sequencing_principles}
+
+% Part II: Platforms and Technologies
+\part{Sequencing Platforms and Technologies}
+\input{chapters/ch04_short_read_platforms}
+\input{chapters/ch05_long_read_platforms}
+\input{chapters/ch06_library_preparation}
+
+% Part III: DNA Sequencing Applications
+\part{Genomics: Reading the Blueprint}
+\input{chapters/ch07_genome_sequencing}
+\input{chapters/ch08_variant_discovery}
+\input{chapters/ch09_metagenomics}
+
+% Part IV: Transcriptomics
+\part{Transcriptomics: Gene Expression and RNA Biology}
+\input{chapters/ch10_rna_sequencing}
+\input{chapters/ch11_single_cell_rna}
+\input{chapters/ch12_spatial_transcriptomics}
+
+% Part V: Epigenomics and Chromatin
+\part{Epigenomics: Beyond the Sequence}
+\input{chapters/ch13_dna_methylation}
+\input{chapters/ch14_chromatin_accessibility}
+\input{chapters/ch15_histone_modifications}
+\input{chapters/ch16_3d_genome}
+
+% Part VI: Multiomics, Specialized, and Emerging
+\part{Multiomics and Emerging Frontiers}
+\input{chapters/ch17_single_cell_multiomics}
+\input{chapters/ch18_specialized_applications}
+\input{chapters/ch19_emerging_technologies}
+
+% Part VII: Bioinformatics and Data Analysis
+\part{Bioinformatics and Data Analysis}
+\input{chapters/ch20_bioinformatics_fundamentals}
+\input{chapters/ch21_analysis_workflows}
+\input{chapters/ch22_experimental_design}
+\input{chapters/ch23_data_standards}
+
+% Part VIII: Democratisation of Sequencing
+\part{Democratisation of Sequencing}
+\input{chapters/ch24_accessible_sequencing}
+\input{chapters/ch25_practical_protocols}
+\input{chapters/ch26_diy_analysis}
+
+% --- Back Matter ---
+\backmatter
+
+\printglossary[type=\acronymtype,title={List of Acronyms}]
+\printglossary[title={Glossary}]
+
+% \printbibliography[heading=bibintoc,title={References}]  % Uncomment with .bib file
+
+\end{document}

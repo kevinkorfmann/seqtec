@@ -1,0 +1,1887 @@
+\chapter{Complete Analysis Workflows}
+\label{ch:workflows}
+
+\begin{keyconcept}
+This chapter provides complete, practical workflow implementations for the major \acrshort{NGS} applications covered in this book. For each application, we present both a \textbf{Snakemake} and a \textbf{Nextflow} implementation, explain every processing step, discuss key parameter choices, and highlight common pitfalls. These workflows are designed to serve as starting points that you can adapt to your specific data and research questions.
+\end{keyconcept}
+
+Each workflow follows the same structure: (1) a brief overview of the analysis logic, (2) a step-by-step explanation of what each tool does and why, (3) a complete Snakemake implementation, (4) a complete Nextflow DSL2 implementation, (5) expected outputs, and (6) common pitfalls and tips.
+
+%=============================================================================
+\section{WGS Variant Calling Pipeline}
+\label{sec:wf:wgs}
+%=============================================================================
+
+\subsection{Pipeline Overview}
+
+Whole-genome sequencing variant calling identifies single nucleotide variants (SNVs), insertions/deletions (indels), and potentially structural variants from short-read sequencing data. The GATK Best Practices pipeline is the most widely used approach for germline variant calling:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{FastQC:} Raw read quality assessment.
+  \item \textbf{fastp:} Adapter trimming and quality filtering.
+  \item \textbf{BWA-MEM2:} Alignment to the reference genome (faster successor to BWA-MEM).
+  \item \textbf{samtools sort:} Coordinate-sort the alignments.
+  \item \textbf{sambamba markdup:} Mark PCR duplicates (faster alternative to Picard MarkDuplicates).
+  \item \textbf{GATK HaplotypeCaller:} Per-sample variant calling in GVCF mode.
+  \item \textbf{GATK GenotypeGVCFs:} Joint genotyping across samples.
+  \item \textbf{GATK VQSR:} Variant Quality Score Recalibration for filtering.
+  \item \textbf{VEP:} Variant Effect Predictor for functional annotation.
+\end{enumerate}
+
+\begin{tipbox}[title={Why GVCF Mode?}]
+GATK HaplotypeCaller in GVCF mode (\texttt{-ERC GVCF}) produces a genomic VCF that records confidence at every position, not just variant sites. This enables efficient joint genotyping: new samples can be added to a cohort without re-calling all existing samples. For single-sample analyses, you can skip GVCF mode and call variants directly.
+\end{tipbox}
+
+\subsection{Complete Snakemake WGS Workflow}
+
+\begin{lstlisting}[language=Python,caption={Snakemake WGS variant calling pipeline (Snakefile).},label=lst:smk-wgs]
+# Snakefile -- WGS Germline Variant Calling (GATK Best Practices)
+configfile: "config.yaml"
+
+SAMPLES = config["samples"]
+REF     = config["reference"]
+KNOWN   = config["known_sites"]  # dbSNP, Mills, 1000G
+
+rule all:
+    input:
+        "results/annotation/all_samples.annotated.vcf",
+        "results/multiqc/multiqc_report.html"
+
+rule fastp_trim:
+    input:
+        r1="data/{sample}_R1.fastq.gz",
+        r2="data/{sample}_R2.fastq.gz"
+    output:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz",
+        json="results/trimmed/{sample}_fastp.json",
+        html="results/trimmed/{sample}_fastp.html"
+    threads: 4
+    conda: "envs/qc.yaml"
+    shell:
+        """
+        fastp -i {input.r1} -I {input.r2} \
+          -o {output.r1} -O {output.r2} \
+          -j {output.json} -h {output.html} \
+          --detect_adapter_for_pe --thread {threads}
+        """
+
+rule bwa_mem2_align:
+    input:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz",
+        ref=REF
+    output:
+        bam="results/aligned/{sample}.sorted.bam"
+    threads: 16
+    params:
+        rg=lambda wc: f"@RG\\tID:{wc.sample}\\tSM:{wc.sample}\\tPL:ILLUMINA"
+    conda: "envs/align.yaml"
+    shell:
+        """
+        bwa-mem2 mem -t {threads} -R '{params.rg}' {input.ref} \
+          {input.r1} {input.r2} \
+          | samtools sort -@ 4 -o {output.bam} -
+        samtools index {output.bam}
+        """
+
+rule mark_duplicates:
+    input:
+        "results/aligned/{sample}.sorted.bam"
+    output:
+        bam="results/dedup/{sample}.dedup.bam",
+        metrics="results/dedup/{sample}.dup_metrics.txt"
+    threads: 8
+    conda: "envs/align.yaml"
+    shell:
+        """
+        sambamba markdup -t {threads} \
+          {input} {output.bam} 2> {output.metrics}
+        """
+
+rule haplotype_caller:
+    input:
+        bam="results/dedup/{sample}.dedup.bam",
+        ref=REF
+    output:
+        gvcf="results/gvcf/{sample}.g.vcf.gz"
+    threads: 4
+    conda: "envs/gatk.yaml"
+    shell:
+        """
+        gatk HaplotypeCaller \
+          -R {input.ref} -I {input.bam} \
+          -O {output.gvcf} -ERC GVCF \
+          --native-pair-hmm-threads {threads}
+        """
+
+rule combine_gvcfs:
+    input:
+        gvcfs=expand("results/gvcf/{sample}.g.vcf.gz",
+                      sample=SAMPLES),
+        ref=REF
+    output:
+        "results/genotyped/combined.g.vcf.gz"
+    params:
+        gvcf_args=lambda wc, input: " ".join(
+            [f"-V {g}" for g in input.gvcfs])
+    conda: "envs/gatk.yaml"
+    shell:
+        """
+        gatk CombineGVCFs -R {input.ref} {params.gvcf_args} \
+          -O {output}
+        """
+
+rule genotype_gvcfs:
+    input:
+        gvcf="results/genotyped/combined.g.vcf.gz",
+        ref=REF
+    output:
+        "results/genotyped/all_samples.vcf.gz"
+    conda: "envs/gatk.yaml"
+    shell:
+        """
+        gatk GenotypeGVCFs -R {input.ref} -V {input.gvcf} \
+          -O {output}
+        """
+
+rule vqsr_snps:
+    input:
+        vcf="results/genotyped/all_samples.vcf.gz",
+        ref=REF
+    output:
+        recal="results/vqsr/snps.recal",
+        tranches="results/vqsr/snps.tranches",
+        vcf="results/vqsr/snps_recalibrated.vcf.gz"
+    params:
+        hapmap=config["hapmap"],
+        omni=config["omni"],
+        g1k=config["g1k_snps"],
+        dbsnp=config["dbsnp"]
+    conda: "envs/gatk.yaml"
+    shell:
+        """
+        gatk VariantRecalibrator -R {input.ref} -V {input.vcf} \
+          --resource:hapmap,known=false,training=true,truth=true,prior=15.0 {params.hapmap} \
+          --resource:omni,known=false,training=true,truth=false,prior=12.0 {params.omni} \
+          --resource:1000G,known=false,training=true,truth=false,prior=10.0 {params.g1k} \
+          --resource:dbsnp,known=true,training=false,truth=false,prior=2.0 {params.dbsnp} \
+          -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
+          -mode SNP -O {output.recal} --tranches-file {output.tranches}
+
+        gatk ApplyVQSR -R {input.ref} -V {input.vcf} \
+          --recal-file {output.recal} --tranches-file {output.tranches} \
+          --truth-sensitivity-filter-level 99.5 -mode SNP \
+          -O {output.vcf}
+        """
+
+rule vep_annotate:
+    input:
+        "results/vqsr/snps_recalibrated.vcf.gz"
+    output:
+        "results/annotation/all_samples.annotated.vcf"
+    threads: 4
+    conda: "envs/annotation.yaml"
+    shell:
+        """
+        vep --input_file {input} --output_file {output} \
+          --format vcf --vcf --fork {threads} \
+          --cache --offline --assembly GRCh38 \
+          --sift b --polyphen b --symbol --numbers \
+          --canonical --biotype --af --af_1kg --af_gnomade
+        """
+
+rule multiqc:
+    input:
+        expand("results/trimmed/{sample}_fastp.json", sample=SAMPLES),
+        expand("results/dedup/{sample}.dup_metrics.txt", sample=SAMPLES)
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "envs/qc.yaml"
+    shell:
+        "multiqc results/ -o results/multiqc/ --force"
+\end{lstlisting}
+
+\subsection{Complete Nextflow WGS Workflow}
+
+\begin{lstlisting}[language=Java,caption={Nextflow DSL2 WGS variant calling pipeline (main.nf).},label=lst:nf-wgs]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+params.reads     = "data/*_{R1,R2}.fastq.gz"
+params.ref       = "ref/GRCh38.fa"
+params.outdir    = "results"
+params.dbsnp     = "ref/dbsnp_156.vcf.gz"
+
+process FASTP {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/trimmed", mode: 'copy'
+    cpus 4
+
+    input:  tuple val(sample_id), path(reads)
+    output:
+        tuple val(sample_id), path("*_trimmed.fastq.gz"), emit: trimmed
+        path("*.json"), emit: json
+
+    script:
+    def (r1, r2) = reads
+    """
+    fastp -i ${r1} -I ${r2} \
+      -o ${sample_id}_R1_trimmed.fastq.gz \
+      -O ${sample_id}_R2_trimmed.fastq.gz \
+      -j ${sample_id}_fastp.json \
+      --detect_adapter_for_pe --thread ${task.cpus}
+    """
+}
+
+process BWA_MEM2 {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/aligned", mode: 'copy'
+    cpus 16
+    memory '32 GB'
+
+    input:
+        tuple val(sample_id), path(reads)
+        path(ref)
+
+    output:
+        tuple val(sample_id), path("*.sorted.bam"), path("*.sorted.bam.bai"), emit: bam
+
+    script:
+    def (r1, r2) = reads
+    """
+    bwa-mem2 mem -t ${task.cpus} \
+      -R "@RG\\tID:${sample_id}\\tSM:${sample_id}\\tPL:ILLUMINA" \
+      ${ref} ${r1} ${r2} \
+      | samtools sort -@ 4 -o ${sample_id}.sorted.bam -
+    samtools index ${sample_id}.sorted.bam
+    """
+}
+
+process MARKDUP {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/dedup", mode: 'copy'
+    cpus 8
+
+    input:  tuple val(sample_id), path(bam), path(bai)
+    output: tuple val(sample_id), path("*.dedup.bam"), path("*.dedup.bam.bai"), emit: bam
+
+    script:
+    """
+    sambamba markdup -t ${task.cpus} ${bam} ${sample_id}.dedup.bam
+    samtools index ${sample_id}.dedup.bam
+    """
+}
+
+process HAPLOTYPE_CALLER {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/gvcf", mode: 'copy'
+    cpus 4
+    memory '16 GB'
+
+    input:
+        tuple val(sample_id), path(bam), path(bai)
+        path(ref)
+
+    output: tuple val(sample_id), path("*.g.vcf.gz"), path("*.g.vcf.gz.tbi"), emit: gvcf
+
+    script:
+    """
+    gatk HaplotypeCaller -R ${ref} -I ${bam} \
+      -O ${sample_id}.g.vcf.gz -ERC GVCF \
+      --native-pair-hmm-threads ${task.cpus}
+    """
+}
+
+process JOINT_GENOTYPE {
+    publishDir "${params.outdir}/genotyped", mode: 'copy'
+    memory '32 GB'
+
+    input:
+        path(gvcfs)
+        path(tbis)
+        path(ref)
+
+    output: path("all_samples.vcf.gz"), emit: vcf
+
+    script:
+    def gvcf_args = gvcfs.collect { "-V ${it}" }.join(' ')
+    """
+    gatk CombineGVCFs -R ${ref} ${gvcf_args} -O combined.g.vcf.gz
+    gatk GenotypeGVCFs -R ${ref} -V combined.g.vcf.gz \
+      -O all_samples.vcf.gz
+    """
+}
+
+process VEP_ANNOTATE {
+    publishDir "${params.outdir}/annotation", mode: 'copy'
+    cpus 4
+
+    input:  path(vcf)
+    output: path("annotated.vcf")
+
+    script:
+    """
+    vep --input_file ${vcf} --output_file annotated.vcf \
+      --format vcf --vcf --fork ${task.cpus} \
+      --cache --offline --assembly GRCh38 \
+      --sift b --polyphen b --symbol --canonical --af_gnomade
+    """
+}
+
+workflow {
+    reads_ch = Channel.fromFilePairs(params.reads, checkIfExists: true)
+    ref_ch   = Channel.value(file(params.ref))
+
+    FASTP(reads_ch)
+    BWA_MEM2(FASTP.out.trimmed, ref_ch)
+    MARKDUP(BWA_MEM2.out.bam)
+    HAPLOTYPE_CALLER(MARKDUP.out.bam, ref_ch)
+
+    gvcfs = HAPLOTYPE_CALLER.out.gvcf.map { it[1] }.collect()
+    tbis  = HAPLOTYPE_CALLER.out.gvcf.map { it[2] }.collect()
+
+    JOINT_GENOTYPE(gvcfs, tbis, ref_ch)
+    VEP_ANNOTATE(JOINT_GENOTYPE.out.vcf)
+}
+\end{lstlisting}
+
+\begin{warningbox}[title={VQSR Requires Large Cohorts}]
+GATK VQSR (Variant Quality Score Recalibration) requires at least 30 whole-genome samples to build a reliable model. For smaller cohorts, use hard filtering instead: \texttt{gatk VariantFiltration} with thresholds on QD, FS, SOR, MQ, MQRankSum, and ReadPosRankSum. The nf-core/sarek pipeline handles this distinction automatically.
+\end{warningbox}
+
+\begin{tipbox}[title={Production Alternative: nf-core/sarek}]
+For production use, consider \software{nf-core/sarek}, which implements the complete GATK Best Practices pipeline with extensive QC, supports multiple variant callers (GATK, DeepVariant, Strelka2, Manta), handles both germline and somatic calling, and includes tumor-normal workflows. Run with: \texttt{nextflow run nf-core/sarek --input samplesheet.csv --genome GRCh38 -profile singularity}.
+\end{tipbox}
+
+%=============================================================================
+\section{RNA-seq Differential Expression Pipeline}
+\label{sec:wf:rnaseq}
+%=============================================================================
+
+\subsection{Pipeline Overview}
+
+RNA-seq differential expression analysis quantifies gene expression and identifies genes that are significantly up- or down-regulated between conditions. We present two approaches: (1) alignment-based (STAR + featureCounts + DESeq2) and (2) pseudo-alignment-based (Salmon + tximeta + DESeq2).
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{FastQC / fastp:} Quality assessment and adapter trimming.
+  \item \textbf{STAR alignment} (approach 1): Splice-aware alignment to the genome.
+  \item \textbf{featureCounts} (approach 1): Count reads per gene from BAM files.
+  \item \textbf{Salmon} (approach 2): Quasi-mapping and transcript-level quantification.
+  \item \textbf{tximeta/tximport:} Import Salmon counts to gene level for DESeq2.
+  \item \textbf{DESeq2:} Differential expression testing with shrinkage estimation.
+\end{enumerate}
+
+\subsection{Complete Snakemake RNA-seq Workflow}
+
+\begin{lstlisting}[language=Python,caption={Snakemake RNA-seq differential expression pipeline.},label=lst:smk-rnaseq]
+# Snakefile -- RNA-seq Differential Expression
+configfile: "config.yaml"
+
+SAMPLES = config["samples"]
+REF     = config["reference"]
+GTF     = config["gtf"]
+STAR_IDX = config["star_index"]
+
+rule all:
+    input:
+        "results/deseq2/results_table.csv",
+        "results/multiqc/multiqc_report.html"
+
+rule fastp_trim:
+    input:
+        r1="data/{sample}_R1.fastq.gz",
+        r2="data/{sample}_R2.fastq.gz"
+    output:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz",
+        json="results/trimmed/{sample}_fastp.json"
+    threads: 4
+    conda: "envs/qc.yaml"
+    shell:
+        """
+        fastp -i {input.r1} -I {input.r2} \
+          -o {output.r1} -O {output.r2} \
+          -j {output.json} --detect_adapter_for_pe \
+          --thread {threads}
+        """
+
+rule star_align:
+    input:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz",
+        idx=STAR_IDX
+    output:
+        bam="results/star/{sample}/Aligned.sortedByCoord.out.bam",
+        log="results/star/{sample}/Log.final.out"
+    threads: 12
+    conda: "envs/align.yaml"
+    params:
+        prefix="results/star/{sample}/"
+    shell:
+        """
+        STAR --runThreadN {threads} \
+          --genomeDir {input.idx} \
+          --readFilesIn {input.r1} {input.r2} \
+          --readFilesCommand zcat \
+          --outSAMtype BAM SortedByCoordinate \
+          --outFileNamePrefix {params.prefix} \
+          --quantMode GeneCounts \
+          --outSAMattributes NH HI NM MD AS
+        samtools index {output.bam}
+        """
+
+rule featurecounts:
+    input:
+        bams=expand("results/star/{sample}/Aligned.sortedByCoord.out.bam",
+                    sample=SAMPLES),
+        gtf=GTF
+    output:
+        counts="results/counts/gene_counts.txt",
+        summary="results/counts/gene_counts.txt.summary"
+    threads: 8
+    conda: "envs/count.yaml"
+    shell:
+        """
+        featureCounts -T {threads} -p --countReadPairs \
+          -a {input.gtf} -o {output.counts} \
+          -s 2 --extraAttributes gene_name \
+          {input.bams}
+        """
+
+rule deseq2:
+    input:
+        counts="results/counts/gene_counts.txt",
+        metadata=config["metadata"]
+    output:
+        results="results/deseq2/results_table.csv",
+        ma_plot="results/deseq2/ma_plot.pdf",
+        volcano="results/deseq2/volcano_plot.pdf",
+        pca="results/deseq2/pca_plot.pdf"
+    conda: "envs/deseq2.yaml"
+    script:
+        "scripts/run_deseq2.R"
+
+rule multiqc:
+    input:
+        expand("results/trimmed/{sample}_fastp.json", sample=SAMPLES),
+        expand("results/star/{sample}/Log.final.out", sample=SAMPLES),
+        "results/counts/gene_counts.txt.summary"
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "envs/qc.yaml"
+    shell:
+        "multiqc results/ -o results/multiqc/ --force"
+\end{lstlisting}
+
+\subsection{Complete Nextflow RNA-seq Workflow}
+
+\begin{lstlisting}[language=Java,caption={Nextflow DSL2 RNA-seq pipeline with Salmon pseudo-alignment.},label=lst:nf-rnaseq]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+params.reads       = "data/*_{R1,R2}.fastq.gz"
+params.salmon_idx  = "ref/salmon_index"
+params.gtf         = "ref/gencode.v44.annotation.gtf"
+params.outdir      = "results"
+params.metadata    = "samplesheet.csv"
+
+process FASTP {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/trimmed", mode: 'copy'
+    cpus 4
+
+    input:  tuple val(sample_id), path(reads)
+    output:
+        tuple val(sample_id), path("*_trimmed.fastq.gz"), emit: trimmed
+        path("*.json"), emit: json
+
+    script:
+    def (r1, r2) = reads
+    """
+    fastp -i ${r1} -I ${r2} \
+      -o ${sample_id}_R1_trimmed.fastq.gz \
+      -O ${sample_id}_R2_trimmed.fastq.gz \
+      -j ${sample_id}_fastp.json \
+      --detect_adapter_for_pe --thread ${task.cpus}
+    """
+}
+
+process SALMON_QUANT {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/salmon", mode: 'copy'
+    cpus 8
+    memory '16 GB'
+
+    input:
+        tuple val(sample_id), path(reads)
+        path(index)
+
+    output:
+        path("${sample_id}"), emit: quant_dir
+
+    script:
+    def (r1, r2) = reads
+    """
+    salmon quant -i ${index} -l A \
+      -1 ${r1} -2 ${r2} \
+      -p ${task.cpus} --validateMappings \
+      --gcBias --seqBias \
+      -o ${sample_id}
+    """
+}
+
+process DESEQ2 {
+    publishDir "${params.outdir}/deseq2", mode: 'copy'
+
+    input:
+        path(salmon_dirs)
+        path(metadata)
+
+    output:
+        path("results_table.csv")
+        path("*.pdf")
+
+    script:
+    """
+    Rscript ${projectDir}/scripts/salmon_deseq2.R \
+      --salmon_dir . --metadata ${metadata}
+    """
+}
+
+process MULTIQC {
+    publishDir "${params.outdir}/multiqc", mode: 'copy'
+
+    input:  path('*')
+    output: path("multiqc_report.html")
+
+    script:
+    """
+    multiqc . --force
+    """
+}
+
+workflow {
+    reads_ch    = Channel.fromFilePairs(params.reads, checkIfExists: true)
+    salmon_idx  = Channel.value(file(params.salmon_idx))
+    metadata_ch = Channel.value(file(params.metadata))
+
+    FASTP(reads_ch)
+    SALMON_QUANT(FASTP.out.trimmed, salmon_idx)
+    DESEQ2(SALMON_QUANT.out.quant_dir.collect(), metadata_ch)
+    MULTIQC(FASTP.out.json.collect())
+}
+\end{lstlisting}
+
+\begin{keyconcept}[title={STAR vs Salmon}]
+STAR performs full alignment to the genome, producing BAM files that can be used for many downstream analyses (variant calling from RNA-seq, splicing analysis, coverage visualization). Salmon performs pseudo-alignment directly to the transcriptome, which is 10--20 times faster and uses far less memory, but does not produce BAM files. For standard differential expression analysis, Salmon is recommended; for analyses requiring read-level information, STAR is necessary.
+\end{keyconcept}
+
+\begin{tipbox}[title={Production Alternative: nf-core/rnaseq}]
+The \software{nf-core/rnaseq} pipeline implements both STAR and Salmon paths with comprehensive QC, strandedness detection, UMI handling, rRNA removal, and MultiQC reporting. It supports dozens of organisms via iGenomes and is the recommended starting point for production RNA-seq analysis.
+\end{tipbox}
+
+%=============================================================================
+\section{ATAC-seq Pipeline}
+\label{sec:wf:atacseq}
+%=============================================================================
+
+\subsection{Pipeline Overview}
+
+ATAC-seq maps open chromatin regions. The analysis requires careful filtering steps specific to this assay:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{FastQC / fastp:} Adapter trimming (Nextera adapters for ATAC-seq).
+  \item \textbf{Bowtie2:} Alignment (Bowtie2 is preferred over BWA for ATAC-seq due to better handling of short fragments).
+  \item \textbf{Filtering:} Remove mitochondrial reads, PCR duplicates, reads with low MAPQ, and reads in blacklist regions.
+  \item \textbf{MACS2:} Peak calling with ATAC-seq-specific parameters.
+  \item \textbf{Fragment size QC:} Verify the characteristic nucleosomal ladder pattern.
+  \item \textbf{DiffBind:} Differential accessibility analysis between conditions.
+  \item \textbf{HOMER:} Motif enrichment analysis in accessible regions.
+\end{enumerate}
+
+\subsection{Complete Snakemake ATAC-seq Workflow}
+
+\begin{lstlisting}[language=Python,caption={Snakemake ATAC-seq pipeline.},label=lst:smk-atac]
+# Snakefile -- ATAC-seq Pipeline
+configfile: "config.yaml"
+
+SAMPLES   = config["samples"]
+REF       = config["reference"]
+BT2_IDX   = config["bowtie2_index"]
+BLACKLIST = config["blacklist"]
+
+rule all:
+    input:
+        expand("results/peaks/{sample}_peaks.narrowPeak", sample=SAMPLES),
+        expand("results/bigwig/{sample}.bw", sample=SAMPLES),
+        expand("results/qc/{sample}_fragment_sizes.pdf", sample=SAMPLES),
+        "results/multiqc/multiqc_report.html"
+
+rule fastp_trim:
+    input:
+        r1="data/{sample}_R1.fastq.gz",
+        r2="data/{sample}_R2.fastq.gz"
+    output:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz",
+        json="results/trimmed/{sample}_fastp.json"
+    threads: 4
+    conda: "envs/qc.yaml"
+    shell:
+        """
+        fastp -i {input.r1} -I {input.r2} \
+          -o {output.r1} -O {output.r2} \
+          -j {output.json} --detect_adapter_for_pe \
+          --thread {threads}
+        """
+
+rule bowtie2_align:
+    input:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz"
+    output:
+        bam="results/aligned/{sample}.bam"
+    threads: 12
+    params:
+        idx=BT2_IDX
+    conda: "envs/align.yaml"
+    shell:
+        """
+        bowtie2 -x {params.idx} -1 {input.r1} -2 {input.r2} \
+          -X 2000 --very-sensitive --no-mixed --no-discordant \
+          --threads {threads} \
+          | samtools sort -@ 4 -o {output.bam} -
+        samtools index {output.bam}
+        """
+
+rule filter_bam:
+    input:
+        "results/aligned/{sample}.bam"
+    output:
+        bam="results/filtered/{sample}.filtered.bam"
+    threads: 8
+    params:
+        blacklist=BLACKLIST
+    conda: "envs/align.yaml"
+    shell:
+        """
+        # Remove mitochondrial, low MAPQ, unmapped, not proper pair
+        samtools view -b -h -f 2 -q 30 {input} \
+          | grep -v "chrM" \
+          | samtools view -b -o temp_{wildcards.sample}.bam -
+        # Remove duplicates
+        sambamba markdup -t {threads} --remove-duplicates \
+          temp_{wildcards.sample}.bam temp2_{wildcards.sample}.bam
+        # Remove blacklist regions
+        bedtools intersect -v -abam temp2_{wildcards.sample}.bam \
+          -b {params.blacklist} > {output.bam}
+        samtools index {output.bam}
+        rm -f temp_{wildcards.sample}.bam* temp2_{wildcards.sample}.bam*
+        """
+
+rule macs2_peaks:
+    input:
+        "results/filtered/{sample}.filtered.bam"
+    output:
+        "results/peaks/{sample}_peaks.narrowPeak"
+    params:
+        prefix="{sample}",
+        outdir="results/peaks"
+    conda: "envs/peaks.yaml"
+    shell:
+        """
+        macs2 callpeak -t {input} \
+          -f BAMPE -g hs --nomodel --shift -100 --extsize 200 \
+          --keep-dup all -q 0.05 \
+          -n {params.prefix} --outdir {params.outdir}
+        """
+
+rule bamcoverage:
+    input:
+        "results/filtered/{sample}.filtered.bam"
+    output:
+        "results/bigwig/{sample}.bw"
+    threads: 8
+    conda: "envs/deeptools.yaml"
+    shell:
+        """
+        bamCoverage -b {input} -o {output} \
+          --normalizeUsing RPKM --binSize 10 \
+          --extendReads -p {threads}
+        """
+
+rule fragment_sizes:
+    input:
+        "results/filtered/{sample}.filtered.bam"
+    output:
+        "results/qc/{sample}_fragment_sizes.pdf"
+    conda: "envs/deeptools.yaml"
+    shell:
+        """
+        bamPEFragmentSize -b {input} \
+          -o {output} --maxFragmentLength 1000
+        """
+
+rule multiqc:
+    input:
+        expand("results/trimmed/{sample}_fastp.json", sample=SAMPLES),
+        expand("results/peaks/{sample}_peaks.narrowPeak", sample=SAMPLES)
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "envs/qc.yaml"
+    shell:
+        "multiqc results/ -o results/multiqc/ --force"
+\end{lstlisting}
+
+\subsection{Complete Nextflow ATAC-seq Workflow}
+
+\begin{lstlisting}[language=Java,caption={Nextflow DSL2 ATAC-seq pipeline.},label=lst:nf-atac]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+params.reads     = "data/*_{R1,R2}.fastq.gz"
+params.bt2_index = "ref/GRCh38_bt2"
+params.blacklist = "ref/hg38-blacklist.v2.bed"
+params.outdir    = "results"
+
+process FASTP {
+    tag "${sample_id}"
+    cpus 4
+    input:  tuple val(sample_id), path(reads)
+    output: tuple val(sample_id), path("*_trimmed.fastq.gz"), emit: trimmed
+    script:
+    def (r1, r2) = reads
+    """
+    fastp -i ${r1} -I ${r2} \
+      -o ${sample_id}_R1_trimmed.fastq.gz \
+      -O ${sample_id}_R2_trimmed.fastq.gz \
+      --detect_adapter_for_pe --thread ${task.cpus}
+    """
+}
+
+process BOWTIE2 {
+    tag "${sample_id}"
+    cpus 12
+    memory '16 GB'
+    input:
+        tuple val(sample_id), path(reads)
+        val(bt2_idx)
+    output: tuple val(sample_id), path("*.sorted.bam"), path("*.sorted.bam.bai"), emit: bam
+    script:
+    def (r1, r2) = reads
+    """
+    bowtie2 -x ${bt2_idx} -1 ${r1} -2 ${r2} \
+      -X 2000 --very-sensitive --no-mixed --no-discordant \
+      --threads ${task.cpus} \
+      | samtools sort -@ 4 -o ${sample_id}.sorted.bam -
+    samtools index ${sample_id}.sorted.bam
+    """
+}
+
+process FILTER_BAM {
+    tag "${sample_id}"
+    cpus 8
+    input:
+        tuple val(sample_id), path(bam), path(bai)
+        path(blacklist)
+    output: tuple val(sample_id), path("*.filtered.bam"), path("*.filtered.bam.bai"), emit: bam
+    script:
+    """
+    # Filter: proper pairs, MAPQ>=30, no chrM
+    samtools view -b -h -f 2 -q 30 ${bam} \
+      $(samtools idxstats ${bam} | cut -f1 | grep -v chrM | tr '\\n' ' ') \
+      | samtools sort -o no_mito.bam -
+    # Remove duplicates
+    sambamba markdup -t ${task.cpus} --remove-duplicates no_mito.bam dedup.bam
+    # Remove blacklist
+    bedtools intersect -v -abam dedup.bam -b ${blacklist} > ${sample_id}.filtered.bam
+    samtools index ${sample_id}.filtered.bam
+    """
+}
+
+process MACS2 {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/peaks", mode: 'copy'
+    input:  tuple val(sample_id), path(bam), path(bai)
+    output: path("${sample_id}_peaks.narrowPeak"), emit: peaks
+    script:
+    """
+    macs2 callpeak -t ${bam} -f BAMPE -g hs \
+      --nomodel --shift -100 --extsize 200 \
+      --keep-dup all -q 0.05 -n ${sample_id}
+    """
+}
+
+process BIGWIG {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/bigwig", mode: 'copy'
+    cpus 8
+    input:  tuple val(sample_id), path(bam), path(bai)
+    output: path("*.bw")
+    script:
+    """
+    bamCoverage -b ${bam} -o ${sample_id}.bw \
+      --normalizeUsing RPKM --binSize 10 --extendReads -p ${task.cpus}
+    """
+}
+
+workflow {
+    reads_ch   = Channel.fromFilePairs(params.reads, checkIfExists: true)
+    bt2_idx_ch = Channel.value(params.bt2_index)
+    bl_ch      = Channel.value(file(params.blacklist))
+
+    FASTP(reads_ch)
+    BOWTIE2(FASTP.out.trimmed, bt2_idx_ch)
+    FILTER_BAM(BOWTIE2.out.bam, bl_ch)
+    MACS2(FILTER_BAM.out.bam)
+    BIGWIG(FILTER_BAM.out.bam)
+}
+\end{lstlisting}
+
+\begin{warningbox}[title={ATAC-seq-Specific Filtering}]
+ATAC-seq data typically has 30--80\% of reads mapping to mitochondrial DNA, because mitochondria lack chromatin and are highly accessible to the transposase. These reads must be removed before peak calling. Additionally, the Tn5 transposase introduces a 9-bp duplication at the insertion site; the \texttt{--shift -100 --extsize 200} MACS2 parameters or the alternative \texttt{--shift -75 --extsize 150} account for this offset to centre peaks on the actual cut site.
+\end{warningbox}
+
+\begin{tipbox}[title={Fragment Size Distribution QC}]
+A successful ATAC-seq library shows a characteristic nucleosomal ladder: a large peak at $<$150\basepair{} (nucleosome-free fragments), a smaller peak at $\sim$200\basepair{} (mono-nucleosome), $\sim$400\basepair{} (di-nucleosome), etc. If the sub-nucleosomal peak is absent, the library quality is poor. Generate this plot with \texttt{bamPEFragmentSize} from deepTools or custom scripts.
+\end{tipbox}
+
+%=============================================================================
+\section{ChIP-seq / CUT\&Tag Pipeline}
+\label{sec:wf:chip}
+%=============================================================================
+
+\subsection{Pipeline Overview}
+
+ChIP-seq and CUT\&Tag identify genomic regions bound by specific proteins (transcription factors, histone modifications). Key differences from ATAC-seq include: (1) an input or IgG control is required, (2) peak calling uses the control for background estimation, and (3) CUT\&Tag may use spike-in normalization.
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{fastp:} Adapter trimming.
+  \item \textbf{Bowtie2:} Alignment (including spike-in genome for CUT\&Tag if applicable).
+  \item \textbf{Filtering:} Remove duplicates, low MAPQ reads, blacklist regions.
+  \item \textbf{MACS2} (narrow peaks, e.g., transcription factors, H3K4me3) or \textbf{SICER2/epic2} (broad peaks, e.g., H3K27me3, H3K36me3).
+  \item \textbf{BigWig generation:} Normalized coverage tracks.
+  \item \textbf{deepTools:} Heatmaps and profile plots around features.
+\end{enumerate}
+
+\subsection{Complete Snakemake ChIP-seq Workflow}
+
+\begin{lstlisting}[language=Python,caption={Snakemake ChIP-seq pipeline with input control.},label=lst:smk-chip]
+# Snakefile -- ChIP-seq Pipeline
+configfile: "config.yaml"
+
+SAMPLES   = config["chip_samples"]   # e.g., [H3K4me3_rep1, H3K4me3_rep2]
+INPUTS    = config["input_controls"]  # e.g., {H3K4me3_rep1: input_rep1}
+PEAK_TYPE = config.get("peak_type", "narrow")  # "narrow" or "broad"
+BT2_IDX   = config["bowtie2_index"]
+BLACKLIST = config["blacklist"]
+
+rule all:
+    input:
+        expand("results/peaks/{sample}_peaks.{ext}",
+               sample=SAMPLES,
+               ext="narrowPeak" if PEAK_TYPE=="narrow" else "broadPeak"),
+        expand("results/bigwig/{sample}.bw", sample=SAMPLES),
+        "results/deeptools/heatmap.pdf"
+
+rule fastp_trim:
+    input:
+        r1="data/{sample}_R1.fastq.gz",
+        r2="data/{sample}_R2.fastq.gz"
+    output:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz",
+        json="results/trimmed/{sample}_fastp.json"
+    threads: 4
+    conda: "envs/qc.yaml"
+    shell:
+        """
+        fastp -i {input.r1} -I {input.r2} \
+          -o {output.r1} -O {output.r2} \
+          -j {output.json} --detect_adapter_for_pe --thread {threads}
+        """
+
+rule bowtie2_align:
+    input:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz"
+    output:
+        bam="results/aligned/{sample}.sorted.bam"
+    threads: 12
+    params: idx=BT2_IDX
+    conda: "envs/align.yaml"
+    shell:
+        """
+        bowtie2 -x {params.idx} -1 {input.r1} -2 {input.r2} \
+          --very-sensitive --threads {threads} \
+          | samtools sort -@ 4 -o {output.bam} -
+        samtools index {output.bam}
+        """
+
+rule filter_and_dedup:
+    input:
+        "results/aligned/{sample}.sorted.bam"
+    output:
+        bam="results/filtered/{sample}.filtered.bam"
+    threads: 8
+    conda: "envs/align.yaml"
+    shell:
+        """
+        samtools view -b -f 2 -q 30 {input} \
+          | samtools sort -o temp.bam -
+        sambamba markdup -t {threads} --remove-duplicates \
+          temp.bam {output.bam}
+        samtools index {output.bam}
+        rm -f temp.bam*
+        """
+
+rule macs2_callpeak:
+    input:
+        treatment="results/filtered/{sample}.filtered.bam",
+        control=lambda wc: f"results/filtered/{INPUTS[wc.sample]}.filtered.bam"
+    output:
+        "results/peaks/{sample}_peaks.narrowPeak" if PEAK_TYPE=="narrow" else
+        "results/peaks/{sample}_peaks.broadPeak"
+    params:
+        mode="--broad --broad-cutoff 0.1" if PEAK_TYPE=="broad" else "",
+        name="{sample}",
+        outdir="results/peaks"
+    conda: "envs/peaks.yaml"
+    shell:
+        """
+        macs2 callpeak -t {input.treatment} -c {input.control} \
+          -f BAMPE -g hs {params.mode} \
+          -q 0.05 -n {params.name} --outdir {params.outdir}
+        """
+
+rule bamcoverage:
+    input:
+        "results/filtered/{sample}.filtered.bam"
+    output:
+        "results/bigwig/{sample}.bw"
+    threads: 8
+    conda: "envs/deeptools.yaml"
+    shell:
+        """
+        bamCoverage -b {input} -o {output} \
+          --normalizeUsing RPKM --binSize 10 -p {threads}
+        """
+
+rule deeptools_heatmap:
+    input:
+        bw=expand("results/bigwig/{sample}.bw", sample=SAMPLES),
+        bed=config["gene_bed"]
+    output:
+        "results/deeptools/heatmap.pdf"
+    conda: "envs/deeptools.yaml"
+    shell:
+        """
+        computeMatrix reference-point \
+          -S {input.bw} -R {input.bed} \
+          -a 3000 -b 3000 -o matrix.gz
+        plotHeatmap -m matrix.gz -o {output} --colorMap RdBu
+        """
+\end{lstlisting}
+
+\subsection{Complete Nextflow ChIP-seq Workflow}
+
+\begin{lstlisting}[language=Java,caption={Nextflow DSL2 ChIP-seq pipeline.},label=lst:nf-chip]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+params.samplesheet = "samplesheet.csv"  // sample_id,fastq_1,fastq_2,control_id
+params.bt2_index   = "ref/GRCh38_bt2"
+params.blacklist   = "ref/hg38-blacklist.v2.bed"
+params.outdir      = "results"
+params.peak_type   = "narrow"  // or "broad"
+
+process FASTP {
+    tag "${sample_id}"
+    cpus 4
+    input:  tuple val(sample_id), path(r1), path(r2)
+    output: tuple val(sample_id), path("*_R1_trimmed.fastq.gz"), path("*_R2_trimmed.fastq.gz"), emit: trimmed
+    script:
+    """
+    fastp -i ${r1} -I ${r2} \
+      -o ${sample_id}_R1_trimmed.fastq.gz \
+      -O ${sample_id}_R2_trimmed.fastq.gz \
+      --detect_adapter_for_pe --thread ${task.cpus}
+    """
+}
+
+process BOWTIE2_ALIGN {
+    tag "${sample_id}"
+    cpus 12
+    input:
+        tuple val(sample_id), path(r1), path(r2)
+        val(idx)
+    output: tuple val(sample_id), path("*.filtered.bam"), path("*.filtered.bam.bai"), emit: bam
+    script:
+    """
+    bowtie2 -x ${idx} -1 ${r1} -2 ${r2} --very-sensitive \
+      --threads ${task.cpus} \
+      | samtools view -b -f 2 -q 30 - \
+      | samtools sort -o sorted.bam -
+    sambamba markdup -t ${task.cpus} --remove-duplicates sorted.bam ${sample_id}.filtered.bam
+    samtools index ${sample_id}.filtered.bam
+    """
+}
+
+process MACS2_CALLPEAK {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/peaks", mode: 'copy'
+    input:
+        tuple val(sample_id), path(treatment_bam), path(treatment_bai),
+              path(control_bam), path(control_bai)
+    output: path("${sample_id}_peaks.*Peak"), emit: peaks
+    script:
+    def broad_flag = params.peak_type == "broad" ? "--broad --broad-cutoff 0.1" : ""
+    """
+    macs2 callpeak -t ${treatment_bam} -c ${control_bam} \
+      -f BAMPE -g hs ${broad_flag} -q 0.05 -n ${sample_id}
+    """
+}
+
+workflow {
+    // Parse samplesheet: sample_id, fastq_1, fastq_2, control_id
+    ch_input = Channel.fromPath(params.samplesheet)
+        .splitCsv(header: true)
+        .map { row -> tuple(row.sample_id, file(row.fastq_1), file(row.fastq_2), row.control_id) }
+
+    ch_reads   = ch_input.map { it[0..2] }
+    bt2_idx_ch = Channel.value(params.bt2_index)
+
+    FASTP(ch_reads)
+    BOWTIE2_ALIGN(FASTP.out.trimmed, bt2_idx_ch)
+
+    // Join treatment with control BAMs
+    ch_with_control = ch_input.map { [it[0], it[3]] }  // sample_id, control_id
+    ch_treatment = BOWTIE2_ALIGN.out.bam  // sample_id, bam, bai
+    ch_control   = BOWTIE2_ALIGN.out.bam  // also includes controls
+
+    ch_paired = ch_treatment
+        .combine(ch_with_control, by: 0)
+        .map { sample_id, t_bam, t_bai, ctrl_id -> [sample_id, t_bam, t_bai, ctrl_id] }
+        .combine(ch_control.map { [it[0], it[1], it[2]] }, by: 0)
+
+    // Simplified: directly call peaks
+    MACS2_CALLPEAK(ch_paired)
+}
+\end{lstlisting}
+
+\begin{keyconcept}[title={Narrow vs Broad Peaks}]
+\textbf{Narrow peaks} are sharp, well-defined binding sites typical of transcription factors and active histone marks (H3K4me3, H3K27ac). Use MACS2 default mode.
+
+\textbf{Broad peaks} are diffuse domains spanning kilobases to megabases, typical of repressive marks (H3K27me3, H3K9me3) and gene-body marks (H3K36me3). Use MACS2 with \texttt{--broad} or dedicated tools like SICER2/epic2.
+\end{keyconcept}
+
+%=============================================================================
+\section{scRNA-seq Pipeline}
+\label{sec:wf:scrna}
+%=============================================================================
+
+\subsection{Pipeline Overview}
+
+Single-cell RNA-seq analysis begins with raw read processing (Cell Ranger or STARsolo) to generate a count matrix, followed by a series of computational steps to identify cell populations and their marker genes:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Cell Ranger / STARsolo:} Demultiplexing, alignment, UMI counting, cell barcode filtering.
+  \item \textbf{Quality control:} Filter cells by total UMIs, genes detected, and mitochondrial fraction.
+  \item \textbf{Normalization:} Library size normalization and log transformation.
+  \item \textbf{Highly variable genes (HVGs):} Select informative features for dimensionality reduction.
+  \item \textbf{PCA:} Reduce dimensionality; select significant components.
+  \item \textbf{Neighbourhood graph and UMAP:} Build cell-cell similarity graph; embed in 2D for visualization.
+  \item \textbf{Clustering:} Leiden or Louvain community detection on the graph.
+  \item \textbf{Marker gene identification:} Find genes differentially expressed between clusters.
+\end{enumerate}
+
+\subsection{Complete Snakemake scRNA-seq Workflow}
+
+\begin{lstlisting}[language=Python,caption={Snakemake scRNA-seq pipeline with STARsolo and Scanpy.},label=lst:smk-scrna]
+# Snakefile -- scRNA-seq Pipeline
+configfile: "config.yaml"
+
+SAMPLES    = config["samples"]
+STAR_IDX   = config["star_index"]
+WHITELIST  = config["barcode_whitelist"]
+
+rule all:
+    input:
+        expand("results/scanpy/{sample}_processed.h5ad", sample=SAMPLES),
+        "results/scanpy/integrated.h5ad"
+
+rule starsolo:
+    input:
+        r1="data/{sample}_R1.fastq.gz",  # cDNA read
+        r2="data/{sample}_R2.fastq.gz"   # barcode+UMI read
+    output:
+        bam="results/starsolo/{sample}/Aligned.sortedByCoord.out.bam",
+        mtx="results/starsolo/{sample}/Solo.out/Gene/filtered/matrix.mtx"
+    threads: 16
+    params:
+        idx=STAR_IDX,
+        wl=WHITELIST,
+        outdir="results/starsolo/{sample}/"
+    conda: "envs/starsolo.yaml"
+    shell:
+        """
+        STAR --runThreadN {threads} \
+          --genomeDir {params.idx} \
+          --readFilesIn {input.r1} {input.r2} \
+          --readFilesCommand zcat \
+          --soloType CB_UMI_Simple \
+          --soloCBwhitelist {params.wl} \
+          --soloCBstart 1 --soloCBlen 16 \
+          --soloUMIstart 17 --soloUMIlen 12 \
+          --outSAMtype BAM SortedByCoordinate \
+          --outFileNamePrefix {params.outdir} \
+          --soloFeatures Gene \
+          --soloCellFilter EmptyDrops_CR
+        """
+
+rule scanpy_analysis:
+    input:
+        mtx="results/starsolo/{sample}/Solo.out/Gene/filtered/matrix.mtx"
+    output:
+        h5ad="results/scanpy/{sample}_processed.h5ad"
+    conda: "envs/scanpy.yaml"
+    script:
+        "scripts/run_scanpy.py"
+
+rule integrate_samples:
+    input:
+        expand("results/scanpy/{sample}_processed.h5ad", sample=SAMPLES)
+    output:
+        "results/scanpy/integrated.h5ad"
+    conda: "envs/scanpy.yaml"
+    script:
+        "scripts/integrate_scanpy.py"
+\end{lstlisting}
+
+\subsection{Complete Nextflow scRNA-seq Workflow}
+
+\begin{lstlisting}[language=Java,caption={Nextflow DSL2 scRNA-seq pipeline.},label=lst:nf-scrna]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+params.samplesheet = "samplesheet.csv"
+params.star_index  = "ref/star_index"
+params.whitelist   = "ref/3M-february-2018.txt"
+params.outdir      = "results"
+
+process STARSOLO {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/starsolo/${sample_id}", mode: 'copy'
+    cpus 16
+    memory '64 GB'
+
+    input:
+        tuple val(sample_id), path(r1), path(r2)
+        path(star_index)
+        path(whitelist)
+
+    output:
+        tuple val(sample_id), path("Solo.out/Gene/filtered/"), emit: counts
+        path("Log.final.out"), emit: log
+
+    script:
+    """
+    STAR --runThreadN ${task.cpus} \
+      --genomeDir ${star_index} \
+      --readFilesIn ${r1} ${r2} \
+      --readFilesCommand zcat \
+      --soloType CB_UMI_Simple \
+      --soloCBwhitelist ${whitelist} \
+      --soloCBstart 1 --soloCBlen 16 \
+      --soloUMIstart 17 --soloUMIlen 12 \
+      --outSAMtype BAM SortedByCoordinate \
+      --soloFeatures Gene \
+      --soloCellFilter EmptyDrops_CR
+    """
+}
+
+process SCANPY_PROCESS {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/scanpy", mode: 'copy'
+
+    input:  tuple val(sample_id), path(counts_dir)
+    output: tuple val(sample_id), path("${sample_id}_processed.h5ad"), emit: h5ad
+
+    script:
+    """
+    python ${projectDir}/scripts/run_scanpy.py \
+      --input ${counts_dir} --sample ${sample_id} \
+      --output ${sample_id}_processed.h5ad
+    """
+}
+
+process INTEGRATE {
+    publishDir "${params.outdir}/scanpy", mode: 'copy'
+
+    input:  path(h5ad_files)
+    output: path("integrated.h5ad")
+
+    script:
+    """
+    python ${projectDir}/scripts/integrate_scanpy.py \
+      --input_files ${h5ad_files} --output integrated.h5ad
+    """
+}
+
+workflow {
+    ch_input = Channel.fromPath(params.samplesheet)
+        .splitCsv(header: true)
+        .map { row -> tuple(row.sample_id, file(row.fastq_r1), file(row.fastq_r2)) }
+
+    star_idx = Channel.value(file(params.star_index))
+    wl       = Channel.value(file(params.whitelist))
+
+    STARSOLO(ch_input, star_idx, wl)
+    SCANPY_PROCESS(STARSOLO.out.counts)
+    INTEGRATE(SCANPY_PROCESS.out.h5ad.map { it[1] }.collect())
+}
+\end{lstlisting}
+
+\begin{protocolbox}[title={Scanpy Processing Script (scripts/run\_scanpy.py)}]
+The core Scanpy workflow, typically implemented as a Python script called by the workflow manager:
+\begin{enumerate}[nosep]
+  \item Load count matrix: \texttt{sc.read\_10x\_mtx()} or \texttt{sc.read\_10x\_h5()}
+  \item QC filtering: remove cells with $<$200 genes, $>$20\% mitochondrial reads
+  \item Normalization: \texttt{sc.pp.normalize\_total(target\_sum=10000)}, \texttt{sc.pp.log1p()}
+  \item HVG selection: \texttt{sc.pp.highly\_variable\_genes(n\_top\_genes=2000)}
+  \item PCA: \texttt{sc.tl.pca(n\_comps=50)}
+  \item Neighbors: \texttt{sc.pp.neighbors(n\_neighbors=15, n\_pcs=30)}
+  \item UMAP: \texttt{sc.tl.umap()}
+  \item Leiden clustering: \texttt{sc.tl.leiden(resolution=0.5)}
+  \item Marker genes: \texttt{sc.tl.rank\_genes\_groups('leiden', method='wilcoxon')}
+  \item Save: \texttt{adata.write('output.h5ad')}
+\end{enumerate}
+\end{protocolbox}
+
+%=============================================================================
+\section{Single-Cell Quantification Tool Comparison}
+\label{sec:wf:sctools}
+%=============================================================================
+
+Several tools can generate the cell-by-gene count matrix from raw single-cell RNA-seq FASTQ files. Choosing between them depends on speed, memory constraints, and compatibility requirements.
+
+\subsection{Cell Ranger vs STARsolo vs alevin-fry}
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[Cell Ranger (10x Genomics)]
+  The official quantification tool from 10x Genomics. Cell Ranger is straightforward to run and produces well-documented outputs, but it is closed-source, relatively slow, and requires substantial memory.
+
+\begin{lstlisting}[language=bash,caption={Cell Ranger count command.},label=lst:cellranger]
+cellranger count --id=sample1 \
+  --transcriptome=/ref/refdata-gex-GRCh38-2024-A \
+  --fastqs=/data/sample1/ \
+  --sample=sample1 \
+  --localcores=16 --localmem=64
+\end{lstlisting}
+
+  \item[STARsolo]
+  The single-cell mode of the STAR aligner. STARsolo produces output fully compatible with Cell Ranger (MEX format) while running 5--10$\times$ faster. It supports 10x Chromium v2/v3, Drop-seq, and other barcoding schemes.
+
+\begin{lstlisting}[language=bash,caption={STARsolo command for 10x Chromium v3.},label=lst:starsolo-cmd]
+STAR --runThreadN 16 \
+  --genomeDir /ref/star_index \
+  --readFilesIn sample1_R2.fastq.gz sample1_R1.fastq.gz \
+  --readFilesCommand zcat \
+  --soloType CB_UMI_Simple \
+  --soloCBwhitelist 3M-february-2018.txt \
+  --soloCBstart 1 --soloCBlen 16 \
+  --soloUMIstart 17 --soloUMIlen 12 \
+  --outSAMtype BAM SortedByCoordinate \
+  --soloFeatures Gene GeneFull \
+  --soloCellFilter EmptyDrops_CR
+\end{lstlisting}
+
+  \item[alevin-fry (Salmon)]
+  A lightweight, pseudo-alignment-based quantification tool. \software{alevin-fry} uses \software{Salmon} for mapping and a Rust-based framework for UMI resolution. It is the fastest option and uses the least memory, but does not produce BAM files.
+
+\begin{lstlisting}[language=bash,caption={alevin-fry quantification pipeline.},label=lst:alevin-fry]
+# Step 1: Generate RAD file with Salmon alevin
+salmon alevin -l ISR -i /ref/salmon_index \
+  --chromiumV3 -1 sample1_R1.fastq.gz -2 sample1_R2.fastq.gz \
+  -p 16 -o sample1_alevin --sketch
+
+# Step 2: Generate permit list
+alevin-fry generate-permit-list -d fw -k \
+  -i sample1_alevin -o sample1_quant
+
+# Step 3: Collate RAD file
+alevin-fry collate -r sample1_alevin -i sample1_quant -t 16
+
+# Step 4: Quantify
+alevin-fry quant -m /ref/t2g.tsv -i sample1_quant \
+  -o sample1_quant_res -t 16 -r cr-like --use-mtx
+\end{lstlisting}
+\end{description}
+
+\subsection{Single-Cell Tool Recommendation Table}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of single-cell quantification tools for 10x Chromium data.}
+\label{tab:sc-tools}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l c c c X@{}}
+\toprule
+\textbf{Tool} & \textbf{Speed} & \textbf{Peak RAM} & \textbf{Cell Ranger Compat.} & \textbf{Notes} \\
+\midrule
+Cell Ranger & Slow & $\sim$64 GB & Native & Closed-source; required for some 10x features (e.g., ATAC, multiome) \\
+\addlinespace
+STARsolo & 5--10$\times$ faster & $\sim$32 GB & Full (MEX output) & Open-source; drop-in replacement; produces BAM \\
+\addlinespace
+alevin-fry & 10--20$\times$ faster & $\sim$8--16 GB & Via conversion & Fastest; smallest memory; no BAM; requires Salmon index \\
+\addlinespace
+kallisto bustools & 10--15$\times$ faster & $\sim$8--12 GB & Via conversion & Pseudo-alignment; similar speed to alevin-fry \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Which Tool to Choose?}]
+For most analyses, \software{STARsolo} is the recommended default: it is fast, open-source, produces Cell Ranger-compatible output, and generates BAM files for downstream use (e.g., RNA velocity with \software{velocyto}). Use \software{alevin-fry} when processing very large datasets where speed and memory are critical. Use \software{Cell Ranger} when you need 10x-specific features or when your collaborators require Cell Ranger output for regulatory or reproducibility reasons.
+\end{tipbox}
+
+%=============================================================================
+\section{Bisulfite Sequencing Pipeline}
+\label{sec:wf:bs}
+%=============================================================================
+
+\subsection{Pipeline Overview}
+
+Whole-genome bisulfite sequencing (WGBS) measures DNA methylation at single-base resolution. Bisulfite treatment converts unmethylated cytosines to uracil (read as thymine), while methylated cytosines are protected. This creates a reduced-complexity genome that requires specialized alignment:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{FastQC:} Raw read quality assessment.
+  \item \textbf{Trim Galore:} Adapter and quality trimming (Trim Galore handles the RRBS or WGBS-specific trimming needs).
+  \item \textbf{Bismark:} Bisulfite-aware alignment to in-silico converted genomes.
+  \item \textbf{Bismark deduplicate:} Remove PCR duplicates.
+  \item \textbf{Bismark methylation extractor:} Extract per-CpG methylation levels.
+  \item \textbf{DMR calling:} Identify differentially methylated regions (e.g., with \software{dmrseq} or \software{DSS} in R).
+\end{enumerate}
+
+\subsection{Complete Snakemake Bisulfite-seq Workflow}
+
+\begin{lstlisting}[language=Python,caption={Snakemake WGBS pipeline with Bismark.},label=lst:smk-bs]
+# Snakefile -- WGBS Bisulfite Sequencing Pipeline
+configfile: "config.yaml"
+
+SAMPLES    = config["samples"]
+BISMARK_IDX = config["bismark_index"]
+
+rule all:
+    input:
+        expand("results/methylation/{sample}.bismark.cov.gz", sample=SAMPLES),
+        "results/multiqc/multiqc_report.html"
+
+rule trim_galore:
+    input:
+        r1="data/{sample}_R1.fastq.gz",
+        r2="data/{sample}_R2.fastq.gz"
+    output:
+        r1="results/trimmed/{sample}_R1_val_1.fq.gz",
+        r2="results/trimmed/{sample}_R2_val_2.fq.gz"
+    threads: 4
+    conda: "envs/trim.yaml"
+    shell:
+        """
+        trim_galore --paired --cores {threads} \
+          -o results/trimmed/ \
+          {input.r1} {input.r2}
+        """
+
+rule bismark_align:
+    input:
+        r1="results/trimmed/{sample}_R1_val_1.fq.gz",
+        r2="results/trimmed/{sample}_R2_val_2.fq.gz"
+    output:
+        bam="results/bismark/{sample}_pe.bam",
+        report="results/bismark/{sample}_PE_report.txt"
+    threads: 8
+    params:
+        idx=BISMARK_IDX
+    conda: "envs/bismark.yaml"
+    shell:
+        """
+        bismark --genome {params.idx} \
+          -1 {input.r1} -2 {input.r2} \
+          --parallel {threads} --bowtie2 \
+          -o results/bismark/ \
+          --temp_dir results/bismark/tmp
+        """
+
+rule bismark_dedup:
+    input:
+        "results/bismark/{sample}_pe.bam"
+    output:
+        "results/bismark/{sample}_pe.deduplicated.bam"
+    conda: "envs/bismark.yaml"
+    shell:
+        """
+        deduplicate_bismark --bam --paired \
+          -o results/bismark/ {input}
+        """
+
+rule methylation_extract:
+    input:
+        "results/bismark/{sample}_pe.deduplicated.bam"
+    output:
+        "results/methylation/{sample}.bismark.cov.gz"
+    threads: 8
+    params:
+        idx=BISMARK_IDX
+    conda: "envs/bismark.yaml"
+    shell:
+        """
+        bismark_methylation_extractor --paired-end \
+          --comprehensive --merge_non_CpG \
+          --cytosine_report --genome_folder {params.idx} \
+          --parallel {threads} --gzip \
+          -o results/methylation/ \
+          {input}
+        """
+
+rule multiqc:
+    input:
+        expand("results/bismark/{sample}_PE_report.txt", sample=SAMPLES),
+        expand("results/methylation/{sample}.bismark.cov.gz", sample=SAMPLES)
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "envs/qc.yaml"
+    shell:
+        "multiqc results/ -o results/multiqc/ --force"
+\end{lstlisting}
+
+\subsection{Complete Nextflow Bisulfite-seq Workflow}
+
+\begin{lstlisting}[language=Java,caption={Nextflow DSL2 WGBS pipeline with Bismark.},label=lst:nf-bs]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+params.reads        = "data/*_{R1,R2}.fastq.gz"
+params.bismark_idx  = "ref/bismark_index"
+params.outdir       = "results"
+
+process TRIM_GALORE {
+    tag "${sample_id}"
+    cpus 4
+    input:  tuple val(sample_id), path(reads)
+    output: tuple val(sample_id), path("*_val_{1,2}.fq.gz"), emit: trimmed
+    script:
+    def (r1, r2) = reads
+    """
+    trim_galore --paired --cores ${task.cpus} ${r1} ${r2}
+    """
+}
+
+process BISMARK_ALIGN {
+    tag "${sample_id}"
+    cpus 8
+    memory '32 GB'
+    input:
+        tuple val(sample_id), path(reads)
+        path(bismark_idx)
+    output: tuple val(sample_id), path("*.bam"), emit: bam
+    script:
+    def (r1, r2) = reads
+    """
+    bismark --genome ${bismark_idx} \
+      -1 ${r1} -2 ${r2} \
+      --parallel ${task.cpus} --bowtie2 --temp_dir tmp
+    """
+}
+
+process BISMARK_DEDUP {
+    tag "${sample_id}"
+    input:  tuple val(sample_id), path(bam)
+    output: tuple val(sample_id), path("*.deduplicated.bam"), emit: bam
+    script:
+    """
+    deduplicate_bismark --bam --paired ${bam}
+    """
+}
+
+process METHYL_EXTRACT {
+    tag "${sample_id}"
+    publishDir "${params.outdir}/methylation", mode: 'copy'
+    cpus 8
+    input:
+        tuple val(sample_id), path(bam)
+        path(bismark_idx)
+    output: path("*.cov.gz"), emit: coverage
+    script:
+    """
+    bismark_methylation_extractor --paired-end \
+      --comprehensive --merge_non_CpG \
+      --cytosine_report --genome_folder ${bismark_idx} \
+      --parallel ${task.cpus} --gzip ${bam}
+    """
+}
+
+workflow {
+    reads_ch = Channel.fromFilePairs(params.reads, checkIfExists: true)
+    idx_ch   = Channel.value(file(params.bismark_idx))
+
+    TRIM_GALORE(reads_ch)
+    BISMARK_ALIGN(TRIM_GALORE.out.trimmed, idx_ch)
+    BISMARK_DEDUP(BISMARK_ALIGN.out.bam)
+    METHYL_EXTRACT(BISMARK_DEDUP.out.bam, idx_ch)
+}
+\end{lstlisting}
+
+\begin{tipbox}[title={Production Alternative: nf-core/methylseq}]
+The \software{nf-core/methylseq} pipeline supports both Bismark and bwa-meth alignment strategies, handles RRBS and WGBS protocols, includes comprehensive QC metrics, and provides publication-ready methylation reports.
+\end{tipbox}
+
+%=============================================================================
+\section{16S Amplicon Metagenomics Pipeline}
+\label{sec:wf:16s}
+%=============================================================================
+
+\subsection{Pipeline Overview}
+
+16S rRNA gene amplicon sequencing identifies bacterial community composition. The DADA2 pipeline is the current standard, replacing older OTU-based approaches with exact amplicon sequence variants (ASVs):
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Cutadapt:} Remove primer sequences from read ends.
+  \item \textbf{DADA2 (in R):} Quality filtering, error learning, denoising, merging paired reads, chimera removal, and ASV table generation.
+  \item \textbf{Taxonomic classification:} Assign taxonomy to ASVs using SILVA, Greengenes2, or GTDB databases.
+  \item \textbf{Diversity analysis:} Alpha diversity (Shannon, Simpson, observed ASVs), beta diversity (Bray-Curtis, UniFrac), ordination (PCoA), and differential abundance testing.
+\end{enumerate}
+
+\subsection{Complete Snakemake 16S Workflow}
+
+\begin{lstlisting}[language=Python,caption={Snakemake 16S amplicon metagenomics pipeline.},label=lst:smk-16s]
+# Snakefile -- 16S Amplicon Metagenomics (DADA2)
+configfile: "config.yaml"
+
+SAMPLES   = config["samples"]
+FWD_PRIMER = config["fwd_primer"]  # e.g., CCTACGGGNGGCWGCAG (341F)
+REV_PRIMER = config["rev_primer"]  # e.g., GACTACHVGGGTATCTAATCC (785R)
+SILVA_DB   = config["silva_db"]    # SILVA 138.1 training set
+
+rule all:
+    input:
+        "results/dada2/asv_table.tsv",
+        "results/dada2/taxonomy.tsv",
+        "results/diversity/alpha_diversity.pdf",
+        "results/diversity/beta_pcoa.pdf"
+
+rule cutadapt_primers:
+    input:
+        r1="data/{sample}_R1.fastq.gz",
+        r2="data/{sample}_R2.fastq.gz"
+    output:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz"
+    params:
+        fwd=FWD_PRIMER,
+        rev=REV_PRIMER
+    threads: 4
+    conda: "envs/cutadapt.yaml"
+    shell:
+        """
+        cutadapt -g {params.fwd} -G {params.rev} \
+          -o {output.r1} -p {output.r2} \
+          --discard-untrimmed --cores {threads} \
+          {input.r1} {input.r2}
+        """
+
+rule dada2_pipeline:
+    input:
+        r1=expand("results/trimmed/{sample}_R1.trimmed.fastq.gz",
+                  sample=SAMPLES),
+        r2=expand("results/trimmed/{sample}_R2.trimmed.fastq.gz",
+                  sample=SAMPLES)
+    output:
+        asv="results/dada2/asv_table.tsv",
+        tax="results/dada2/taxonomy.tsv",
+        seqs="results/dada2/asv_sequences.fasta"
+    params:
+        silva=SILVA_DB,
+        trunc_f=config.get("truncLenF", 280),
+        trunc_r=config.get("truncLenR", 200)
+    conda: "envs/dada2.yaml"
+    script:
+        "scripts/run_dada2.R"
+
+rule diversity_analysis:
+    input:
+        asv="results/dada2/asv_table.tsv",
+        tax="results/dada2/taxonomy.tsv",
+        metadata=config["metadata"]
+    output:
+        alpha="results/diversity/alpha_diversity.pdf",
+        beta="results/diversity/beta_pcoa.pdf"
+    conda: "envs/phyloseq.yaml"
+    script:
+        "scripts/diversity_analysis.R"
+\end{lstlisting}
+
+\subsection{Complete Nextflow 16S Workflow}
+
+\begin{lstlisting}[language=Java,caption={Nextflow DSL2 16S amplicon metagenomics pipeline.},label=lst:nf-16s]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+params.reads      = "data/*_{R1,R2}.fastq.gz"
+params.fwd_primer = "CCTACGGGNGGCWGCAG"
+params.rev_primer = "GACTACHVGGGTATCTAATCC"
+params.silva_db   = "ref/silva_nr99_v138.1_train_set.fa.gz"
+params.outdir     = "results"
+params.truncLenF  = 280
+params.truncLenR  = 200
+
+process CUTADAPT {
+    tag "${sample_id}"
+    cpus 4
+    input:  tuple val(sample_id), path(reads)
+    output: tuple val(sample_id), path("*_trimmed.fastq.gz"), emit: trimmed
+    script:
+    def (r1, r2) = reads
+    """
+    cutadapt -g ${params.fwd_primer} -G ${params.rev_primer} \
+      -o ${sample_id}_R1_trimmed.fastq.gz \
+      -p ${sample_id}_R2_trimmed.fastq.gz \
+      --discard-untrimmed --cores ${task.cpus} \
+      ${r1} ${r2}
+    """
+}
+
+process DADA2 {
+    publishDir "${params.outdir}/dada2", mode: 'copy'
+    memory '16 GB'
+    input:
+        path(trimmed_files)
+        path(silva_db)
+    output:
+        path("asv_table.tsv"), emit: asv
+        path("taxonomy.tsv"),  emit: tax
+        path("asv_sequences.fasta"), emit: seqs
+    script:
+    """
+    Rscript ${projectDir}/scripts/run_dada2.R \
+      --input_dir . \
+      --silva ${silva_db} \
+      --truncLenF ${params.truncLenF} \
+      --truncLenR ${params.truncLenR}
+    """
+}
+
+process DIVERSITY {
+    publishDir "${params.outdir}/diversity", mode: 'copy'
+    input:
+        path(asv_table)
+        path(taxonomy)
+    output:
+        path("*.pdf")
+    script:
+    """
+    Rscript ${projectDir}/scripts/diversity_analysis.R \
+      --asv ${asv_table} --tax ${taxonomy}
+    """
+}
+
+workflow {
+    reads_ch = Channel.fromFilePairs(params.reads, checkIfExists: true)
+    silva_ch = Channel.value(file(params.silva_db))
+
+    CUTADAPT(reads_ch)
+    trimmed_all = CUTADAPT.out.trimmed.map { it[1] }.collect()
+    DADA2(trimmed_all, silva_ch)
+    DIVERSITY(DADA2.out.asv, DADA2.out.tax)
+}
+\end{lstlisting}
+
+\begin{warningbox}[title={DADA2 Truncation Length}]
+The \texttt{truncLen} parameters in DADA2 (\texttt{truncLenF} for forward, \texttt{truncLenR} for reverse) determine where reads are cut based on quality. These values must be chosen after inspecting the quality profiles (\texttt{plotQualityProfile()} in R). Set truncation where median quality drops below Q25--30. After truncation, the remaining forward and reverse reads must still overlap by at least 20\basepair{} for successful merging.
+\end{warningbox}
+
+\begin{tipbox}[title={Production Alternative: nf-core/ampliseq}]
+\software{nf-core/ampliseq} provides a comprehensive Nextflow pipeline for amplicon sequencing analysis, supporting DADA2 and QIIME2 backends, multiple taxonomic databases, and extensive diversity analyses. It handles both 16S and ITS (fungal) amplicons.
+\end{tipbox}
+
+%=============================================================================
+\section{Master Comparison of nf-core Pipelines}
+\label{sec:wf:nfcore-table}
+%=============================================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Summary of key nf-core pipelines for NGS data analysis.}
+\label{tab:nfcore-pipelines}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+\textbf{Pipeline} & \textbf{Application} & \textbf{Key Features} \\
+\midrule
+nf-core/sarek & WGS/WES variant calling & GATK, DeepVariant, Strelka2; germline \& somatic; tumor-normal \\
+nf-core/rnaseq & RNA-seq & STAR, Salmon, HISAT2; strandedness detection; UMI support \\
+nf-core/atacseq & ATAC-seq & Bowtie2, MACS2; fragment size QC; IDR for replicates \\
+nf-core/chipseq & ChIP-seq & Bowtie2, MACS2; input control; IDR; broad/narrow peaks \\
+nf-core/scrnaseq & scRNA-seq & Cell Ranger, STARsolo, Salmon alevin; multiple protocols \\
+nf-core/methylseq & Bisulfite-seq & Bismark, bwa-meth; WGBS and RRBS support \\
+nf-core/ampliseq & 16S/ITS amplicon & DADA2, QIIME2; multiple taxonomic databases; diversity \\
+nf-core/hic & Hi-C & Mapping, filtering, contact matrices, TAD calling \\
+nf-core/cutandrun & CUT\&Run/CUT\&Tag & Bowtie2; spike-in normalization; SEACR peak calling \\
+nf-core/smrnaseq & Small RNA-seq & miRNA quantification; novel miRNA prediction \\
+nf-core/nanoseq & Oxford Nanopore & Basecalling, alignment, QC for long-read data \\
+nf-core/mag & Metagenome assembly & Assembly, binning, taxonomic classification \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%=============================================================================
+\section{General Best Practices for All Workflows}
+\label{sec:wf:bestpractices}
+%=============================================================================
+
+\begin{protocolbox}[title={Workflow Best Practices Checklist}]
+\begin{enumerate}[itemsep=3pt]
+  \item \textbf{Always run FastQC/MultiQC} before and after trimming to verify data quality.
+  \item \textbf{Check expected outputs at each step:} alignment rates should be $>$80\%; duplication rates should be reasonable for your assay; insert sizes should match expectations.
+  \item \textbf{Use consistent reference genomes and annotations:} Download genome FASTA and GTF from the same source (e.g., GENCODE or Ensembl) and the same release version.
+  \item \textbf{Document all parameters:} Store them in configuration files (config.yaml or nextflow.config), not hardcoded in the workflow.
+  \item \textbf{Pin software versions:} Use Conda environment files or container image digests.
+  \item \textbf{Test on a small subset first:} Run your pipeline on one or two samples (or a downsampled dataset) before processing the full cohort.
+  \item \textbf{Monitor resource usage:} Check CPU, memory, and disk usage to optimize resource requests on HPC/cloud.
+  \item \textbf{Archive raw data and results:} Submit raw data to SRA/ENA before publication; archive processed results with documentation.
+\end{enumerate}
+\end{protocolbox}
+
+%=============================================================================
+\section{Resource Requirements by Analysis Type}
+\label{sec:wf:resources}
+%=============================================================================
+
+Planning computational resources before launching a pipeline prevents out-of-memory failures, disk exhaustion, and unnecessarily long runtimes. \Cref{tab:resource-requirements} provides representative resource estimates for common NGS analyses.
+
+\begin{table}[htbp]
+\centering
+\caption{Approximate computational resource requirements per sample for common NGS analyses. Values assume a human genome and typical parameter settings.}
+\label{tab:resource-requirements}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l c c c c@{}}
+\toprule
+\textbf{Analysis Type} & \textbf{CPU Cores} & \textbf{RAM (GB)} & \textbf{Storage (GB)} & \textbf{Approx.\ Time} \\
+\midrule
+WGS 30$\times$ (BWA-MEM2 + GATK) & 16 & 32--64 & 200--300 & 8--16 h/sample \\
+\addlinespace
+RNA-seq 20 samples (STAR + DESeq2) & 12 & 32 & 50--100 & 4--8 h total \\
+\addlinespace
+scRNA-seq 10K cells (STARsolo + Scanpy) & 16 & 32--64 & 20--50 & 1--3 h/sample \\
+\addlinespace
+scRNA-seq 10K cells (alevin-fry + Scanpy) & 8 & 8--16 & 10--30 & 0.5--1 h/sample \\
+\addlinespace
+ATAC-seq (Bowtie2 + MACS2) & 12 & 16 & 30--60 & 2--4 h/sample \\
+\addlinespace
+ChIP-seq (Bowtie2 + MACS2) & 12 & 16 & 20--50 & 2--4 h/sample \\
+\addlinespace
+WGBS (Bismark) & 8 & 16--32 & 150--250 & 12--24 h/sample \\
+\addlinespace
+16S amplicon (DADA2, 100 samples) & 4 & 8--16 & 5--10 & 1--4 h total \\
+\addlinespace
+Hi-C 1\kilobase{} resolution & 16 & 64--128 & 300--500 & 24--48 h/sample \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{warningbox}[title={Disk Space Is Often the Bottleneck}]
+Intermediate files (unsorted BAMs, temporary alignment files) can consume 2--5$\times$ the final output size. A single 30$\times$ WGS sample can require over 300~GB of temporary disk space during processing. Always provision at least 3$\times$ the expected final output size, and clean up intermediate files as soon as they are no longer needed. On cloud platforms, use local SSD scratch space for intermediate files and persistent storage only for final outputs.
+\end{warningbox}
+
+%=============================================================================
+\section{Error Handling Patterns in Workflows}
+\label{sec:wf:errorhandling}
+%=============================================================================
+
+Production bioinformatics pipelines must handle failures gracefully. Common failure modes include disk exhaustion, out-of-memory (OOM) kills, corrupt or truncated BAM files, and transient network errors when downloading reference data. Both Snakemake and Nextflow provide mechanisms for robust error handling.
+
+\subsection{Common Failure Modes}
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
+  \item[Disk full]
+  Pipelines that produce large intermediate files (e.g., unsorted BAM, temporary STAR genome loading) can exhaust disk space. Symptoms: truncated output files, cryptic I/O errors. Prevention: monitor disk usage, clean temporary files, use \texttt{--tmp-dir} options.
+
+  \item[OOM kill]
+  The Linux kernel's OOM killer terminates processes that exceed available memory. STAR genome loading ($\sim$32~GB for human), GATK HaplotypeCaller, and de novo assembly are common culprits. Symptoms: process killed with signal 9 (SIGKILL), no error message in tool log. Prevention: request sufficient memory in job scheduler, monitor with \texttt{htop}.
+
+  \item[Corrupt BAM/CRAM]
+  Truncated BAM files from interrupted jobs cause downstream tools to fail. Always validate BAM integrity with \texttt{samtools quickcheck} before using them as input.
+
+  \item[Stale NFS locks (HPC)]
+  On shared filesystems, stale file locks can cause tools to hang or produce empty files. Prevention: use local scratch for temporary files, avoid writing to the same directory from multiple concurrent jobs.
+\end{description}
+
+\subsection{Error Handling in Snakemake}
+
+\begin{lstlisting}[language=bash,caption={Snakemake error handling and restart strategies.},label=lst:smk-errorhandling]
+# Retry failed jobs up to 3 times (e.g., transient NFS or OOM)
+snakemake --cores 16 --use-conda --restart-times 3
+
+# Use checkpoints for rules that dynamically determine output files
+# (e.g., when the number of output chunks is not known in advance)
+
+# Set per-rule resource limits in the Snakefile
+rule star_align:
+    resources:
+        mem_mb=32000,
+        disk_mb=100000,
+        tmpdir="/scratch/tmp"
+    retries: 2   # Snakemake 8+ per-rule retry
+\end{lstlisting}
+
+\subsection{Error Handling in Nextflow}
+
+\begin{lstlisting}[caption={Nextflow error handling configuration.},label=lst:nf-errorhandling]
+// nextflow.config -- Error handling strategies
+process {
+    // Retry failed tasks up to 3 times
+    errorStrategy = 'retry'
+    maxRetries = 3
+
+    // Dynamically increase memory on retry
+    memory = { 16.GB * task.attempt }
+    time   = { 4.h * task.attempt }
+
+    // For specific processes, ignore failures (non-critical QC)
+    withName: 'FASTQC' {
+        errorStrategy = 'ignore'
+    }
+
+    // Terminate the pipeline on critical failures
+    withName: 'HAPLOTYPE_CALLER' {
+        errorStrategy = { task.attempt <= 3 ? 'retry' : 'terminate' }
+        memory = { 16.GB * Math.pow(2, task.attempt - 1) }
+    }
+}
+\end{lstlisting}
+
+\begin{tipbox}[title={Validate Intermediate Files}]
+Add validation steps between pipeline stages. For example, run \texttt{samtools quickcheck} after alignment and \texttt{bcftools stats} after variant calling. In Snakemake, use the \texttt{onstart} and \texttt{onsuccess} handlers; in Nextflow, add a validation command in the process script before emitting output.
+\end{tipbox}
+
+%=============================================================================
+\section{Summary}
+\label{sec:wf:summary}
+%=============================================================================
+
+This chapter has provided complete, practical workflow implementations for seven major NGS applications:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{WGS variant calling:} BWA-MEM2, GATK HaplotypeCaller, VQSR, VEP annotation.
+  \item \textbf{RNA-seq differential expression:} STAR + featureCounts + DESeq2 and Salmon + tximeta + DESeq2.
+  \item \textbf{ATAC-seq:} Bowtie2, careful filtering (mitochondrial, duplicates, blacklist), MACS2 peak calling.
+  \item \textbf{ChIP-seq / CUT\&Tag:} Input-controlled peak calling, narrow vs broad peak modes.
+  \item \textbf{scRNA-seq:} STARsolo/Cell Ranger count matrix generation, Scanpy processing workflow.
+  \item \textbf{Bisulfite-seq:} Trim Galore, Bismark alignment and methylation extraction.
+  \item \textbf{16S amplicon metagenomics:} Cutadapt primer removal, DADA2 ASV inference, diversity analysis.
+\end{itemize}
+
+For each pipeline, both Snakemake and Nextflow implementations were provided, along with pointers to the corresponding nf-core production pipelines (\cref{tab:nfcore-pipelines}). These workflows should serve as starting points; adapt parameters and tools to your specific organism, sequencing platform, and research questions.

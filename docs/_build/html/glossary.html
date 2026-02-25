@@ -1,0 +1,598 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glossary &mdash; SeqTec 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b5f39899" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=96c007af"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Singularity / Apptainer" href="infrastructure/singularity-apptainer.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            SeqTec
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/index.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/installation.html">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/installation.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/installation.html#id1">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/installation.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/installation.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/installation.html#exporting-for-reproducibility">Exporting for Reproducibility</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/installation.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/installation.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/computing-environment.html">Computing Environment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/computing-environment.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/computing-environment.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/computing-environment.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/computing-environment.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/computing-environment.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/computing-environment.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/test-datasets.html">Test Datasets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/test-datasets.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/test-datasets.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/test-datasets.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/test-datasets.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/test-datasets.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="getting-started/test-datasets.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Data Formats</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="data-formats/index.html">Data Formats</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/fastq.html">FASTQ</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/fastq.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/fastq.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/fastq.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/fastq.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/fasta.html">FASTA</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/fasta.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/fasta.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/fasta.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/fasta.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/sam-bam-cram.html">SAM / BAM / CRAM</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/sam-bam-cram.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/sam-bam-cram.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/sam-bam-cram.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/sam-bam-cram.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/vcf-bcf.html">VCF / BCF</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/vcf-bcf.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/vcf-bcf.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/vcf-bcf.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/vcf-bcf.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/bed.html">BED</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/bed.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/bed.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/bed.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/bed.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/gff-gtf.html">GFF / GTF</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/gff-gtf.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/gff-gtf.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/gff-gtf.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/gff-gtf.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/bigwig-bedgraph.html">BigWig / bedGraph</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/bigwig-bedgraph.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/bigwig-bedgraph.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/bigwig-bedgraph.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/bigwig-bedgraph.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/h5ad-anndata.html">h5ad / AnnData</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/h5ad-anndata.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/h5ad-anndata.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/h5ad-anndata.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/h5ad-anndata.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/mex-10x.html">MEX / 10x Format</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/mex-10x.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/mex-10x.html#structure">Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/mex-10x.html#working-with">Working With</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/mex-10x.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="data-formats/hic-formats.html">Hi-C Formats</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/hic-formats.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/hic-formats.html#hic-format">.hic Format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/hic-formats.html#cool-mcool-format">.cool / .mcool Format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/hic-formats.html#working-with-hi-c-data-in-python">Working with Hi-C Data in Python</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/hic-formats.html#key-differences">Key Differences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data-formats/hic-formats.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools/index.html">Tools</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tools/quality-control/index.html">Quality Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/quality-control/fastqc.html">FastQC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/quality-control/fastp.html">fastp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/quality-control/multiqc.html">MultiQC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/quality-control/nanoplot.html">NanoPlot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/quality-control/pycoqc.html">pycoQC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/quality-control/chopper.html">Chopper</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/alignment/index.html">Alignment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/alignment/bwa-mem2.html">BWA-MEM2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/alignment/minimap2.html">minimap2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/alignment/bowtie2.html">Bowtie2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/alignment/star.html">STAR</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/sam-bam-processing/index.html">SAM/BAM Processing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/sam-bam-processing/samtools.html">SAMtools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/sam-bam-processing/sambamba.html">Sambamba</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/sam-bam-processing/picard.html">Picard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/sam-bam-processing/deeptools.html">deepTools</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/interval-operations/index.html">Interval Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/interval-operations/bedtools.html">BEDTools</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/assembly/index.html">Genome Assembly</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/assembly/flye.html">Flye</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/assembly/canu.html">Canu</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/assembly/spades.html">SPAdes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/assembly/unicycler.html">Unicycler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/assembly/medaka.html">Medaka</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/assembly-qc/index.html">Assembly Quality Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/assembly-qc/quast.html">QUAST</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/assembly-qc/busco.html">BUSCO</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/annotation/index.html">Genome Annotation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/annotation/bakta.html">Bakta</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/annotation/prokka.html">Prokka</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/annotation/braker.html">BRAKER</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/variant-calling/index.html">Variant Calling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/variant-calling/gatk.html">GATK</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/variant-calling/clair3.html">Clair3</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/variant-calling/freebayes.html">FreeBayes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/variant-calling/deepvariant.html">DeepVariant</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/variant-annotation/index.html">Variant Annotation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/variant-annotation/vep.html">VEP (Variant Effect Predictor)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/variant-annotation/snpeff.html">SnpEff</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/variant-processing/index.html">Variant Processing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/variant-processing/bcftools.html">BCFtools</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/quantification/index.html">Quantification</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/quantification/kallisto.html">kallisto</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/quantification/salmon.html">Salmon</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/quantification/featurecounts.html">featureCounts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/quantification/htseq.html">HTSeq</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/differential-expression/index.html">Differential Expression</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/differential-expression/deseq2.html">DESeq2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/differential-expression/edger.html">edgeR</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/single-cell/index.html">Single-Cell Analysis</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/single-cell/cellranger.html">Cell Ranger</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/single-cell/starsolo.html">STARsolo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/single-cell/seurat.html">Seurat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/single-cell/scanpy.html">Scanpy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/metagenomics/index.html">Metagenomics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/metagenomics/kraken2.html">Kraken2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/metagenomics/bracken.html">Bracken</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/metagenomics/krona.html">Krona</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/epigenomics/index.html">Epigenomics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/epigenomics/macs2.html">MACS2</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/epigenomics/bismark.html">Bismark</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/basecalling/index.html">Basecalling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/basecalling/dorado.html">Dorado</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/basecalling/guppy.html">Guppy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/data-access/index.html">Data Access</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/data-access/sra-toolkit.html">SRA Toolkit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tools/data-access/entrez-direct.html">Entrez Direct</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/visualization/index.html">Visualization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tools/visualization/igv.html">IGV</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Workflows</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="workflows/index.html">Workflows</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="workflows/snakemake.html">Snakemake</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/snakemake.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/snakemake.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/snakemake.html#qc-pipeline">QC Pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/snakemake.html#running-the-pipeline">Running the Pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/snakemake.html#configuration">Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/snakemake.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/nextflow.html">Nextflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nextflow.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nextflow.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nextflow.html#qc-pipeline">QC Pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nextflow.html#configuration">Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nextflow.html#running-the-pipeline">Running the Pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nextflow.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/wgs-variant-calling.html">WGS Variant Calling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/wgs-variant-calling.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/wgs-variant-calling.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/wgs-variant-calling.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/wgs-variant-calling.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/rnaseq-differential-expression.html">RNA-seq Differential Expression</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/rnaseq-differential-expression.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/rnaseq-differential-expression.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/rnaseq-differential-expression.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/rnaseq-differential-expression.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/atacseq.html">ATAC-seq</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/atacseq.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/atacseq.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/atacseq.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/atacseq.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/chipseq.html">ChIP-seq</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/chipseq.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/chipseq.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/chipseq.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/chipseq.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/scrna-seq.html">scRNA-seq</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/scrna-seq.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/scrna-seq.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/scrna-seq.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/scrna-seq.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/scrna-seq.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/bisulfite-seq.html">Bisulfite Sequencing (WGBS)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bisulfite-seq.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bisulfite-seq.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bisulfite-seq.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bisulfite-seq.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bisulfite-seq.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/16s-amplicon.html">16S Amplicon Sequencing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/16s-amplicon.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/16s-amplicon.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/16s-amplicon.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/16s-amplicon.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/16s-amplicon.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/bacterial-genome-assembly.html">Bacterial Genome Assembly (Nanopore)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bacterial-genome-assembly.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bacterial-genome-assembly.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bacterial-genome-assembly.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bacterial-genome-assembly.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/bacterial-genome-assembly.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/metagenomics-classification.html">Metagenomic Classification</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/metagenomics-classification.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/metagenomics-classification.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/metagenomics-classification.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/metagenomics-classification.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/metagenomics-classification.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/nanopore-variant-calling.html">Nanopore Variant Calling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nanopore-variant-calling.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nanopore-variant-calling.html#pipeline-steps">Pipeline Steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nanopore-variant-calling.html#implementation">Implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nanopore-variant-calling.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="workflows/nanopore-variant-calling.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Infrastructure</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="infrastructure/index.html">Infrastructure</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="infrastructure/conda-mamba.html">Conda / Mamba</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/conda-mamba.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/conda-mamba.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/conda-mamba.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/conda-mamba.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/conda-mamba.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/conda-mamba.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="infrastructure/docker.html">Docker</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/docker.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/docker.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/docker.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/docker.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/docker.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/docker.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="infrastructure/singularity-apptainer.html">Singularity / Apptainer</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/singularity-apptainer.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/singularity-apptainer.html#installation">Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/singularity-apptainer.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/singularity-apptainer.html#key-parameters">Key Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/singularity-apptainer.html#expected-output">Expected Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="infrastructure/singularity-apptainer.html#see-also">See Also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Glossary</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">SeqTec</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Glossary</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/glossary.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="glossary">
+<h1>Glossary<a class="headerlink" href="#glossary" title="Link to this heading"></a></h1>
+<dl class="simple glossary">
+<dt id="term-ASV">ASV<a class="headerlink" href="#term-ASV" title="Link to this term"></a></dt><dd><p>Amplicon Sequence Variant. Exact biological sequences resolved by DADA2,
+replacing the older OTU approach in 16S amplicon analysis.</p>
+</dd>
+<dt id="term-BAM">BAM<a class="headerlink" href="#term-BAM" title="Link to this term"></a></dt><dd><p>Binary Alignment Map. Compressed binary form of the SAM format for
+storing aligned sequencing reads.</p>
+</dd>
+<dt id="term-BED">BED<a class="headerlink" href="#term-BED" title="Link to this term"></a></dt><dd><p>Browser Extensible Data. Tab-delimited format for genomic intervals
+using 0-based, half-open coordinates.</p>
+</dd>
+<dt id="term-BUSCO">BUSCO<a class="headerlink" href="#term-BUSCO" title="Link to this term"></a></dt><dd><p>Benchmarking Universal Single-Copy Orthologs. Tool for assessing
+genome assembly completeness using conserved gene sets.</p>
+</dd>
+<dt id="term-BWA">BWA<a class="headerlink" href="#term-BWA" title="Link to this term"></a></dt><dd><p>Burrows-Wheeler Aligner. Short-read alignment tool; BWA-MEM2 is the
+faster SIMD-optimized successor.</p>
+</dd>
+<dt id="term-CIGAR">CIGAR<a class="headerlink" href="#term-CIGAR" title="Link to this term"></a></dt><dd><p>Compact Idiosyncratic Gapped Alignment Report. String in SAM format
+describing how a read aligns to the reference (e.g., <code class="docutils literal notranslate"><span class="pre">151M</span></code>,
+<code class="docutils literal notranslate"><span class="pre">75M2I74M</span></code>).</p>
+</dd>
+<dt id="term-CpG">CpG<a class="headerlink" href="#term-CpG" title="Link to this term"></a></dt><dd><p>Cytosine-phosphate-Guanine dinucleotide. Primary target of DNA
+methylation in mammalian genomes.</p>
+</dd>
+<dt id="term-CRAM">CRAM<a class="headerlink" href="#term-CRAM" title="Link to this term"></a></dt><dd><p>Reference-based compressed alignment format. More compact than BAM
+but requires the reference genome for decoding.</p>
+</dd>
+<dt id="term-DE">DE<a class="headerlink" href="#term-DE" title="Link to this term"></a></dt><dd><p>Differential Expression. Statistical identification of genes with
+significantly different expression levels between conditions.</p>
+</dd>
+<dt id="term-DMR">DMR<a class="headerlink" href="#term-DMR" title="Link to this term"></a></dt><dd><p>Differentially Methylated Region. Genomic region with statistically
+significant methylation differences between conditions.</p>
+</dd>
+<dt id="term-DSL2">DSL2<a class="headerlink" href="#term-DSL2" title="Link to this term"></a></dt><dd><p>Domain Specific Language version 2. Nextflow’s modular workflow
+syntax enabling process reuse and sub-workflows.</p>
+</dd>
+<dt id="term-eDNA">eDNA<a class="headerlink" href="#term-eDNA" title="Link to this term"></a></dt><dd><p>Environmental DNA. DNA extracted directly from environmental samples
+(water, soil) without isolating organisms.</p>
+</dd>
+<dt id="term-FASTA">FASTA<a class="headerlink" href="#term-FASTA" title="Link to this term"></a></dt><dd><p>Text-based format for nucleotide or protein sequences. Uses <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>
+header lines followed by sequence data.</p>
+</dd>
+<dt id="term-FASTQ">FASTQ<a class="headerlink" href="#term-FASTQ" title="Link to this term"></a></dt><dd><p>Text-based format storing nucleotide sequences together with
+per-base Phred quality scores.</p>
+</dd>
+<dt id="term-FLAG">FLAG<a class="headerlink" href="#term-FLAG" title="Link to this term"></a></dt><dd><p>Bitwise flag in SAM format encoding read properties (paired, mapped,
+duplicate, etc.). E.g., 99 = paired, proper pair, mate reverse, first
+in pair.</p>
+</dd>
+<dt id="term-GFF">GFF<a class="headerlink" href="#term-GFF" title="Link to this term"></a></dt><dd><p>General Feature Format. Tab-delimited format for genomic annotations
+(genes, exons, CDS). GFF3 is the current version.</p>
+</dd>
+<dt id="term-GTF">GTF<a class="headerlink" href="#term-GTF" title="Link to this term"></a></dt><dd><p>Gene Transfer Format (GFF version 2). Widely used for gene annotations,
+especially from GENCODE and Ensembl.</p>
+</dd>
+<dt id="term-GVCF">GVCF<a class="headerlink" href="#term-GVCF" title="Link to this term"></a></dt><dd><p>Genomic VCF. GATK’s extended VCF that records confidence at every
+position, enabling efficient joint genotyping.</p>
+</dd>
+<dt id="term-h5ad">h5ad<a class="headerlink" href="#term-h5ad" title="Link to this term"></a></dt><dd><p>HDF5-based file format used by AnnData/Scanpy for single-cell data.
+Stores count matrices, cell metadata, and embeddings.</p>
+</dd>
+<dt id="term-HPC">HPC<a class="headerlink" href="#term-HPC" title="Link to this term"></a></dt><dd><p>High-Performance Computing. Cluster computing environment managed
+by job schedulers like SLURM.</p>
+</dd>
+<dt id="term-HVG">HVG<a class="headerlink" href="#term-HVG" title="Link to this term"></a></dt><dd><p>Highly Variable Genes. Genes with the most variable expression across
+cells, selected as informative features for dimensionality reduction.</p>
+</dd>
+<dt id="term-IGV">IGV<a class="headerlink" href="#term-IGV" title="Link to this term"></a></dt><dd><p>Integrative Genomics Viewer. Desktop application for interactive
+visualization of genomic data (BAM, VCF, BED, BigWig).</p>
+</dd>
+<dt id="term-indel">indel<a class="headerlink" href="#term-indel" title="Link to this term"></a></dt><dd><p>Insertion or deletion variant relative to the reference genome.</p>
+</dd>
+<dt id="term-MAPQ">MAPQ<a class="headerlink" href="#term-MAPQ" title="Link to this term"></a></dt><dd><p>Mapping Quality. Phred-scaled probability that an alignment is wrong.
+MAPQ 30 means 1 in 1000 chance of incorrect mapping.</p>
+</dd>
+<dt id="term-MEX">MEX<a class="headerlink" href="#term-MEX" title="Link to this term"></a></dt><dd><p>Market Exchange format. Sparse matrix format (matrix.mtx, barcodes.tsv,
+features.tsv) output by Cell Ranger and STARsolo.</p>
+</dd>
+<dt id="term-NGS">NGS<a class="headerlink" href="#term-NGS" title="Link to this term"></a></dt><dd><p>Next-Generation Sequencing. High-throughput DNA/RNA sequencing
+technologies producing millions of reads per run.</p>
+</dd>
+<dt id="term-ONT">ONT<a class="headerlink" href="#term-ONT" title="Link to this term"></a></dt><dd><p>Oxford Nanopore Technologies. Long-read sequencing platform that
+reads DNA by measuring ionic current changes through nanopores.</p>
+</dd>
+<dt id="term-OTU">OTU<a class="headerlink" href="#term-OTU" title="Link to this term"></a></dt><dd><p>Operational Taxonomic Unit. Cluster of similar sequences (typically
+97% identity) used in older 16S analyses. Superseded by ASVs.</p>
+</dd>
+<dt id="term-PCA">PCA<a class="headerlink" href="#term-PCA" title="Link to this term"></a></dt><dd><p>Principal Component Analysis. Dimensionality reduction method used
+to identify major axes of variation in gene expression data.</p>
+</dd>
+<dt id="term-Phred">Phred<a class="headerlink" href="#term-Phred" title="Link to this term"></a></dt><dd><p>Quality score encoding where Q = -10 log10(P_error). Q30 means
+99.9% base call accuracy.</p>
+</dd>
+<dt id="term-RPKM">RPKM<a class="headerlink" href="#term-RPKM" title="Link to this term"></a></dt><dd><p>Reads Per Kilobase per Million mapped reads. Normalization method
+for coverage tracks accounting for library size and region length.</p>
+</dd>
+<dt id="term-SAM">SAM<a class="headerlink" href="#term-SAM" title="Link to this term"></a></dt><dd><p>Sequence Alignment/Map. Tab-delimited text format for storing
+aligned sequencing reads against a reference genome.</p>
+</dd>
+<dt id="term-SLURM">SLURM<a class="headerlink" href="#term-SLURM" title="Link to this term"></a></dt><dd><p>Simple Linux Utility for Resource Management. Widely used HPC job
+scheduling system.</p>
+</dd>
+<dt id="term-SNV">SNV<a class="headerlink" href="#term-SNV" title="Link to this term"></a></dt><dd><p>Single Nucleotide Variant. Single base-pair change relative to the
+reference genome.</p>
+</dd>
+<dt id="term-SRA">SRA<a class="headerlink" href="#term-SRA" title="Link to this term"></a></dt><dd><p>Sequence Read Archive. NCBI’s primary repository for raw sequencing
+data from high-throughput platforms.</p>
+</dd>
+<dt id="term-TSS">TSS<a class="headerlink" href="#term-TSS" title="Link to this term"></a></dt><dd><p>Transcription Start Site. Genomic position where RNA polymerase
+begins transcription of a gene.</p>
+</dd>
+<dt id="term-UMAP">UMAP<a class="headerlink" href="#term-UMAP" title="Link to this term"></a></dt><dd><p>Uniform Manifold Approximation and Projection. Non-linear
+dimensionality reduction used for visualizing single-cell data.</p>
+</dd>
+<dt id="term-UMI">UMI<a class="headerlink" href="#term-UMI" title="Link to this term"></a></dt><dd><p>Unique Molecular Identifier. Random barcode attached during library
+preparation to tag individual molecules, enabling PCR duplicate
+removal in single-cell and other protocols.</p>
+</dd>
+<dt id="term-VCF">VCF<a class="headerlink" href="#term-VCF" title="Link to this term"></a></dt><dd><p>Variant Call Format. Standard format for storing genetic variants
+(SNVs, indels, structural variants) with genotype information.</p>
+</dd>
+<dt id="term-VQSR">VQSR<a class="headerlink" href="#term-VQSR" title="Link to this term"></a></dt><dd><p>Variant Quality Score Recalibration. GATK’s machine-learning approach
+to variant filtering using known variant databases as training data.</p>
+</dd>
+<dt id="term-WGBS">WGBS<a class="headerlink" href="#term-WGBS" title="Link to this term"></a></dt><dd><p>Whole Genome Bisulfite Sequencing. Technique for measuring DNA
+methylation at single-base resolution across the entire genome.</p>
+</dd>
+<dt id="term-WGS">WGS<a class="headerlink" href="#term-WGS" title="Link to this term"></a></dt><dd><p>Whole Genome Sequencing. Sequencing of an organism’s entire genome
+at uniform coverage.</p>
+</dd>
+</dl>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="infrastructure/singularity-apptainer.html" class="btn btn-neutral float-left" title="Singularity / Apptainer" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, SeqTec Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

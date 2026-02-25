@@ -1,0 +1,1136 @@
+\chapter{Metagenomics and Microbiome Sequencing}
+\label{ch:metagenomics}
+
+The world teems with microbial life. A single gram of soil contains billions of bacteria from thousands of species; the human gut harbours a community of trillions of microorganisms whose collective genome dwarfs our own. Traditionally, studying these communities required culturing individual organisms in the laboratory---a process that captures only an estimated 1\% of environmental microbial diversity. Metagenomics bypasses this ``great plate count anomaly'' by sequencing DNA directly from environmental or clinical samples, revealing the full genetic repertoire of entire microbial communities. This chapter covers both amplicon-based and shotgun metagenomic approaches, along with the computational tools needed to extract biological insight from complex community data.
+
+%% ============================================================
+\section{What Is Metagenomics?}
+\label{sec:metagenomics_intro}
+%% ============================================================
+
+Metagenomics is the study of genetic material recovered directly from environmental or host-associated samples. Unlike single-organism genomics, metagenomics captures DNA from all organisms present in a sample---bacteria, archaea, fungi, protists, viruses, and host cells---in a single experiment.
+
+\begin{keyconcept}[title={Metagenomics vs.\ Metatranscriptomics vs.\ Metaproteomics}]
+\begin{description}[nosep]
+  \item[Metagenomics] Sequences total DNA. Reveals which organisms are present and their \emph{functional potential} (all genes encoded). Cannot distinguish active from dormant organisms.
+  \item[Metatranscriptomics] Sequences total RNA (after rRNA depletion). Reveals which genes are \emph{actively expressed} and by which organisms.
+  \item[Metaproteomics] Identifies proteins via mass spectrometry. Reveals which proteins are actually produced and in what abundance.
+\end{description}
+Each layer provides complementary information. This chapter focuses on DNA-level metagenomics with a brief treatment of metatranscriptomics.
+\end{keyconcept}
+
+\subsection{The Microbiome: What It Is and Why It Matters}
+
+The term \textbf{microbiome} refers to the community of microorganisms (and their collective genomes) inhabiting a defined environment. Key microbiome niches include:
+
+\begin{description}[style=nextline]
+  \item[Human gut microbiome] The most intensively studied microbiome. Contains $\sim$10$^{13}$ bacterial cells and $\sim$1,000 species per individual. Influences digestion, immune system development, pathogen resistance, drug metabolism, and even neurological function via the gut--brain axis. Dysbiosis (microbial imbalance) is implicated in inflammatory bowel disease, obesity, type 2 diabetes, colorectal cancer, and depression.
+  \item[Human skin microbiome] Varies dramatically by body site (moist vs.\ dry vs.\ sebaceous). Dominated by \species{Cutibacterium}, \species{Staphylococcus}, and \species{Corynebacterium}. Relevant to atopic dermatitis, acne, wound healing.
+  \item[Human oral microbiome] $>$700 species. Key to dental caries, periodontal disease, and increasingly linked to systemic diseases (cardiovascular disease, Alzheimer's disease).
+  \item[Soil microbiome] The most diverse microbial ecosystem on Earth. Critical for nutrient cycling (nitrogen fixation, carbon decomposition), plant health, and agricultural productivity.
+  \item[Marine microbiome] Oceanic microbes drive global biogeochemical cycles, producing $\sim$50\% of Earth's oxygen via photosynthesis.
+  \item[Built environment] Indoor microbiomes (hospitals, homes, spacecraft) affect human health and building integrity.
+\end{description}
+
+%% ============================================================
+\section{16S/18S/ITS Amplicon Sequencing}
+\label{sec:amplicon}
+%% ============================================================
+
+Amplicon sequencing targets a specific phylogenetic marker gene to identify and quantify organisms in a sample. It is the most cost-effective approach for profiling microbial community composition.
+
+\subsection{The 16S rRNA Gene}
+
+The 16S ribosomal RNA gene ($\sim$1,540\basepair{}) is the most widely used phylogenetic marker for bacteria and archaea. It is ideal because:
+
+\begin{itemize}[nosep]
+  \item It is present in all bacteria and archaea (universal).
+  \item It contains both highly \textbf{conserved regions} (for universal primer design) and \textbf{variable regions} (V1--V9) that differ between taxa, enabling taxonomic classification.
+  \item Extensive reference databases exist (SILVA, Greengenes2) with $>$10 million curated sequences.
+\end{itemize}
+
+\subsubsection{Variable Region Selection}
+
+The choice of which variable region(s) to amplify affects taxonomic resolution and which taxa are detected:
+
+\begin{table}[htbp]
+\centering
+\caption{Commonly targeted 16S rRNA variable regions.}
+\label{tab:16s_regions}
+\begin{tabularx}{\textwidth}{@{}lcXl@{}}
+\toprule
+\textbf{Region} & \textbf{Length} & \textbf{Notes} & \textbf{Common Primers} \\
+\midrule
+V1--V2 & $\sim$300\basepair{} & Good for \species{Staphylococcus} differentiation; poor for some Enterobacteriaceae & 27F / 338R \\
+V3--V4 & $\sim$460\basepair{} & \textbf{Most widely used}. Good overall taxonomic resolution. Standard for Illumina MiSeq 2$\times$300\basepair{} & 341F / 805R \\
+V4 & $\sim$250\basepair{} & Used in the Earth Microbiome Project. Compatible with 2$\times$150\basepair{} & 515F / 806R \\
+V4--V5 & $\sim$400\basepair{} & Better discrimination of archaea & 515F / 926R \\
+Full-length & $\sim$1,500\basepair{} & Highest resolution. Requires long-read sequencing (PacBio, ONT) & 27F / 1492R \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{warningbox}[title={Primer Bias}]
+No primer pair amplifies all taxa equally. Every primer set has biases---some taxa are underrepresented or missed entirely. The commonly used 515F/806R primers, for instance, have known biases against certain \species{Crenarchaeota} and \species{SAR11} marine bacteria. Always report which primer pair was used, and be cautious about comparing studies that used different primers.
+\end{warningbox}
+
+\subsection{Other Marker Genes}
+
+\begin{description}[style=nextline]
+  \item[18S rRNA] The eukaryotic equivalent of 16S rRNA. Used for profiling eukaryotic microbes (protists, micro-algae, nematodes, fungi). Variable regions (V4 and V9 are common) provide taxonomic resolution.
+  \item[ITS (Internal Transcribed Spacer)] The ITS1 and ITS2 regions flanking the 5.8S rRNA gene are the standard barcodes for fungi. ITS evolves faster than 18S, providing species-level resolution for many fungal taxa. Reference database: UNITE.
+\end{description}
+
+\subsection{ASVs vs.\ OTUs}
+
+A critical methodological decision in amplicon analysis is how to define taxonomic units:
+
+\begin{description}[style=nextline]
+  \item[OTU (Operational Taxonomic Unit)] Sequences are clustered at a similarity threshold (traditionally 97\% identity). Each cluster represents an ``OTU.'' This approach is tolerant of sequencing errors but sacrifices resolution and can merge distinct species. Tools: \software{USEARCH} (UPARSE algorithm), \software{VSEARCH}, \software{mothur}.
+  \item[ASV (Amplicon Sequence Variant)] Error-correction algorithms model the sequencing error process and resolve sequences to single-nucleotide resolution. ASVs are exact biological sequences (after denoising), enabling comparison across studies, strain-level discrimination, and greater ecological precision. This is now the recommended approach. Tools: \software{DADA2}, \software{Deblur}.
+\end{description}
+
+\begin{keyconcept}[title={Why ASVs Have Replaced OTUs}]
+ASVs offer multiple advantages over OTUs:
+\begin{itemize}[nosep]
+  \item \textbf{Reproducibility}: ASVs are exact sequences, so results from different studies are directly comparable. OTUs depend on the clustering algorithm and reference database.
+  \item \textbf{Resolution}: ASVs can distinguish sequences differing by a single nucleotide, enabling strain-level discrimination.
+  \item \textbf{Reusability}: ASV tables can be merged across experiments; OTU tables cannot (different OTU IDs in different studies).
+  \item \textbf{No arbitrary threshold}: OTU clustering at 97\% is a historical convention with no biological basis for most taxa.
+\end{itemize}
+\end{keyconcept}
+
+\subsection{Amplicon Analysis Tools}
+
+\begin{description}[style=nextline]
+  \item[QIIME 2] The most comprehensive amplicon analysis platform. Provides a plugin-based architecture for denoising (DADA2, Deblur), taxonomy assignment, diversity analysis, statistical testing, and visualisation. Produces interactive visualisations. The community standard for reproducible microbiome research.
+  \item[DADA2] An R package for high-resolution amplicon denoising. The core algorithm models Illumina error profiles to distinguish true biological sequences from sequencing errors. Can also process PacBio and ONT full-length 16S data.
+  \item[mothur] A long-established, comprehensive tool for amplicon analysis, particularly popular in the ecological microbiology community. Implements OTU-based workflows.
+  \item[USEARCH / VSEARCH] Fast sequence analysis tools. VSEARCH is the open-source alternative to USEARCH.
+\end{description}
+
+\subsection{Taxonomic Classification Databases}
+
+\begin{table}[htbp]
+\centering
+\caption{Major taxonomic reference databases for amplicon sequencing.}
+\label{tab:tax_databases}
+\begin{tabularx}{\textwidth}{@{}llXl@{}}
+\toprule
+\textbf{Database} & \textbf{Target} & \textbf{Description} & \textbf{Taxonomy} \\
+\midrule
+SILVA & 16S/18S/23S/28S & Comprehensive, curated rRNA database. $>$10M sequences. Updated regularly. & SILVA taxonomy \\
+Greengenes2 & 16S & Rebuilt using whole-genome phylogenetics (\software{WoL2} backbone). Provides more accurate taxonomy than the original Greengenes. & GTDB-aligned \\
+UNITE & ITS & The standard for fungal ITS taxonomy. Species hypothesis concept for dynamic species delimitation. & UNITE taxonomy \\
+RDP & 16S/28S & Ribosomal Database Project. Provides a naive Bayesian classifier widely used for taxonomic assignment. & RDP taxonomy \\
+GTDB & Whole genomes & Genome Taxonomy Database. Defines taxonomy using genome phylogeny (average nucleotide identity, RED). Not an rRNA database, but provides the taxonomic backbone increasingly used by 16S databases. & GTDB taxonomy \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ============================================================
+\section{Shotgun Metagenomics}
+\label{sec:shotgun}
+%% ============================================================
+
+Shotgun metagenomics sequences all DNA in a sample (after fragmenting and library preparation), without any targeted amplification. This provides a far richer view of the community than amplicon sequencing.
+
+\subsection{Advantages over Amplicon Sequencing}
+
+\begin{itemize}[nosep]
+  \item \textbf{All domains of life}: Detects bacteria, archaea, fungi, protists, and viruses simultaneously, without primer bias.
+  \item \textbf{Functional potential}: Reveals the full gene content of the community---metabolic pathways, virulence factors, antibiotic resistance genes, secondary metabolite biosynthesis clusters.
+  \item \textbf{Strain-level resolution}: Sufficient sequence diversity to distinguish closely related strains of the same species.
+  \item \textbf{Metagenome-assembled genomes (MAGs)}: Shotgun data can be assembled and binned to reconstruct near-complete genomes of uncultured organisms.
+  \item \textbf{No amplification bias}: Coverage reflects actual DNA abundance (modulo extraction bias and differential lysis).
+\end{itemize}
+
+\subsection{Library Preparation Considerations}
+
+\begin{itemize}[nosep]
+  \item \textbf{DNA extraction}: Different extraction protocols lyse different organisms with varying efficiency. Bead-beating protocols improve recovery of Gram-positive bacteria and fungi but may shear DNA. Standardised protocols (e.g., the International Human Microbiome Standards, IHMS) are essential for reproducibility.
+  \item \textbf{Host DNA depletion}: For host-associated samples (e.g., human gut biopsies, respiratory samples), host DNA can dominate the library. Depletion strategies include differential lysis (saponin for human cells + DNase treatment), CpG methylation-based depletion (\software{NEBNext Microbiome DNA Enrichment Kit}), and propidium monoazide (PMA) treatment to remove extracellular/dead cell DNA.
+  \item \textbf{Sequencing depth}: Sufficient depth depends on community complexity. Simple communities (e.g., fermented foods, $<$50 species) may require only 1--5 million read pairs. Complex communities (e.g., soil, $>$10,000 species) may require 50--200 million read pairs for adequate functional profiling and MAG recovery.
+\end{itemize}
+
+\begin{tipbox}[title={Estimating Required Sequencing Depth}]
+A useful rule of thumb for human gut metagenomics:
+\begin{itemize}[nosep]
+  \item \textbf{5--10M read pairs}: Adequate for taxonomic profiling of dominant species.
+  \item \textbf{20--50M read pairs}: Sufficient for functional profiling and detection of less abundant taxa.
+  \item \textbf{$>$100M read pairs}: Required for strain-level analysis, rare species detection, and high-quality MAG recovery.
+\end{itemize}
+For soil or other hyper-diverse environments, even 200M read pairs may only scratch the surface. Consider long-read metagenomics for improved assembly of complex communities.
+\end{tipbox}
+
+\subsection{Taxonomic Profiling}
+
+Taxonomic profiling assigns each read (or contig) to a taxonomic lineage.
+
+\begin{description}[style=nextline]
+  \item[Kraken2 / Bracken] \software{Kraken2} uses exact k-mer matching against a prebuilt database to classify reads at very high speed ($>$1 million reads/second). Each read is assigned to the lowest common ancestor (LCA) of all species sharing its k-mers. \software{Bracken} (Bayesian Reestimation of Abundance with KrakEN) then redistributes reads from higher taxonomic levels to species level using a Bayesian model of read-length--specific probabilities. Database: standard Kraken2 database includes RefSeq bacteria, archaea, viruses, and human; custom databases can include fungi, protozoa, and UniVec.
+  \item[MetaPhlAn 4] Uses a database of clade-specific marker genes ($\sim$5.1M markers from $\sim$26,000 species) to estimate relative abundance. Highly specific but may miss novel species absent from the marker database. Reports relative abundance (not absolute counts).
+  \item[mOTUs3] Uses single-copy phylogenetic marker genes (extracted from metagenomes and reference genomes) for taxonomic profiling. Can detect species lacking reference genomes via metagenomic operational taxonomic units.
+  \item[Centrifuge] Memory-efficient classifier using compressed indices based on the FM-index and Burrows-Wheeler transform. Handles very large databases including all of NCBI nt.
+\end{description}
+
+\subsection{Functional Profiling}
+
+Functional profiling determines what metabolic capabilities are encoded in the metagenome.
+
+\begin{description}[style=nextline]
+  \item[HUMAnN 3] The HMP Unified Metabolic Analysis Network tool provides community-level pathway and gene family abundance estimates. It first identifies species present (using MetaPhlAn), then maps reads against species-specific pangenomes, and finally performs translated search against UniRef for unmapped reads. Output: gene family abundances (UniRef90/UniRef50), pathway abundances (MetaCyc), and pathway coverage.
+  \item[KEGG / KOfam] The Kyoto Encyclopedia of Genes and Genomes provides a hierarchical classification of biological functions (KO numbers, modules, pathways). \software{KofamScan} assigns KO numbers to predicted proteins using profile HMMs.
+  \item[eggNOG-mapper] Fast functional annotation using pre-computed orthology assignments from the eggNOG database. Assigns GO terms, KEGG pathways, COG categories, and CAZyme annotations.
+  \item[antiSMASH] Detects biosynthetic gene clusters (BGCs) for secondary metabolites (antibiotics, siderophores, pigments) in assembled metagenomes.
+\end{description}
+
+\subsection{Metagenome-Assembled Genomes (MAGs)}
+
+One of the most powerful applications of shotgun metagenomics is the reconstruction of near-complete genomes from uncultured organisms:
+
+\subsubsection{Assembly}
+
+\begin{description}[style=nextline]
+  \item[MEGAHIT] Memory-efficient, fast metagenome assembler using succinct de Bruijn graphs with multiple k-mer sizes. Good for large, complex datasets. Lower contiguity than MetaSPAdes for simpler communities.
+  \item[MetaSPAdes] Extension of the SPAdes assembler for metagenomic data. Uses multiple k-mer sizes with iterative assembly and error correction. Produces more contiguous assemblies for low-to-medium complexity communities but requires more memory.
+  \item[metaFlye] Long-read metagenome assembler based on the Flye algorithm. Enables highly contiguous MAGs from PacBio HiFi or ONT data.
+\end{description}
+
+\subsubsection{Binning}
+
+Binning groups assembled contigs into genome bins (putative genomes from individual organisms) using two types of signals:
+
+\begin{itemize}[nosep]
+  \item \textbf{Sequence composition}: Tetranucleotide frequency and GC content are species-specific signatures.
+  \item \textbf{Differential coverage}: Contigs from the same genome have correlated abundance across multiple samples.
+\end{itemize}
+
+\begin{description}[style=nextline]
+  \item[MetaBAT2] Fast, automatic binning using tetranucleotide frequency and coverage. Widely used and generally robust.
+  \item[CONCOCT] Clusters contigs using Gaussian mixture models on sequence composition and coverage across multiple samples.
+  \item[MaxBin2] Uses expectation-maximisation (EM) to bin contigs based on tetranucleotide frequency and coverage.
+  \item[DASTool / DAS Tool] A meta-binner that combines results from multiple binning algorithms (MetaBAT2, CONCOCT, MaxBin2) to produce an optimised, non-redundant set of bins using a scoring function based on single-copy gene analysis.
+  \item[SemiBin2] A deep learning--based binner that uses self-supervised contrastive learning for embedding contigs, followed by clustering. Outperforms traditional binners on many benchmarks.
+\end{description}
+
+\subsubsection{Quality Assessment}
+
+\begin{description}[style=nextline]
+  \item[CheckM / CheckM2] Evaluates MAG quality using lineage-specific sets of single-copy marker genes. Reports \textbf{completeness} (fraction of expected markers found), \textbf{contamination} (fraction of duplicated markers indicating mixed genomes), and \textbf{strain heterogeneity}. CheckM2 uses machine learning for faster evaluation.
+  \item[MIMAG standards] The Minimum Information about a Metagenome-Assembled Genome standard defines quality tiers:
+    \begin{itemize}[nosep]
+      \item \textbf{High-quality}: $>$90\% completeness, $<$5\% contamination, 23S/16S/5S rRNA genes and $\geq$18 tRNAs present.
+      \item \textbf{Medium-quality}: $\geq$50\% completeness, $<$10\% contamination.
+      \item \textbf{Low-quality}: $<$50\% completeness, $<$10\% contamination.
+    \end{itemize}
+  \item[GUNC] Detects chimerism (contigs from different species mistakenly binned together) using a clade-separation score.
+  \item[GTDB-Tk] Assigns taxonomy to MAGs using the Genome Taxonomy Database. Places genomes on a reference phylogeny using 120 bacterial and 53 archaeal marker genes.
+\end{description}
+
+\subsection{Strain-Level Analysis}
+
+Shotgun metagenomics can resolve within-species genetic variation:
+
+\begin{description}[style=nextline]
+  \item[StrainPhlAn 4] Reconstructs species-specific consensus sequences from metagenomic reads by mapping to species-specific marker genes. Enables phylogenetic analysis of strains across samples and comparison with reference genomes. Useful for tracking transmission events (e.g., \species{Clostridioides difficile} in hospitals, mother-to-infant transmission).
+  \item[inStrain] Performs ultra-detailed strain-level analysis: SNV profiling within populations, detection of multiple co-existing strains, gene-level coverage and variation, linkage analysis, and micro-diversity metrics. Operates on mapped reads against reference genomes or MAGs.
+\end{description}
+
+%% ============================================================
+\section{Metatranscriptomics}
+\label{sec:metatranscriptomics}
+%% ============================================================
+
+While metagenomics reveals \emph{what is present}, metatranscriptomics reveals \emph{what is active}. By sequencing total community RNA:
+
+\begin{itemize}[nosep]
+  \item \textbf{Active gene expression} can be quantified: which metabolic pathways are actually being used under specific conditions.
+  \item \textbf{Transcriptional responses} to perturbations (diet change, antibiotic treatment, environmental stress) can be measured.
+  \item \textbf{Discordance} between genomic potential and actual expression highlights regulatory mechanisms and niche-specific adaptation.
+\end{itemize}
+
+Key technical considerations:
+\begin{itemize}[nosep]
+  \item \textbf{rRNA depletion}: Ribosomal RNA constitutes $>$80\% of total RNA. Efficient rRNA removal (Ribo-Zero, poly(A) depletion for eukaryotes) is essential.
+  \item \textbf{RNA instability}: RNA degrades rapidly. Samples must be preserved immediately (RNAlater, flash freezing, or direct lysis).
+  \item \textbf{Analysis}: Reads are mapped to the corresponding metagenome (if available) or reference genomes. \software{HUMAnN} can jointly analyse metatranscriptomic and metagenomic data to compute RNA/DNA ratios as a proxy for gene expression activity per gene copy.
+\end{itemize}
+
+%% ============================================================
+\section{Long-Read Metagenomics}
+\label{sec:longread_meta}
+%% ============================================================
+
+Long-read sequencing is transforming metagenomics:
+
+\begin{description}[style=nextline]
+  \item[Full-length 16S sequencing] PacBio HiFi and ONT can sequence the entire $\sim$1,500\basepair{} 16S gene, providing far greater taxonomic resolution than short amplicons (often species-level vs.\ genus-level). PacBio's 16S kits produce HiFi reads with $>$Q30 accuracy.
+  \item[Strain-resolved metagenomics] Long reads span entire operons and genomic islands, enabling assembly of complete or near-complete genomes directly from complex communities. Tools: \software{metaFlye}, \software{hifiasm-meta} (PacBio HiFi metagenome assembler producing MAGs with N50 $>$1\megabase{}).
+  \item[Nanopore adaptive sampling] ONT's real-time selective sequencing (``Read Until'') can deplete host DNA in real time by ejecting reads that map to the host reference, enriching for microbial DNA without any laboratory-based depletion step. This is particularly useful for clinical metagenomics where host DNA dominance is a major challenge.
+  \item[Methylation-resolved metagenomics] Nanopore and PacBio HiFi detect DNA methylation natively. Since methylation patterns are species- and strain-specific, they can be used as an additional binning signal, dramatically improving MAG quality from complex communities.
+\end{description}
+
+%% ============================================================
+\section{Clinical Metagenomics}
+\label{sec:clinical_meta}
+%% ============================================================
+
+Clinical metagenomics applies unbiased sequencing to patient samples for pathogen detection and characterisation.
+
+\subsection{Pathogen Detection}
+
+\begin{itemize}[nosep]
+  \item \textbf{Unbiased pathogen identification}: Shotgun metagenomics can detect \emph{any} pathogen---bacterial, viral, fungal, parasitic---in a single test, without prior hypotheses. This is transformative for cases where conventional microbiology fails (culture-negative infections, rare/novel pathogens, polymicrobial infections).
+  \item \textbf{Turnaround time}: With nanopore sequencing, pathogen identification can be achieved in hours (vs.\ days for culture). Real-time analysis with \software{WIMP} (What's In My Pot) or \software{EPI2ME} enables bedside diagnostics.
+  \item \textbf{Cerebrospinal fluid (CSF) metagenomics}: Successfully used for diagnosing encephalitis and meningitis when conventional tests are negative. The UCSF Clinical Microbiology Laboratory has validated a clinical metagenomic next-generation sequencing (mNGS) test for CSF.
+  \item \textbf{Respiratory metagenomics}: Used during the COVID-19 pandemic and for pneumonia of unknown aetiology.
+\end{itemize}
+
+\subsection{Antimicrobial Resistance (AMR) Gene Detection}
+
+A critical application of metagenomics is the detection and surveillance of antimicrobial resistance genes:
+
+\begin{description}[style=nextline]
+  \item[CARD (Comprehensive Antibiotic Resistance Database)] Curated database of AMR genes, their mechanisms, and associated antibiotics. The Resistance Gene Identifier (RGI) tool detects AMR genes from metagenomic sequences.
+  \item[ResFinder] Identifies acquired antimicrobial resistance genes from sequence data. Maintained by the Center for Genomic Epidemiology (CGE).
+  \item[AMRFinderPlus] NCBI's tool for identifying AMR genes, stress response genes, and virulence factors using curated HMMs and BLAST. Covers $>$5,000 gene families.
+  \item[deepARG] Deep learning--based AMR gene detection, capable of identifying novel ARGs that are divergent from known sequences.
+\end{description}
+
+\begin{warningbox}[title={AMR Gene Detection vs.\ Phenotypic Resistance}]
+The presence of an AMR gene in a metagenome does not necessarily mean phenotypic resistance. The gene may be:
+\begin{itemize}[nosep]
+  \item On an extrachromosomal element not currently expressed.
+  \item Truncated or carrying inactivating mutations.
+  \item In a different organism than the pathogen of interest.
+  \item Not expressed under the current conditions.
+\end{itemize}
+Always integrate genotypic AMR predictions with phenotypic susceptibility testing when making clinical decisions.
+\end{warningbox}
+
+%% ============================================================
+\section{Diversity Metrics}
+\label{sec:diversity}
+%% ============================================================
+
+Ecological diversity metrics quantify the structure of microbial communities.
+
+\subsection{Alpha Diversity (Within-Sample)}
+
+Alpha diversity measures the richness and evenness of a single community:
+
+\begin{description}[style=nextline]
+  \item[Observed features] The simplest richness measure: the count of distinct ASVs (or OTUs, species, etc.) in a sample. Highly sensitive to sequencing depth---rarefaction or statistical correction is essential.
+  \item[Chao1 estimator] Estimates total richness including unobserved species using the number of singletons and doubletons: $S_{\text{Chao1}} = S_{\text{obs}} + \frac{f_1^2}{2 f_2}$, where $f_1$ and $f_2$ are the counts of singletons and doubletons, respectively.
+  \item[Shannon diversity index ($H'$)] Combines richness and evenness: $H' = -\sum_{i=1}^{S} p_i \ln p_i$, where $p_i$ is the relative abundance of species $i$. Higher values indicate more diverse communities. Ranges from 0 (single species) to $\ln(S)$ (all species equally abundant).
+  \item[Simpson diversity index ($D$)] Measures the probability that two randomly drawn individuals belong to the same species: $D = \sum_{i=1}^{S} p_i^2$. Often reported as $1-D$ (Simpson's diversity) or $1/D$ (inverse Simpson). More sensitive to dominant species than Shannon.
+  \item[Faith's phylogenetic diversity (PD)] Sums the total branch length of the phylogenetic tree connecting all observed species in a sample. Captures evolutionary diversity.
+\end{description}
+
+\subsection{Beta Diversity (Between-Sample)}
+
+Beta diversity measures how communities differ from one another:
+
+\begin{description}[style=nextline]
+  \item[Bray-Curtis dissimilarity] Quantifies compositional dissimilarity based on shared species abundances. Ranges from 0 (identical communities) to 1 (no shared species). Does not incorporate phylogenetic information.
+  \item[Jaccard distance] Based on presence/absence only (ignores abundance). The fraction of species unique to one or the other sample.
+  \item[UniFrac] Incorporates phylogenetic relationships between taxa:
+    \begin{itemize}[nosep]
+      \item \textbf{Unweighted UniFrac}: Based on the fraction of unique branch lengths (presence/absence). Sensitive to rare taxa.
+      \item \textbf{Weighted UniFrac}: Weights branches by the abundance of taxa on either side. Sensitive to dominant taxa.
+    \end{itemize}
+  \item[Aitchison distance] Euclidean distance on centred log-ratio (CLR) transformed abundances. Appropriate for compositional data (which metagenomic relative abundance inherently is).
+\end{description}
+
+\subsection{Ordination Methods}
+
+Ordination reduces high-dimensional distance matrices to 2--3 dimensions for visualisation:
+
+\begin{description}[style=nextline]
+  \item[PCoA (Principal Coordinates Analysis)] Eigendecomposition of a distance matrix (e.g., Bray-Curtis, UniFrac). Preserves distances between samples. The most common ordination for microbiome data.
+  \item[NMDS (Non-metric Multidimensional Scaling)] Preserves rank-order of distances rather than absolute distances. More flexible than PCoA but iterative (requires convergence checking via stress values; stress $<$0.2 is acceptable).
+  \item[PCA (Principal Component Analysis)] Operates on raw abundance data (usually CLR-transformed for compositional data). Preserves Aitchison distances in Euclidean space.
+  \item[UMAP] Non-linear dimensionality reduction. Preserves local structure better than PCoA/NMDS. Increasingly used for large microbiome datasets.
+\end{description}
+
+\begin{tipbox}[title={Statistical Testing for Microbiome Data}]
+When comparing microbial communities between groups (e.g., disease vs.\ control):
+\begin{itemize}[nosep]
+  \item \textbf{PERMANOVA} (\software{adonis2} in R's \software{vegan} package): Tests whether group centroids differ significantly in multivariate space. The most widely used test for beta diversity differences.
+  \item \textbf{ANCOM-BC2}: Differential abundance testing that accounts for the compositionality of microbiome data. Preferred over naive methods (t-test, Wilcoxon) that ignore compositionality.
+  \item \textbf{MaAsLin2}: Multivariate association analysis with linear models. Handles confounders and repeated measures.
+  \item \textbf{DESeq2 / edgeR}: Borrowed from RNA-seq, these tools model count data with negative binomial distributions. Require careful adaptation for compositional microbiome data.
+\end{itemize}
+\end{tipbox}
+
+\subsection{Mathematical Foundations of Diversity Indices}
+\label{subsec:metagenomics:diversity_math}
+
+The alpha and beta diversity indices introduced above have precise mathematical formulations. Understanding these foundations helps practitioners choose appropriate metrics and interpret their behaviour under varying conditions.
+
+\subsubsection{Shannon and Simpson Indices: Properties and Interpretation}
+
+Let a community contain $S$ species with relative abundances $p_1, p_2, \ldots, p_S$ (where $\sum_{i=1}^{S} p_i = 1$). The \textbf{Shannon entropy} is:
+\begin{equation}
+\label{eq:metagenomics:shannon}
+H' = -\sum_{i=1}^{S} p_i \ln p_i,
+\end{equation}
+with the convention $0 \ln 0 = 0$. Shannon entropy reaches its minimum of 0 when the community contains a single species ($p_1 = 1$, all other $p_i = 0$) and its maximum of $\ln S$ when all species are equally abundant ($p_i = 1/S$ for all $i$). The exponential of Shannon entropy, $e^{H'}$, gives the \textbf{effective number of species} (Hill number of order 1), which is more interpretable than the raw entropy value.
+
+\textbf{Simpson's index} measures the probability that two randomly drawn individuals belong to the same species:
+\begin{equation}
+\label{eq:metagenomics:simpson}
+D = \sum_{i=1}^{S} p_i^2.
+\end{equation}
+$D$ ranges from $1/S$ (all species equally abundant) to 1 (single dominant species). Because higher values indicate \emph{lower} diversity, derived forms are commonly used:
+\begin{itemize}[nosep]
+  \item \textbf{Simpson's diversity}: $1 - D$, ranging from 0 to $1 - 1/S$.
+  \item \textbf{Inverse Simpson}: $1/D$, interpretable as the effective number of species (Hill number of order 2). Ranges from 1 to $S$.
+\end{itemize}
+
+\begin{keyconcept}[title={Hill Numbers: A Unified Diversity Framework}]
+All common diversity indices are special cases of the Hill number of order $q$:
+\begin{equation}
+\label{eq:metagenomics:hill}
+{}^{q}\!D = \left( \sum_{i=1}^{S} p_i^q \right)^{1/(1-q)}.
+\end{equation}
+At $q = 0$, ${}^{0}\!D = S$ (species richness). At $q = 1$ (the limit as $q \to 1$), ${}^{1}\!D = e^{H'}$ (exponential Shannon). At $q = 2$, ${}^{2}\!D = 1/D$ (inverse Simpson). Increasing $q$ gives progressively more weight to abundant species and less to rare ones. Plotting diversity as a function of $q$ yields a \emph{diversity profile} that captures the full richness--evenness spectrum.
+\end{keyconcept}
+
+\subsubsection{Weighted UniFrac: Phylogenetic Beta Diversity}
+
+The weighted UniFrac distance incorporates phylogenetic information and abundance data. Given a phylogenetic tree with branches $i = 1, \ldots, B$ of lengths $b_i$, and two samples $A$ and $B$ whose proportional abundances descending from branch $i$ are $A_i$ and $B_i$ respectively, the weighted UniFrac is:
+\begin{equation}
+\label{eq:metagenomics:weighted_unifrac}
+U_w = \frac{\sum_{i=1}^{B} b_i \, |A_i - B_i|}{\sum_{i=1}^{B} b_i \, (A_i + B_i)},
+\end{equation}
+where $b_i$ is the length of branch $i$ in the phylogenetic tree, $A_i$ is the fraction of sample $A$'s total abundance descending from branch $i$, and $B_i$ is the analogous fraction for sample $B$. The numerator sums the abundance-weighted branch lengths unique to either sample, while the denominator normalises by the total abundance-weighted tree. The metric ranges from 0 (identical communities) to 1 (no shared lineages).
+
+\begin{tipbox}[title={Choosing Between Unweighted and Weighted UniFrac}]
+\textbf{Unweighted UniFrac} is sensitive to presence/absence differences and thus captures rare taxa effectively---use it when rare community members are biologically important (e.g., pathogen detection). \textbf{Weighted UniFrac} is sensitive to abundance differences in dominant taxa---use it when the dominant community structure is of primary interest (e.g., diet-driven changes in the gut microbiome). For a comprehensive analysis, report both.
+\end{tipbox}
+
+\subsection{MAG Quality Standards: MIMAG Tiers in Detail}
+\label{subsec:metagenomics:mimag}
+
+The \textbf{Minimum Information about a Metagenome-Assembled Genome (MIMAG)} standards, published by the Genomic Standards Consortium, provide community-agreed quality tiers for MAGs. These standards are essential for assessing whether a MAG is suitable for downstream analyses such as phylogenomics, metabolic reconstruction, or submission to public databases.
+
+\begin{table}[htbp]
+\centering
+\caption{MIMAG quality tiers for metagenome-assembled genomes.}
+\label{tab:metagenomics:mimag_tiers}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Quality Tier} & \textbf{Completeness} & \textbf{Contamination} & \textbf{rRNA (23S, 16S, 5S)} & \textbf{tRNAs ($\geq$18)} & \textbf{Use Case} \\
+\midrule
+High quality & $>$90\% & $<$5\% & All present & Yes & Phylogenomics, reference \\
+Medium quality & $\geq$50\% & $<$10\% & Partial or absent & Not required & Metabolic profiling \\
+Low quality & $<$50\% & $<$10\% & Not assessed & Not required & Gene-level analyses only \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{CheckM Workflow for MAG Quality Assessment}
+
+\software{CheckM} (and its successor \software{CheckM2}) estimates MAG completeness and contamination using lineage-specific sets of single-copy marker genes:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Gene prediction}: Open reading frames are predicted from the MAG contigs using \software{Prodigal}.
+  \item \textbf{Marker gene identification}: Predicted proteins are searched against a database of 43 universal single-copy marker genes (for the initial placement) and up to $\sim$200--400 lineage-specific marker genes.
+  \item \textbf{Phylogenetic placement}: The MAG is placed on a reference genome tree to identify the most appropriate lineage-specific marker set.
+  \item \textbf{Completeness estimation}: The fraction of expected lineage-specific marker genes detected in the MAG. If 108 out of 120 expected markers are found, completeness is 90\%.
+  \item \textbf{Contamination estimation}: The fraction of marker genes present in more than one copy (indicating that contigs from multiple organisms were incorrectly binned together). Contamination is reported separately from strain heterogeneity (multiple copies from the same species vs.\ different species).
+\end{enumerate}
+
+\begin{warningbox}[title={Contamination vs.\ Strain Heterogeneity}]
+A MAG with 8\% marker gene duplication may have 8\% contamination (foreign contigs) or 8\% strain heterogeneity (multiple strains of the same species). \software{CheckM} attempts to distinguish these by examining the amino acid identity of duplicated markers: high identity ($>$90\%) suggests strain heterogeneity, while low identity suggests true contamination. The distinction matters: strain-heterogeneous MAGs may still be biologically meaningful, while contaminated MAGs require re-binning or manual curation.
+\end{warningbox}
+
+\subsection{HUMAnN Pathway Abundance Model}
+\label{subsec:metagenomics:humann_model}
+
+\software{HUMAnN 3} (HMP Unified Metabolic Analysis Network) computes community-level functional profiles through a three-stage pipeline that produces \textbf{stratified} (species-attributed) pathway and gene-family abundances. Understanding the underlying model clarifies how to interpret its output.
+
+\subsubsection{Tiered Search Strategy}
+
+\begin{enumerate}[nosep]
+  \item \textbf{Species identification}: \software{MetaPhlAn 4} identifies which species are present in the sample and their relative abundances.
+  \item \textbf{Nucleotide-level mapping}: Reads are mapped to the pangenomes of identified species using \software{Bowtie2}. Each mapping read is attributed to a specific gene family within a specific species---this is the ``known known'' tier.
+  \item \textbf{Translated search}: Reads that fail to map at the nucleotide level are subjected to translated (protein-level) search against the UniRef90 or UniRef50 database using \software{DIAMOND}. This captures gene families from organisms not in the pangenome database---the ``known unknown'' tier.
+  \item \textbf{Unclassified}: Reads that fail both searches are reported as unclassified.
+\end{enumerate}
+
+\subsubsection{Gene Family Abundance Calculation}
+
+For each gene family $g$ in species $s$, the abundance is computed as reads per kilobase (RPK):
+\begin{equation}
+\label{eq:metagenomics:rpk}
+\text{RPK}(g, s) = \frac{N(g, s)}{L(g, s) / 1000},
+\end{equation}
+where $N(g, s)$ is the number of reads mapping to gene family $g$ in species $s$, and $L(g, s)$ is the effective gene length in bases. RPK values are then normalised to copies per million (CPM) across all gene families, yielding community-normalised abundances.
+
+When multiple genes within a family have varying coverage, \software{HUMAnN} uses the \textbf{harmonic mean} rather than the arithmetic mean to estimate family-level abundance. The harmonic mean down-weights genes with partial coverage, preventing a gene family from being reported as abundant when only a fragment is detected:
+\begin{equation}
+\label{eq:metagenomics:harmonic_mean}
+\bar{x}_{\text{harmonic}} = \frac{n}{\sum_{i=1}^{n} \frac{1}{x_i}},
+\end{equation}
+where $x_i$ are the RPK values of individual genes within the family and $n$ is the number of genes.
+
+\subsubsection{Pathway Abundance and Coverage}
+
+Pathway abundance in \software{HUMAnN} is computed using the MetaCyc pathway database. For a pathway comprising reactions $\{r_1, r_2, \ldots, r_m\}$, the pathway abundance is estimated using a structured approach that accounts for pathway topology (linear chains, branches, optional reactions):
+
+\begin{itemize}[nosep]
+  \item \textbf{Required reactions}: Reactions essential for pathway function must all be present. The pathway abundance is limited by the least abundant required reaction (analogous to Liebig's law of the minimum).
+  \item \textbf{Optional reactions}: Reactions that can be bypassed contribute to abundance only when present.
+  \item \textbf{Pathway coverage}: The fraction of required reactions that are detected above a minimum abundance threshold. A pathway with high abundance but low coverage may reflect a spurious mapping to a few abundant gene families rather than a genuinely active pathway.
+\end{itemize}
+
+\begin{protocolbox}[title={Interpreting HUMAnN Stratified Output}]
+\software{HUMAnN} produces three output files per sample:
+\begin{enumerate}[nosep]
+  \item \textbf{Gene families} (\texttt{\_genefamilies.tsv}): Gene family abundance in RPK, stratified by contributing species. Community totals and per-species contributions are reported on separate lines.
+  \item \textbf{Pathway abundance} (\texttt{\_pathabundance.tsv}): MetaCyc pathway abundance in RPK, stratified by species.
+  \item \textbf{Pathway coverage} (\texttt{\_pathcoverage.tsv}): Fraction of each pathway's reactions detected (range 0--1).
+\end{enumerate}
+Use \software{humann\_renorm\_table} to convert RPK to copies per million (CPM) or relative abundance before cross-sample comparisons. Use \software{humann\_join\_tables} to merge per-sample output into a single community-wide table.
+\end{protocolbox}
+
+%% ============================================================
+\section{TikZ Diagram: Amplicon vs.\ Shotgun Metagenomics}
+\label{sec:meta_tikz}
+%% ============================================================
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  scale=0.75,
+  transform shape,
+  every node/.style={font=\small},
+  stepbox/.style={draw, rounded corners=4pt, minimum height=0.9cm, minimum width=3.2cm,
+                  text width=3.0cm, align=center, font=\small},
+  titlebox/.style={draw, rounded corners=6pt, minimum height=1.1cm, minimum width=3.8cm,
+                   text width=3.6cm, align=center, font=\normalsize\bfseries, thick},
+  arrow/.style={-{Stealth[length=3mm]}, thick},
+  dashed_arrow/.style={-{Stealth[length=3mm]}, thick, dashed, gray},
+]
+
+% ---- Amplicon column (left) ----
+\node[titlebox, fill=MidnightBlue!20] (amp_title) at (-4.5, 12) {16S Amplicon\\Sequencing};
+
+\node[stepbox, fill=MidnightBlue!8] (amp1) at (-4.5, 10) {Environmental\\Sample};
+\node[stepbox, fill=MidnightBlue!8] (amp2) at (-4.5, 8.3) {DNA Extraction};
+\node[stepbox, fill=MidnightBlue!15] (amp3) at (-4.5, 6.6) {PCR Amplification\\(16S primers)};
+\node[stepbox, fill=MidnightBlue!8] (amp4) at (-4.5, 4.9) {Sequencing\\(Illumina/PacBio)};
+\node[stepbox, fill=MidnightBlue!8] (amp5) at (-4.5, 3.2) {Denoising\\(DADA2)};
+\node[stepbox, fill=MidnightBlue!8] (amp6) at (-4.5, 1.5) {Taxonomy\\Assignment};
+\node[stepbox, fill=MidnightBlue!15] (amp7) at (-4.5, -0.2) {Diversity\\Analysis};
+
+\draw[arrow] (amp1) -- (amp2);
+\draw[arrow] (amp2) -- (amp3);
+\draw[arrow] (amp3) -- (amp4);
+\draw[arrow] (amp4) -- (amp5);
+\draw[arrow] (amp5) -- (amp6);
+\draw[arrow] (amp6) -- (amp7);
+
+% ---- Shotgun column (right) ----
+\node[titlebox, fill=OliveGreen!20] (shot_title) at (4.5, 12) {Shotgun\\Metagenomics};
+
+\node[stepbox, fill=OliveGreen!8] (sh1) at (4.5, 10) {Environmental\\Sample};
+\node[stepbox, fill=OliveGreen!8] (sh2) at (4.5, 8.3) {DNA Extraction\\(+ host depletion)};
+\node[stepbox, fill=OliveGreen!15] (sh3) at (4.5, 6.6) {Library Prep\\(no PCR target)};
+\node[stepbox, fill=OliveGreen!8] (sh4) at (4.5, 4.9) {Sequencing\\(deep)};
+
+% Shotgun branches
+\node[stepbox, fill=OliveGreen!8] (sh5a) at (2, 3.2) {Taxonomic\\Profiling\\(Kraken2)};
+\node[stepbox, fill=OliveGreen!8] (sh5b) at (7, 3.2) {Assembly\\(MEGAHIT)};
+
+\node[stepbox, fill=OliveGreen!8] (sh6a) at (2, 1.5) {Functional\\Profiling\\(HUMAnN)};
+\node[stepbox, fill=OliveGreen!8] (sh6b) at (7, 1.5) {Binning\\(MetaBAT2)};
+
+\node[stepbox, fill=OliveGreen!15] (sh7) at (7, -0.2) {MAGs + CheckM\\+ GTDB-Tk};
+
+\draw[arrow] (sh1) -- (sh2);
+\draw[arrow] (sh2) -- (sh3);
+\draw[arrow] (sh3) -- (sh4);
+\draw[arrow] (sh4) -- (sh5a);
+\draw[arrow] (sh4) -- (sh5b);
+\draw[arrow] (sh5a) -- (sh6a);
+\draw[arrow] (sh5b) -- (sh6b);
+\draw[arrow] (sh6b) -- (sh7);
+
+% ---- Comparison annotations ----
+\node[font=\footnotesize, text=gray, text width=3.5cm, align=center] at (0, 6.6) {Targeted\\amplification\\vs.\ whole-DNA\\fragmentation};
+\draw[dashed_arrow] (-2.5, 6.6) -- (-1, 6.6);
+\draw[dashed_arrow] (2.5, 6.6) -- (1, 6.6);
+
+% Output comparison boxes at bottom
+\node[draw, rounded corners=3pt, fill=MidnightBlue!5, text width=3.2cm, align=center, font=\footnotesize] at (-4.5, -2) {
+  \textbf{Output:}\\
+  Taxonomic composition\\
+  Diversity metrics\\
+  Community structure
+};
+
+\node[draw, rounded corners=3pt, fill=OliveGreen!5, text width=5.5cm, align=center, font=\footnotesize] at (4.5, -2) {
+  \textbf{Output:}\\
+  Taxonomic composition + Functional profiles\\
+  Strain-level resolution + AMR genes\\
+  Assembled genomes (MAGs)
+};
+
+\end{tikzpicture}
+\caption{Comparison of 16S amplicon sequencing and shotgun metagenomics workflows. Amplicon sequencing uses targeted PCR amplification of phylogenetic markers, while shotgun metagenomics sequences all DNA, enabling functional profiling, strain-level resolution, and genome-resolved metagenomics.}
+\label{fig:amplicon_vs_shotgun}
+\end{figure}
+
+%% ============================================================
+\section{Comprehensive Tool Comparison}
+\label{sec:meta_tool_comparison}
+%% ============================================================
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of key metagenomics analysis tools by application.}
+\label{tab:meta_tools}
+\small
+\begin{tabularx}{\textwidth}{@{}l*{3}{>{\raggedright\arraybackslash}X}@{}}
+\toprule
+\textbf{Application} & \textbf{Tool} & \textbf{Approach} & \textbf{Key Features} \\
+\midrule
+\multirow{2}{*}{Amplicon denoising} & DADA2 & Error model--based denoising & ASV-level resolution, multi-platform \\
+ & Deblur & Sequence-error correction & Fast, conservative \\
+\addlinespace
+\multirow{2}{*}{Amplicon platform} & QIIME 2 & Plugin-based framework & Comprehensive, reproducible, interactive viz \\
+ & mothur & Monolithic pipeline & OTU-focused, ecological community \\
+\addlinespace
+\multirow{3}{*}{Taxonomic profiling} & Kraken2/Bracken & k-mer matching + Bayesian reestimation & Fastest, flexible databases \\
+ & MetaPhlAn 4 & Clade-specific markers & High specificity, lower sensitivity \\
+ & mOTUs3 & Phylogenetic markers & Detects novel species \\
+\addlinespace
+\multirow{2}{*}{Functional profiling} & HUMAnN 3 & Species-stratified pathway analysis & Community + species-level functions \\
+ & eggNOG-mapper & Orthology-based annotation & Fast, comprehensive \\
+\addlinespace
+\multirow{2}{*}{Assembly} & MEGAHIT & Succinct DBG, multi-k & Fast, memory-efficient \\
+ & MetaSPAdes & Multi-k iterative assembly & Higher contiguity \\
+\addlinespace
+\multirow{3}{*}{Binning} & MetaBAT2 & TNF + coverage & Fast, automatic \\
+ & SemiBin2 & Deep learning embeddings & State-of-the-art accuracy \\
+ & DAS Tool & Consensus of multiple binners & Optimised non-redundant bins \\
+\addlinespace
+\multirow{2}{*}{MAG quality} & CheckM2 & ML-based marker gene analysis & Fast, accurate \\
+ & GUNC & Chimerism detection & Catches contamination \\
+\addlinespace
+\multirow{2}{*}{AMR detection} & CARD/RGI & Curated AMR ontology & Gold standard for AMR \\
+ & AMRFinderPlus & HMM + BLAST & NCBI-maintained, comprehensive \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ============================================================
+\section{Practical Workflow: Metagenomics Pipelines}
+\label{sec:meta_pipeline}
+%% ============================================================
+
+\subsection{Snakemake Shotgun Metagenomics Pipeline}
+
+\begin{lstlisting}[language=Python, caption={Snakemake pipeline for shotgun metagenomics: QC, taxonomic profiling, functional profiling, assembly, and binning.}, label={lst:snakemake_meta}]
+# Snakefile for Shotgun Metagenomics Analysis
+configfile: "config.yaml"
+
+SAMPLES = config["samples"]
+KRAKEN_DB = config["kraken2_db"]
+METAPHLAN_DB = config["metaphlan_db"]
+REF_HOST = config["host_reference"]  # for host removal
+
+rule all:
+    input:
+        expand("results/taxonomy/{sample}.kraken2.report",
+               sample=SAMPLES),
+        expand("results/taxonomy/{sample}.metaphlan.txt",
+               sample=SAMPLES),
+        expand("results/functional/{sample}_pathabundance.tsv",
+               sample=SAMPLES),
+        expand("results/mags/{sample}/checkm_results.tsv",
+               sample=SAMPLES),
+        "results/multiqc/multiqc_report.html"
+
+# --- QC and Host Removal ---
+rule fastp_qc:
+    input:
+        r1="data/fastq/{sample}_R1.fastq.gz",
+        r2="data/fastq/{sample}_R2.fastq.gz"
+    output:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz",
+        json="results/qc/{sample}.fastp.json",
+        html="results/qc/{sample}.fastp.html"
+    threads: 4
+    shell:
+        """
+        fastp -i {input.r1} -I {input.r2} \
+            -o {output.r1} -O {output.r2} \
+            --json {output.json} --html {output.html} \
+            --qualified_quality_phred 20 \
+            --length_required 50 \
+            --thread {threads}
+        """
+
+rule remove_host:
+    input:
+        r1="results/trimmed/{sample}_R1.trimmed.fastq.gz",
+        r2="results/trimmed/{sample}_R2.trimmed.fastq.gz",
+        ref=REF_HOST
+    output:
+        r1="results/hostfree/{sample}_R1.fastq.gz",
+        r2="results/hostfree/{sample}_R2.fastq.gz"
+    threads: 8
+    shell:
+        """
+        bowtie2 -x {input.ref} -1 {input.r1} -2 {input.r2} \
+            --very-sensitive -p {threads} \
+            --un-conc-gz results/hostfree/{wildcards.sample}_R%.fastq.gz \
+            -S /dev/null 2> results/qc/{wildcards.sample}.host_stats.txt
+        """
+
+# --- Taxonomic Profiling ---
+rule kraken2:
+    input:
+        r1="results/hostfree/{sample}_R1.fastq.gz",
+        r2="results/hostfree/{sample}_R2.fastq.gz"
+    output:
+        report="results/taxonomy/{sample}.kraken2.report",
+        output="results/taxonomy/{sample}.kraken2.output"
+    params:
+        db=KRAKEN_DB
+    threads: 8
+    shell:
+        """
+        kraken2 --db {params.db} \
+            --paired {input.r1} {input.r2} \
+            --threads {threads} \
+            --report {output.report} \
+            --output {output.output} \
+            --confidence 0.1
+        """
+
+rule bracken:
+    input:
+        report="results/taxonomy/{sample}.kraken2.report"
+    output:
+        bracken="results/taxonomy/{sample}.bracken.txt"
+    params:
+        db=KRAKEN_DB
+    shell:
+        """
+        bracken -d {params.db} \
+            -i {input.report} \
+            -o {output.bracken} \
+            -r 150 -l S
+        """
+
+rule metaphlan:
+    input:
+        r1="results/hostfree/{sample}_R1.fastq.gz",
+        r2="results/hostfree/{sample}_R2.fastq.gz"
+    output:
+        profile="results/taxonomy/{sample}.metaphlan.txt"
+    params:
+        db=METAPHLAN_DB
+    threads: 8
+    shell:
+        """
+        metaphlan {input.r1},{input.r2} \
+            --input_type fastq \
+            --bowtie2db {params.db} \
+            --nproc {threads} \
+            -o {output.profile}
+        """
+
+# --- Functional Profiling ---
+rule humann:
+    input:
+        r1="results/hostfree/{sample}_R1.fastq.gz",
+        r2="results/hostfree/{sample}_R2.fastq.gz"
+    output:
+        genefamilies="results/functional/{sample}_genefamilies.tsv",
+        pathabundance="results/functional/{sample}_pathabundance.tsv",
+        pathcoverage="results/functional/{sample}_pathcoverage.tsv"
+    threads: 8
+    shell:
+        """
+        cat {input.r1} {input.r2} > results/functional/{wildcards.sample}_concat.fastq.gz
+        humann --input results/functional/{wildcards.sample}_concat.fastq.gz \
+            --output results/functional/{wildcards.sample}_humann/ \
+            --threads {threads}
+        mv results/functional/{wildcards.sample}_humann/*_genefamilies.tsv \
+            {output.genefamilies}
+        mv results/functional/{wildcards.sample}_humann/*_pathabundance.tsv \
+            {output.pathabundance}
+        mv results/functional/{wildcards.sample}_humann/*_pathcoverage.tsv \
+            {output.pathcoverage}
+        """
+
+# --- Assembly and Binning ---
+rule megahit_assembly:
+    input:
+        r1="results/hostfree/{sample}_R1.fastq.gz",
+        r2="results/hostfree/{sample}_R2.fastq.gz"
+    output:
+        contigs="results/assembly/{sample}/final.contigs.fa"
+    threads: 16
+    shell:
+        """
+        megahit -1 {input.r1} -2 {input.r2} \
+            -o results/assembly/{wildcards.sample} \
+            -t {threads} --min-contig-len 1000
+        """
+
+rule map_to_assembly:
+    input:
+        r1="results/hostfree/{sample}_R1.fastq.gz",
+        r2="results/hostfree/{sample}_R2.fastq.gz",
+        contigs="results/assembly/{sample}/final.contigs.fa"
+    output:
+        bam="results/assembly/{sample}/mapped.sorted.bam"
+    threads: 8
+    shell:
+        """
+        bowtie2-build {input.contigs} \
+            results/assembly/{wildcards.sample}/contigs_idx
+        bowtie2 -x results/assembly/{wildcards.sample}/contigs_idx \
+            -1 {input.r1} -2 {input.r2} \
+            -p {threads} --very-sensitive \
+        | samtools sort -@ 4 -o {output.bam} -
+        samtools index {output.bam}
+        """
+
+rule metabat2_binning:
+    input:
+        contigs="results/assembly/{sample}/final.contigs.fa",
+        bam="results/assembly/{sample}/mapped.sorted.bam"
+    output:
+        bins=directory("results/mags/{sample}/bins")
+    threads: 8
+    shell:
+        """
+        jgi_summarize_bam_contig_depths --outputDepth \
+            results/mags/{wildcards.sample}/depth.txt {input.bam}
+        metabat2 -i {input.contigs} \
+            -a results/mags/{wildcards.sample}/depth.txt \
+            -o {output.bins}/bin \
+            -t {threads} --minContig 1500
+        """
+
+rule checkm:
+    input:
+        bins="results/mags/{sample}/bins"
+    output:
+        results="results/mags/{sample}/checkm_results.tsv"
+    threads: 8
+    shell:
+        """
+        checkm2 predict \
+            --input {input.bins} \
+            --output-directory results/mags/{wildcards.sample}/checkm \
+            --threads {threads} -x fa
+        cp results/mags/{wildcards.sample}/checkm/quality_report.tsv \
+            {output.results}
+        """
+
+rule multiqc:
+    input:
+        expand("results/qc/{sample}.fastp.json", sample=SAMPLES)
+    output:
+        "results/multiqc/multiqc_report.html"
+    shell:
+        """
+        multiqc results/qc/ -o results/multiqc/ --force
+        """
+\end{lstlisting}
+
+\subsection{Nextflow Shotgun Metagenomics Pipeline}
+
+\begin{lstlisting}[language=Java, caption={Nextflow DSL2 pipeline for shotgun metagenomics analysis.}, label={lst:nextflow_meta}]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl=2
+
+// Shotgun Metagenomics Analysis Pipeline
+
+params.reads      = "data/fastq/*_{R1,R2}.fastq.gz"
+params.host_ref   = "reference/human_bowtie2_idx"
+params.kraken_db  = "databases/kraken2_standard"
+params.outdir     = "results"
+
+process FASTP {
+    tag "$sample_id"
+    publishDir "${params.outdir}/trimmed", mode: 'copy'
+    cpus 4
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_R{1,2}.trimmed.fastq.gz"),
+          emit: trimmed
+    path("${sample_id}.fastp.json"), emit: report
+
+    script:
+    """
+    fastp -i ${reads[0]} -I ${reads[1]} \
+        -o ${sample_id}_R1.trimmed.fastq.gz \
+        -O ${sample_id}_R2.trimmed.fastq.gz \
+        --json ${sample_id}.fastp.json \
+        --qualified_quality_phred 20 \
+        --length_required 50 \
+        --thread ${task.cpus}
+    """
+}
+
+process REMOVE_HOST {
+    tag "$sample_id"
+    publishDir "${params.outdir}/hostfree", mode: 'copy'
+    cpus 8
+
+    input:
+    tuple val(sample_id), path(reads)
+    path host_idx
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_R{1,2}.hostfree.fastq.gz"),
+          emit: hostfree
+
+    script:
+    """
+    bowtie2 -x ${host_idx}/genome \
+        -1 ${reads[0]} -2 ${reads[1]} \
+        --very-sensitive -p ${task.cpus} \
+        --un-conc-gz ${sample_id}_R%.hostfree.fastq.gz \
+        -S /dev/null
+    """
+}
+
+process KRAKEN2 {
+    tag "$sample_id"
+    publishDir "${params.outdir}/taxonomy", mode: 'copy'
+    cpus 8
+
+    input:
+    tuple val(sample_id), path(reads)
+    path kraken_db
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.kraken2.report"),
+          emit: kraken_report
+    path("${sample_id}.kraken2.output"), emit: kraken_out
+
+    script:
+    """
+    kraken2 --db ${kraken_db} \
+        --paired ${reads[0]} ${reads[1]} \
+        --threads ${task.cpus} \
+        --report ${sample_id}.kraken2.report \
+        --output ${sample_id}.kraken2.output \
+        --confidence 0.1
+    """
+}
+
+process BRACKEN {
+    tag "$sample_id"
+    publishDir "${params.outdir}/taxonomy", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(kraken_report)
+    path kraken_db
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.bracken.txt"),
+          emit: bracken_out
+
+    script:
+    """
+    bracken -d ${kraken_db} \
+        -i ${kraken_report} \
+        -o ${sample_id}.bracken.txt \
+        -r 150 -l S
+    """
+}
+
+process MEGAHIT {
+    tag "$sample_id"
+    publishDir "${params.outdir}/assembly", mode: 'copy'
+    cpus 16
+    memory '32 GB'
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_contigs.fa"),
+          emit: contigs
+
+    script:
+    """
+    megahit -1 ${reads[0]} -2 ${reads[1]} \
+        -o megahit_out -t ${task.cpus} \
+        --min-contig-len 1000
+    mv megahit_out/final.contigs.fa ${sample_id}_contigs.fa
+    """
+}
+
+process MAP_READS {
+    tag "$sample_id"
+    publishDir "${params.outdir}/mapped", mode: 'copy'
+    cpus 8
+
+    input:
+    tuple val(sample_id), path(reads), path(contigs)
+
+    output:
+    tuple val(sample_id), path(contigs),
+          path("${sample_id}.sorted.bam"),
+          path("${sample_id}.sorted.bam.bai"),
+          emit: mapped
+
+    script:
+    """
+    bowtie2-build ${contigs} contigs_idx
+    bowtie2 -x contigs_idx \
+        -1 ${reads[0]} -2 ${reads[1]} \
+        -p ${task.cpus} --very-sensitive \
+    | samtools sort -@ 4 -o ${sample_id}.sorted.bam -
+    samtools index ${sample_id}.sorted.bam
+    """
+}
+
+process METABAT2 {
+    tag "$sample_id"
+    publishDir "${params.outdir}/mags", mode: 'copy'
+    cpus 8
+
+    input:
+    tuple val(sample_id), path(contigs),
+          path(bam), path(bai)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_bins/"),
+          emit: bins
+
+    script:
+    """
+    mkdir -p ${sample_id}_bins
+    jgi_summarize_bam_contig_depths \
+        --outputDepth depth.txt ${bam}
+    metabat2 -i ${contigs} -a depth.txt \
+        -o ${sample_id}_bins/bin \
+        -t ${task.cpus} --minContig 1500
+    """
+}
+
+process CHECKM2 {
+    tag "$sample_id"
+    publishDir "${params.outdir}/mags/quality", mode: 'copy'
+    cpus 8
+
+    input:
+    tuple val(sample_id), path(bins)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}_checkm.tsv"),
+          emit: quality
+
+    script:
+    """
+    checkm2 predict \
+        --input ${bins} \
+        --output-directory checkm_out \
+        --threads ${task.cpus} -x fa
+    cp checkm_out/quality_report.tsv ${sample_id}_checkm.tsv
+    """
+}
+
+// ---- Workflow ----
+workflow {
+    Channel
+        .fromFilePairs(params.reads)
+        .set { reads_ch }
+
+    host_ref  = file(params.host_ref)
+    kraken_db = file(params.kraken_db)
+
+    // QC and host removal
+    FASTP(reads_ch)
+    REMOVE_HOST(FASTP.out.trimmed, host_ref)
+
+    // Taxonomic profiling
+    KRAKEN2(REMOVE_HOST.out.hostfree, kraken_db)
+    BRACKEN(KRAKEN2.out.kraken_report, kraken_db)
+
+    // Assembly and binning
+    MEGAHIT(REMOVE_HOST.out.hostfree)
+
+    // Combine hostfree reads with contigs for mapping
+    map_input = REMOVE_HOST.out.hostfree
+        .join(MEGAHIT.out.contigs)
+        .map { id, reads, contigs ->
+            tuple(id, reads, contigs)
+        }
+
+    MAP_READS(map_input)
+    METABAT2(MAP_READS.out.mapped)
+    CHECKM2(METABAT2.out.bins)
+}
+\end{lstlisting}
+
+\begin{protocolbox}[title={Community-Curated Metagenomics Pipelines}]
+Several community-maintained pipelines implement best-practice metagenomics workflows:
+\begin{itemize}[nosep]
+  \item \textbf{nf-core/ampliseq}: Nextflow pipeline for amplicon sequencing (16S, 18S, ITS) with DADA2 and QIIME 2 integration.
+  \item \textbf{nf-core/mag}: Nextflow pipeline for metagenome assembly, binning, and MAG analysis with comprehensive quality assessment.
+  \item \textbf{nf-core/taxprofiler}: Nextflow pipeline for multi-tool taxonomic profiling (Kraken2, MetaPhlAn, mOTUs, Centrifuge, and more) with standardised outputs.
+  \item \textbf{Sunbeam}: Snakemake-based extensible metagenomics pipeline with QC, host removal, assembly, and annotation.
+  \item \textbf{Atlas}: Snakemake-based metagenome pipeline for assembly, binning, and annotation.
+\end{itemize}
+These pipelines handle edge cases, provide extensive QC reports, and are continuously tested---consider using them before building custom pipelines.
+\end{protocolbox}
+
+%% ============================================================
+\section{Long-Read Metagenomics Workflow Considerations}
+\label{sec:longread_meta_workflow}
+%% ============================================================
+
+For long-read metagenomic experiments, the analysis workflow differs in several key ways:
+
+\begin{enumerate}[nosep]
+  \item \textbf{QC}: Use \software{NanoPlot} for ONT quality assessment, \software{chopper} or \software{Filtlong} for quality and length filtering. For PacBio HiFi, use \software{pbccs} and quality filtering is minimal (already high accuracy).
+  \item \textbf{Taxonomic classification}: \software{Kraken2} works well with long reads. \software{Centrifuge} and \software{Emu} (designed specifically for full-length 16S long reads) are alternatives.
+  \item \textbf{Assembly}: \software{metaFlye} for ONT data; \software{hifiasm-meta} for PacBio HiFi metagenomes. Long reads typically produce far more contiguous assemblies with higher N50.
+  \item \textbf{Binning}: Standard binners (MetaBAT2, SemiBin2) work, but methylation-aware binning (\software{bin\_reassigner}) can dramatically improve results for ONT and PacBio data by using epigenetic signatures as an additional binning signal.
+  \item \textbf{Polishing}: ONT assemblies may benefit from short-read polishing with \software{Pilon} or \software{Polypolish} to improve consensus accuracy.
+\end{enumerate}
+
+%% ============================================================
+\section{Summary}
+\label{sec:ch09_summary}
+%% ============================================================
+
+\begin{keyconcept}[title={Chapter Summary}]
+\begin{itemize}[nosep]
+  \item \textbf{Metagenomics} bypasses culturing to study all microorganisms in a sample, revolutionising our understanding of microbial communities in health, disease, and the environment.
+  \item \textbf{16S amplicon sequencing} is cost-effective for community composition profiling using conserved marker genes. The \textbf{ASV} approach (DADA2) has replaced OTU clustering as the standard for sequence resolution.
+  \item \textbf{Shotgun metagenomics} provides a comprehensive view: taxonomic profiling across all domains of life (\software{Kraken2}, \software{MetaPhlAn}), functional potential (\software{HUMAnN}), strain-level resolution, and \textbf{metagenome-assembled genomes (MAGs)} from assembly and binning.
+  \item \textbf{MAG quality} is assessed using \software{CheckM2} and classified using \software{GTDB-Tk}, following MIMAG standards for completeness and contamination.
+  \item \textbf{Clinical metagenomics} enables unbiased pathogen detection and \textbf{AMR gene surveillance}, with databases such as CARD, ResFinder, and AMRFinderPlus.
+  \item \textbf{Diversity analysis} uses alpha metrics (Shannon, Simpson, Chao1), beta metrics (Bray-Curtis, UniFrac), and ordination (PCoA, NMDS) to characterise and compare communities.
+  \item \textbf{Long-read metagenomics} (full-length 16S, nanopore adaptive sampling, methylation-aware binning) is rapidly improving resolution and enabling genome-resolved metagenomics from complex environments.
+  \item Both \textbf{Snakemake} and \textbf{Nextflow} provide robust workflow frameworks, with community pipelines (\software{nf-core/mag}, \software{nf-core/ampliseq}) available for immediate adoption.
+\end{itemize}
+\end{keyconcept}

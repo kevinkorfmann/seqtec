@@ -1,0 +1,945 @@
+\chapter{DNA Methylation Sequencing}
+\label{ch:methylation}
+
+\begin{keyconcept}
+DNA methylation is a fundamental epigenetic modification in which a methyl group ($-\text{CH}_3$) is covalently added to the 5-carbon position of cytosine, forming \textbf{5-methylcytosine (5mC)}. This modification occurs predominantly at CpG dinucleotides in mammals and plays critical roles in gene silencing, genomic imprinting, X-chromosome inactivation, and cellular differentiation. Aberrant methylation patterns are hallmarks of cancer and other diseases. Multiple sequencing-based approaches---from bisulfite sequencing to enzymatic methods to direct nanopore detection---allow researchers to map methylation at single-base resolution across entire genomes.
+\end{keyconcept}
+
+%% ============================================================
+\section{What Is DNA Methylation?}
+\label{sec:methylation:what}
+
+\subsection{5-Methylcytosine and CpG Dinucleotides}
+\label{subsec:methylation:5mc}
+
+In mammalian genomes, DNA methylation occurs almost exclusively at \textbf{CpG dinucleotides}---sites where a cytosine is immediately followed by a guanine on the same strand (written as 5$'$-CG-3$'$; the ``p'' denotes the phosphodiester bond). The methyl group is added to the 5-carbon of the cytosine ring by enzymes called \textbf{DNA methyltransferases (DNMTs)}:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{DNMT1} (maintenance methyltransferase): copies the methylation pattern from the parental strand to the newly synthesized daughter strand during DNA replication, ensuring epigenetic inheritance.
+  \item \textbf{DNMT3A} and \textbf{DNMT3B} (de novo methyltransferases): establish new methylation patterns during embryonic development and cell differentiation.
+  \item \textbf{DNMT3L}: a catalytically inactive family member that stimulates DNMT3A/3B activity.
+\end{itemize}
+
+Approximately 70--80\% of all CpG dinucleotides in the human genome are methylated. The remaining unmethylated CpGs are concentrated in specific genomic regions called \textbf{CpG islands (CGIs)}.
+
+\subsection{CpG Islands}
+\label{subsec:methylation:cpg-islands}
+
+CpG islands are defined as regions of at least 200\basepair{} with a GC content $\geq$ 50\% and an observed-to-expected CpG ratio $\geq$ 0.6. The human genome contains approximately 28,000 CpG islands, of which roughly 60--70\% overlap with gene promoters. In normal somatic cells, most CpG islands at gene promoters are unmethylated, allowing gene expression. Methylation of a promoter CpG island typically leads to transcriptional silencing.
+
+\begin{keyconcept}[title={CpG Depletion in the Genome}]
+The CpG dinucleotide is under-represented in mammalian genomes (occurring at roughly 20\% of the expected frequency), because methylated cytosines spontaneously deaminate to thymine. Over evolutionary time, this mutation pressure has depleted CpGs from most of the genome. CpG islands have been maintained by purifying selection because they serve essential regulatory functions.
+\end{keyconcept}
+
+In addition to CpG islands, important regulatory methylation occurs at:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{CpG island shores}: regions 0--2\kilobase{} flanking CpG islands, where tissue-specific differential methylation is particularly common.
+  \item \textbf{CpG island shelves}: regions 2--4\kilobase{} from CpG islands.
+  \item \textbf{Enhancers and gene bodies}: intragenic methylation correlates with active transcription, and enhancer methylation is often inversely correlated with enhancer activity.
+\end{itemize}
+
+\subsection{Biological Roles of DNA Methylation}
+\label{subsec:methylation:biological-roles}
+
+DNA methylation participates in numerous biological processes:
+
+\begin{enumerate}[itemsep=3pt]
+  \item \textbf{Gene silencing:} Methylation at promoter CpG islands recruits methyl-binding domain (MBD) proteins, which in turn recruit histone deacetylases and chromatin remodelers to compact chromatin and silence transcription.
+  \item \textbf{Genomic imprinting:} Approximately 100--200 genes in mammals are expressed from only one parental allele (monoallelic expression). The silent allele is marked by DNA methylation at imprinting control regions (ICRs). Classic examples include \gene{H19}/\gene{IGF2} and \gene{SNRPN} (Prader--Willi/Angelman region).
+  \item \textbf{X-chromosome inactivation:} In female mammals, one X chromosome is silenced to achieve dosage compensation. DNA methylation at CpG islands helps maintain this silencing after the initial inactivation event orchestrated by the \gene{XIST} long non-coding RNA.
+  \item \textbf{Transposable element suppression:} Roughly half the human genome consists of repetitive elements derived from transposons. Heavy methylation of these elements prevents their mobilisation, protecting genomic integrity.
+  \item \textbf{Development and differentiation:} Dramatic methylation reprogramming occurs during two developmental windows---in the early embryo (post-fertilisation) and in primordial germ cells. These reprogramming events erase and re-establish cell-type-specific methylation patterns.
+  \item \textbf{Cancer:} Tumours typically exhibit global hypomethylation (leading to genomic instability and reactivation of transposable elements) combined with focal hypermethylation at tumour-suppressor gene promoters (leading to their silencing). Methylation-based cancer classifiers are now used clinically for tumour typing.
+\end{enumerate}
+
+\subsection{Beyond 5mC: Other Cytosine Modifications}
+\label{subsec:methylation:other-mods}
+
+The discovery of additional cytosine modifications has expanded our understanding of the epigenome:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{5-hydroxymethylcytosine (5hmC):} Generated by TET (ten-eleven translocation) family enzymes that oxidise 5mC. Enriched in neurons and embryonic stem cells. May serve as an intermediate in active DNA demethylation or as a stable epigenetic mark with its own regulatory functions.
+  \item \textbf{5-formylcytosine (5fC):} A further oxidation product of 5hmC by TET enzymes. Present at low levels; likely an intermediate in demethylation.
+  \item \textbf{5-carboxylcytosine (5caC):} The final TET oxidation product. Recognised and excised by thymine DNA glycosylase (TDG), followed by base excision repair to regenerate unmodified cytosine.
+  \item \textbf{6-methyladenine (6mA):} Common in prokaryotes (restriction-modification systems), but recently detected in some eukaryotic genomes. Its functional significance in mammals remains debated, but 6mA has been associated with gene regulation in \species{Drosophila}, \species{C.\ elegans}, and early mammalian development.
+\end{itemize}
+
+%% ============================================================
+\section{Bisulfite Sequencing: The Gold Standard}
+\label{sec:methylation:bisulfite}
+
+\subsection{The Bisulfite Conversion Principle}
+\label{subsec:methylation:bisulfite-principle}
+
+Bisulfite sequencing, developed by Frommer et al.\ in 1992, exploits the differential reactivity of methylated and unmethylated cytosines to sodium bisulfite:
+
+\begin{enumerate}[itemsep=2pt]
+  \item Sodium bisulfite \textbf{deaminates unmethylated cytosine} to uracil (C $\rightarrow$ U).
+  \item \textbf{Methylated cytosine (5mC) is protected} from deamination and remains as C.
+  \item During \acrshort{PCR} amplification, uracil is read as thymine (T), while 5mC is read as cytosine (C).
+  \item By comparing the bisulfite-treated sequence to the reference genome, every C-to-T conversion indicates an unmethylated cytosine, and every retained C indicates a methylated cytosine.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=1.0cm,
+  box/.style={draw, rounded corners=3pt, thick, minimum width=2.8cm, minimum height=0.9cm, align=center, font=\small},
+  chem/.style={font=\footnotesize\ttfamily, align=center},
+  arrow/.style={-{Stealth[length=2.5mm]}, thick},
+  label/.style={font=\scriptsize, text width=3cm, align=center}
+]
+
+% Title
+\node[font=\bfseries\small, MidnightBlue] at (5.5,6.5) {Bisulfite Conversion Chemistry};
+
+% Original DNA strand
+\node[chem] (orig) at (0,5.2) {5\textquotesingle--A--\textcolor{BrickRed}{\textbf{C}}--G--T--\textcolor{OliveGreen}{\textbf{\textsuperscript{m}C}}--G--A--\textcolor{BrickRed}{\textbf{C}}--T--3\textquotesingle};
+\node[font=\scriptsize, left=0.1cm of orig] {Original:};
+
+% Bisulfite treatment arrow
+\draw[arrow, MidnightBlue] (5.5,4.6) -- (5.5,3.8);
+\node[font=\scriptsize, MidnightBlue, right] at (5.6,4.2) {NaHSO\textsubscript{3} treatment};
+\node[font=\scriptsize, MidnightBlue, right] at (5.6,3.9) {(deaminates unmodified C $\rightarrow$ U)};
+
+% After bisulfite
+\node[chem] (bisulf) at (0,3.2) {5\textquotesingle--A--\textcolor{BrickRed}{\textbf{U}}--G--T--\textcolor{OliveGreen}{\textbf{\textsuperscript{m}C}}--G--A--\textcolor{BrickRed}{\textbf{U}}--T--3\textquotesingle};
+\node[font=\scriptsize, left=0.1cm of bisulf] {Bisulfite:};
+
+% PCR arrow
+\draw[arrow, MidnightBlue] (5.5,2.6) -- (5.5,1.8);
+\node[font=\scriptsize, MidnightBlue, right] at (5.6,2.2) {PCR amplification};
+\node[font=\scriptsize, MidnightBlue, right] at (5.6,1.9) {(U reads as T)};
+
+% After PCR
+\node[chem] (pcr) at (0,1.2) {5\textquotesingle--A--\textcolor{BrickRed}{\textbf{T}}--G--T--\textcolor{OliveGreen}{\textbf{C}}--G--A--\textcolor{BrickRed}{\textbf{T}}--T--3\textquotesingle};
+\node[font=\scriptsize, left=0.1cm of pcr] {Sequenced:};
+
+% Legend
+\node[font=\scriptsize, BrickRed] at (0, 0.2) {Red = unmethylated C (converted to T)};
+\node[font=\scriptsize, OliveGreen] at (0, -0.3) {Green = methylated C (protected, stays as C)};
+
+% Chemical detail box on right
+\node[box, fill=gray!5, text width=4.5cm, font=\scriptsize] at (10, 3.2) {
+  \textbf{Reaction mechanism:}\\[3pt]
+  1. Sulfonation of C-6\\
+  2. Hydrolytic deamination\\
+  \quad at C-4 (NH\textsubscript{2} $\rightarrow$ O)\\
+  3. Desulfonation under\\
+  \quad alkaline conditions\\[3pt]
+  Result: C $\rightarrow$ U\\
+  5mC is resistant due to\\
+  methyl group at C-5
+};
+
+\end{tikzpicture}
+\caption[Bisulfite conversion chemistry for methylation detection.]{Bisulfite conversion chemistry. Sodium bisulfite deaminates unmethylated cytosines to uracil (read as T after PCR), while methylated cytosines (5mC, shown with superscript m) are protected and remain as C. By comparing the sequenced reads to the reference genome, each CpG site can be scored as methylated or unmethylated.}
+\label{fig:methylation:bisulfite-chemistry}
+\end{figure}
+
+\begin{warningbox}
+Standard bisulfite sequencing \textbf{cannot distinguish 5mC from 5hmC}. Both modifications are resistant to bisulfite deamination and appear as ``C'' in the sequencing output. To differentiate these marks, specialised methods such as oxidative bisulfite sequencing (oxBS-seq) or TET-assisted bisulfite sequencing (TAB-seq) are required (see \cref{subsec:methylation:oxbs-tab}).
+\end{warningbox}
+
+\subsection{Bisulfite Conversion Chemistry in Detail}
+\label{subsec:methylation:bisulfite-chemistry}
+
+The bisulfite conversion of cytosine proceeds through a well-characterised three-step chemical mechanism. Understanding this mechanism is essential for appreciating why the reaction discriminates between methylated and unmethylated cytosines, and for diagnosing conversion failures.
+
+\subsubsection{The Deamination Mechanism}
+
+The conversion of unmethylated cytosine to uracil by sodium bisulfite involves three sequential reactions:
+
+\begin{enumerate}[itemsep=3pt]
+  \item \textbf{Sulfonation (addition):} Bisulfite ion ($\text{HSO}_3^{-}$) attacks the C-6 position of the cytosine ring in a reversible nucleophilic addition, forming \textbf{cytosine-6-sulfonate}. This reaction requires acidic conditions (pH 5.0--5.5) and proceeds efficiently only on single-stranded DNA, because bisulfite cannot access cytosines in double-stranded regions.
+  \item \textbf{Hydrolytic deamination:} The amino group ($-\text{NH}_2$) at the C-4 position of cytosine-6-sulfonate undergoes hydrolytic deamination, replacing $-\text{NH}_2$ with a carbonyl group ($=\text{O}$), yielding \textbf{uracil-6-sulfonate}. This is the rate-limiting step and is accelerated by elevated temperature (typically 50--70\textdegree{}C) and prolonged incubation (2--16 hours).
+  \item \textbf{Alkali desulfonation:} Under alkaline conditions (pH $>$ 12, achieved during the final desulfonation/clean-up step), the sulfonate group is eliminated from C-6, yielding \textbf{uracil}.
+\end{enumerate}
+
+The overall reaction can be summarised as:
+\begin{equation}
+\label{eq:methylation:bisulfite-overall}
+\text{Cytosine} \xrightarrow{\text{HSO}_3^{-},\;\text{pH}\,5} \text{Cytosine-6-sulfonate} \xrightarrow{\text{H}_2\text{O},\;\Delta} \text{Uracil-6-sulfonate} \xrightarrow{\text{OH}^{-}} \text{Uracil}
+\end{equation}
+
+\subsubsection{Why 5-Methylcytosine Is Resistant}
+
+The methyl group at the C-5 position of 5mC sterically and electronically hinders the initial sulfonation reaction at C-6. Specifically:
+\begin{itemize}[itemsep=2pt]
+  \item The electron-donating methyl group increases the electron density at C-5 and C-6, making the ring less electrophilic and thus less susceptible to nucleophilic attack by bisulfite.
+  \item The steric bulk of the methyl group physically impedes access of $\text{HSO}_3^{-}$ to C-6.
+  \item As a result, the sulfonation rate for 5mC is approximately \textbf{100-fold slower} than for unmodified cytosine under standard bisulfite conditions.
+\end{itemize}
+
+5-Hydroxymethylcytosine (5hmC) is similarly resistant to bisulfite-mediated deamination. The hydroxymethyl group at C-5 provides comparable steric and electronic protection, which is why standard bisulfite sequencing cannot distinguish 5mC from 5hmC.
+
+\subsubsection{Conversion Rate and Completeness}
+
+The efficiency of bisulfite conversion is characterised by two complementary metrics:
+
+\begin{align}
+\label{eq:methylation:conversion-rate}
+\text{Conversion rate} &= \frac{\text{Number of unmethylated C read as T}}{\text{Total unmethylated C positions}} \geq 99.0\% \\[6pt]
+\label{eq:methylation:protection-rate}
+\text{Protection rate} &= \frac{\text{Number of methylated C read as C}}{\text{Total methylated C positions}} \geq 99.0\%
+\end{align}
+
+A high-quality bisulfite experiment achieves:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Conversion rate $> 99\%$} for unmethylated cytosines (i.e., $< 1\%$ false methylation).
+  \item \textbf{Protection rate $> 99\%$} for methylated cytosines (i.e., $< 1\%$ false non-methylation).
+  \item The non-conversion rate (complement of conversion rate) directly translates to \textbf{false-positive methylation calls}, which can be devastating for analyses of lowly methylated regions.
+\end{itemize}
+
+\subsubsection{Conversion Rate Quality Control}
+\label{subsubsec:methylation:conversion-qc}
+
+Conversion rate is routinely assessed using two approaches:
+
+\textbf{Spike-in controls:}
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Lambda phage DNA} ($\sim$0.5--1\% of library): the lambda phage genome (\species{Enterobacteria phage $\lambda$}) is unmethylated. After bisulfite treatment, virtually all cytosines in the lambda genome should read as T. The conversion rate is calculated as:
+\end{itemize}
+\begin{equation}
+\label{eq:methylation:lambda-conversion}
+\text{Conversion rate}_{\lambda} = \frac{T_{\lambda}}{T_{\lambda} + C_{\lambda}}
+\end{equation}
+where $T_{\lambda}$ and $C_{\lambda}$ are the total thymine and cytosine counts at all cytosine positions in reads mapping to the lambda genome.
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{pUC19 plasmid} (CpG-methylated): used to verify that methylated cytosines are protected. The protection rate should exceed 99\%.
+\end{itemize}
+
+\textbf{Non-CpG context methylation:}
+\begin{itemize}[itemsep=2pt]
+  \item In most somatic mammalian cells, cytosine methylation occurs almost exclusively in the CpG context. Methylation measured in the \textbf{CHH and CHG contexts} (where H = A, T, or C) therefore predominantly reflects \textbf{incomplete bisulfite conversion} rather than true non-CpG methylation.
+  \item The non-CpG apparent methylation rate serves as an internal conversion control:
+\end{itemize}
+\begin{equation}
+\label{eq:methylation:chh-conversion}
+\text{Estimated non-conversion} \approx \frac{C_{\text{CHH}}}{C_{\text{CHH}} + T_{\text{CHH}}}
+\end{equation}
+
+\begin{warningbox}
+Incomplete bisulfite conversion inflates methylation estimates across the entire genome, but its impact is most severe at lowly methylated loci. For example, if the non-conversion rate is 2\%, a truly unmethylated CpG will appear 2\% methylated, while a 50\% methylated CpG will be measured as 51\%. This makes regions with low methylation levels (enhancers, partially methylated domains in cancer) particularly susceptible to artefacts. Samples with conversion rates below 98\% should generally be discarded and re-processed.
+\end{warningbox}
+
+\begin{tipbox}
+When using cell types known to have genuine non-CpG methylation---such as embryonic stem cells, neurons, or oocytes---the CHH/CHG context cannot be used as an internal conversion control. In these cases, the lambda phage spike-in becomes essential. Always include spike-in controls in experimental designs involving these cell types.
+\end{tipbox}
+
+\subsection{Whole-Genome Bisulfite Sequencing (WGBS)}
+\label{subsec:methylation:wgbs}
+
+\acrfull{WGBS} is the gold standard for genome-wide methylation profiling at single-base resolution. It interrogates the methylation status of every cytosine in the genome (approximately 28 million CpG sites in the human genome, plus non-CpG sites).
+
+\begin{protocolbox}[title={WGBS Library Preparation}]
+\textbf{Pre-bisulfite (standard) method:}
+\begin{enumerate}[itemsep=1pt]
+  \item Fragment genomic DNA to 200--400\basepair{} (sonication or enzymatic).
+  \item End repair, A-tailing, adapter ligation (methylated adapters to survive bisulfite treatment).
+  \item Size selection (gel or bead-based).
+  \item Bisulfite conversion (sodium bisulfite, 2--16 hours at elevated temperature).
+  \item PCR amplification with adapter primers.
+  \item Library QC and sequencing.
+\end{enumerate}
+
+\textbf{Post-Bisulfite Adapter Tagging (PBAT):}
+\begin{enumerate}[itemsep=1pt]
+  \item Bisulfite-convert genomic DNA \textit{first}.
+  \item Synthesise first strand using random primers with adapters.
+  \item Synthesise second strand with another random-adapter primer.
+  \item Amplify and sequence.
+\end{enumerate}
+PBAT avoids DNA loss from bisulfite degradation of adapter-ligated molecules and works with lower input ($< 100$\,ng). It is the basis for low-input and single-cell bisulfite methods.
+\end{protocolbox}
+
+\subsubsection{Coverage Requirements}
+
+WGBS requires substantial sequencing depth because bisulfite conversion reduces sequence complexity (all unmethylated Cs become Ts), making alignment more challenging and reducing effective coverage:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Minimum useful depth:} 5--10$\times$ per strand (10--20$\times$ total) for global methylation patterns.
+  \item \textbf{Standard depth:} 30$\times$ for reliable single-CpG-resolution analysis.
+  \item \textbf{DMR detection:} Requires $\geq$ 10 reads per CpG for statistical testing of differentially methylated regions.
+  \item For a human genome at 30$\times$: approximately 900 million 150\basepair{} PE reads (270\,Gb of data).
+\end{itemize}
+
+\begin{tipbox}
+Spike-in unmethylated lambda phage DNA ($\sim$0.5--1\% of the library) or methylated pUC19 plasmid as conversion controls. Lambda DNA should show $>$99\% conversion (all Cs read as T), while pUC19 should remain $>$99\% methylated. Conversion rates $<$ 98\% indicate incomplete bisulfite treatment and the data should be discarded.
+\end{tipbox}
+
+\subsubsection{Alignment Challenges}
+
+Bisulfite-converted reads have reduced sequence complexity because all Cs on the original strand that were unmethylated are now Ts. This creates alignment difficulties:
+
+\begin{itemize}[itemsep=2pt]
+  \item The effective four-letter alphabet is reduced to a three-letter alphabet on the converted strand.
+  \item Reads can originate from either the Watson (original top) or Crick (original bottom) strand, and bisulfite conversion is strand-specific.
+  \item Specialised aligners handle this by performing \textit{in silico} C-to-T conversion of both reads and reference, aligning in the converted space, and then mapping back to the original reference.
+\end{itemize}
+
+\subsubsection{Dedicated Bisulfite Aligners}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of bisulfite-seq alignment tools.}
+\label{tab:methylation:aligners}
+\small
+\begin{tabularx}{\textwidth}{l X l l l}
+\toprule
+\textbf{Aligner} & \textbf{Algorithm} & \textbf{Speed} & \textbf{Memory} & \textbf{Notes} \\
+\midrule
+Bismark & Bowtie2/HISAT2 backend; three-letter aligner & Moderate & Moderate & Most widely used; excellent documentation \\
+\addlinespace
+bwa-meth & BWA-MEM backend; in silico conversion & Fast & Low--moderate & Faster than Bismark; good for large datasets \\
+\addlinespace
+BSBolt & Combined aligner and methylation caller & Fast & Moderate & Integrated pipeline; PBAT support \\
+\addlinespace
+BSMAP & Seed-based; wildcard approach & Fast & High & Legacy tool; still used \\
+\addlinespace
+gemBS & Full pipeline (alignment + calling) & Fast & High & Designed for large cohorts \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Reduced Representation Bisulfite Sequencing (RRBS)}
+\label{subsec:methylation:rrbs}
+
+RRBS is a cost-effective alternative to WGBS that enriches for CpG-rich regions of the genome:
+
+\begin{protocolbox}[title={RRBS Protocol}]
+\begin{enumerate}[itemsep=1pt]
+  \item Digest genomic DNA with \textbf{MspI} (recognition site: C$\wedge$CGG), which cuts at CpG-containing sequences regardless of methylation status.
+  \item End repair and A-tailing (fragments have predictable CG-rich ends).
+  \item Adapter ligation.
+  \item Size selection: typically 150--400\basepair{} fragments, which enriches for CpG islands and CpG-dense regions.
+  \item Bisulfite conversion.
+  \item PCR amplification and sequencing.
+\end{enumerate}
+\end{protocolbox}
+
+RRBS covers approximately 10--12\% of all CpGs in the human genome (about 3 million CpGs), but captures the majority of CpG islands and promoter-associated CpGs. It requires only 10--30 million reads per sample, making it roughly 10--30$\times$ cheaper than WGBS.
+
+\begin{warningbox}
+RRBS has important limitations: (1) it is restricted to regions flanking MspI cut sites and therefore misses many enhancers, intergenic regions, and CpG-poor regulatory elements; (2) the fragment ends contain CpG sites that were part of the MspI recognition sequence---these should be excluded from methylation calling due to end-repair artefacts (tools like Trim Galore's \texttt{--rrbs} flag handle this); (3) coverage is highly non-uniform, with some CpGs having thousands of reads and others having none.
+\end{warningbox}
+
+%% ============================================================
+\section{Enzymatic Methyl-seq (EM-seq)}
+\label{sec:methylation:emseq}
+
+Enzymatic methyl-seq (EM-seq), commercialised as the NEBNext Enzymatic Methyl-seq (EM-seq) kit by New England Biolabs, is a gentler alternative to bisulfite conversion that avoids the harsh chemical treatment responsible for DNA degradation.
+
+\subsection{Principle}
+\label{subsec:methylation:emseq-principle}
+
+EM-seq uses a two-step enzymatic process:
+
+\begin{enumerate}[itemsep=3pt]
+  \item \textbf{TET2 oxidation:} The TET2 enzyme (plus an oxidation supplement) converts 5mC to 5-carboxylcytosine (5caC) and 5hmC to 5caC. These oxidised forms are resistant to the subsequent deamination step.
+  \item \textbf{APOBEC3A deamination:} The APOBEC3A enzyme deaminates \textit{unmodified} cytosines to uracils, mimicking the bisulfite conversion outcome. Importantly, APOBEC3A does not deaminate the oxidised forms (5caC), so originally methylated and hydroxymethylated cytosines are protected.
+\end{enumerate}
+
+The net result is the same readout as bisulfite sequencing (unmethylated C $\rightarrow$ T, methylated C $\rightarrow$ C), but with critical advantages:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Less DNA damage:} bisulfite treatment degrades 90--99\% of input DNA; EM-seq preserves DNA integrity.
+  \item \textbf{Lower input requirements:} works reliably with 10--100\,ng of DNA (vs.\ 200\,ng--1\,$\mu$g for standard WGBS).
+  \item \textbf{Better coverage uniformity:} reduced GC bias and more even coverage across the genome.
+  \item \textbf{More accurate at low-methylated regions:} less false methylation signal from incomplete conversion.
+\end{itemize}
+
+\begin{tipbox}
+EM-seq is rapidly becoming the preferred method for genome-wide methylation profiling, especially when input DNA is limited (FFPE samples, liquid biopsies, sorted cell populations). If you are starting a new methylation project and do not have a specific reason to use bisulfite, consider EM-seq as the default choice.
+\end{tipbox}
+
+%% ============================================================
+\section{Distinguishing 5mC from 5hmC}
+\label{sec:methylation:5hmc}
+
+\subsection{Oxidative Bisulfite Sequencing (oxBS-seq)}
+\label{subsec:methylation:oxbs-tab}
+
+Standard bisulfite sequencing reads both 5mC and 5hmC as ``C.'' To distinguish them:
+
+\textbf{oxBS-seq} adds a chemical oxidation step (potassium perruthenate, KRuO\textsubscript{4}) \textit{before} bisulfite treatment. This oxidises 5hmC to 5-formylcytosine (5fC), which is then deaminated by bisulfite (read as T). Thus:
+
+\begin{itemize}[itemsep=2pt]
+  \item In standard BS-seq: 5mC $\rightarrow$ C, 5hmC $\rightarrow$ C, C $\rightarrow$ T.
+  \item In oxBS-seq: 5mC $\rightarrow$ C, 5hmC $\rightarrow$ T, C $\rightarrow$ T.
+  \item 5hmC levels at each site = BS-seq methylation $-$ oxBS-seq methylation.
+\end{itemize}
+
+\subsection{TET-Assisted Bisulfite Sequencing (TAB-seq)}
+
+TAB-seq specifically maps 5hmC:
+
+\begin{enumerate}[itemsep=2pt]
+  \item Protect 5hmC by glucosylation using $\beta$-glucosyltransferase ($\beta$-GT) to form 5-glucosylhydroxymethylcytosine (5ghmC).
+  \item Oxidise 5mC to 5caC using recombinant TET1 enzyme.
+  \item Bisulfite conversion: unmodified C and 5caC are deaminated (read as T), while 5ghmC is protected (read as C).
+  \item Result: only 5hmC positions read as C; everything else reads as T.
+\end{enumerate}
+
+\subsection{ACE-seq}
+
+APOBEC-Coupled Epigenetic Sequencing (ACE-seq) uses APOBEC3A enzyme instead of bisulfite for 5hmC detection. APOBEC3A deaminates C, 5mC, and 5fC but \textit{not} 5hmC (or its glucosylated form). Combined with $\beta$-GT protection, this provides a bisulfite-free 5hmC mapping method with less DNA damage.
+
+%% ============================================================
+\section{Targeted Methylation Approaches}
+\label{sec:methylation:targeted}
+
+\subsection{Methyl-Capture Sequencing}
+
+Target-enrichment (hybridisation capture) can be combined with bisulfite sequencing to interrogate a defined subset of the genome:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Agilent SureSelect Methyl-Seq:} captures 3.7 million CpGs (84 Mb target region) covering CpG islands, shores, shelves, and ENCODE regulatory elements.
+  \item \textbf{Roche SeqCap Epi CpGiant:} captures 5.5 million CpGs.
+  \item These methods provide deep coverage of biologically relevant CpGs at a fraction of WGBS cost.
+\end{itemize}
+
+\subsection{Methylation Arrays}
+
+Illumina methylation arrays use bisulfite-converted DNA hybridised to bead arrays with methylation-specific probes:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Infinium MethylationEPIC v2.0:} interrogates $\sim$935,000 CpG sites. The most widely used array platform, especially for large epidemiological cohorts.
+  \item Provides a beta value (0--1) for each CpG representing the fraction of methylated alleles.
+  \item Advantages: low cost per sample, high throughput, extensive normalization pipelines.
+  \item Limitations: fixed probe set (biased towards CpG islands), limited to pre-selected sites.
+\end{itemize}
+
+%% ============================================================
+\section{Long-Read Methylation Detection}
+\label{sec:methylation:longread}
+
+\subsection{Nanopore Direct Methylation Detection}
+\label{subsec:methylation:nanopore}
+
+Oxford Nanopore sequencing can detect DNA modifications \textbf{directly from the raw ionic current signal} without any chemical conversion. As a DNA strand passes through the nanopore, modified bases produce subtly different current signatures compared to unmodified bases:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Simultaneous detection} of 5mC, 5hmC, and 6mA from a single sequencing run.
+  \item \textbf{No chemical conversion} means no DNA damage, no conversion bias, and no loss of long-range information.
+  \item \textbf{Single-molecule resolution:} methylation is called on individual reads, enabling analysis of allele-specific methylation and methylation heterogeneity.
+  \item \textbf{Long reads} provide methylation information in the context of phased haplotypes.
+\end{itemize}
+
+Key tools for nanopore methylation calling:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Dorado:} ONT's current basecaller with integrated modification calling (replaces Guppy). Outputs modified base probabilities in BAM tags (MM/ML).
+  \item \textbf{modkit:} ONT's tool for summarising, filtering, and extracting modification calls from BAM files.
+  \item \textbf{Remora:} Deep learning framework for training custom modification-detection models.
+  \item \textbf{Megalodon (legacy):} Earlier ONT tool for per-read modification calling; superseded by Dorado.
+  \item \textbf{DeepMod / DeepSignal:} Third-party deep-learning tools for nanopore modification detection.
+\end{itemize}
+
+\begin{tipbox}
+Nanopore methylation detection accuracy has improved dramatically. With R10.4.1 chemistry and Dorado's super-accuracy models, per-CpG-site accuracy exceeds 95\% at 10$\times$ coverage, approaching bisulfite sequencing accuracy. The key advantage is the ability to phase methylation across long reads without any chemical treatment.
+\end{tipbox}
+
+\subsection{PacBio Methylation Detection}
+\label{subsec:methylation:pacbio}
+
+PacBio SMRT sequencing detects DNA modifications through \textbf{kinetic signatures}---changes in the inter-pulse duration (IPD) when the polymerase encounters a modified base:
+
+\begin{itemize}[itemsep=2pt]
+  \item Most sensitive for \textbf{6mA} detection (strong kinetic signature).
+  \item \textbf{5mC detection} from native DNA is possible but requires very high coverage ($> 50\times$) due to the weaker kinetic signature.
+  \item \textbf{Improved with HiFi + 5mC model:} PacBio's \software{jasmine} tool and newer \software{primrose} model enable CpG methylation calling from HiFi reads, though sensitivity is lower than nanopore or bisulfite methods.
+  \item Best used as an additional data layer when HiFi sequencing is already being performed for other purposes (e.g., genome assembly, variant calling).
+\end{itemize}
+
+%% ============================================================
+\section{Comprehensive Comparison of Methylation Methods}
+\label{sec:methylation:comparison}
+
+\begin{table}[htbp]
+\centering
+\caption[Comparison of DNA methylation profiling methods.]{Comparison of major DNA methylation profiling approaches.}
+\label{tab:methylation:comparison}
+\small
+\begin{tabularx}{\textwidth}{l c c c c X}
+\toprule
+\textbf{Method} & \textbf{Resolution} & \textbf{Coverage} & \textbf{Input} & \textbf{Cost} & \textbf{Key Features} \\
+\midrule
+WGBS & Single base & Genome-wide & 200\,ng--1\,$\mu$g & \$\$\$\$ & Gold standard; complete CpG coverage \\
+\addlinespace
+RRBS & Single base & CpG-rich ($\sim$10\%) & 10--100\,ng & \$\$ & Cost-effective; biased to CpG islands \\
+\addlinespace
+EM-seq & Single base & Genome-wide & 10--100\,ng & \$\$\$\$ & Less DNA damage; low input \\
+\addlinespace
+oxBS-seq & Single base & Genome-wide & 1--2\,$\mu$g & \$\$\$\$\$ & Distinguishes 5mC from 5hmC \\
+\addlinespace
+TAB-seq & Single base & Genome-wide & 1\,$\mu$g & \$\$\$\$\$ & Maps 5hmC specifically \\
+\addlinespace
+Methyl-capture & Single base & Targeted ($\sim$3--5M CpGs) & 250\,ng & \$\$\$ & Good compromise of cost and coverage \\
+\addlinespace
+EPIC array & Single probe & $\sim$935K CpGs & 250\,ng & \$ & Cheapest per sample; large cohorts \\
+\addlinespace
+Nanopore & Single base & Genome-wide & 1\,$\mu$g & \$\$\$ & No conversion; 5mC+5hmC+6mA; long reads \\
+\addlinespace
+PacBio HiFi & Single base & Genome-wide & 5--10\,$\mu$g & \$\$\$\$ & CpG methylation from kinetics; long reads \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ============================================================
+\section{Bioinformatics Workflow for Bisulfite Sequencing}
+\label{sec:methylation:bioinformatics}
+
+The standard WGBS/EM-seq analysis pipeline follows these steps:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Quality control:} FastQC, MultiQC to assess raw read quality.
+  \item \textbf{Adapter trimming:} Trim Galore (wrapper around Cutadapt) with bisulfite-specific options.
+  \item \textbf{Alignment:} Bismark or bwa-meth against a bisulfite-converted reference genome.
+  \item \textbf{Deduplication:} Remove PCR duplicates (Bismark \texttt{deduplicate\_bismark} or Picard).
+  \item \textbf{Methylation extraction:} Extract per-CpG methylation levels (Bismark \texttt{bismark\_methylation\_extractor} or \software{MethylDackel}).
+  \item \textbf{Quality assessment:} Check conversion rate (lambda control), M-bias plots, coverage distribution.
+  \item \textbf{Differential methylation analysis:} Identify DMRs using DSS, dmrseq, methylKit, or BSmooth.
+  \item \textbf{Visualisation:} IGV tracks, heatmaps, genome browser.
+\end{enumerate}
+
+\subsection{Snakemake Workflow}
+\label{subsec:methylation:snakemake}
+
+\begin{lstlisting}[language=Python, caption={Snakemake workflow for WGBS analysis with Bismark.}, label={lst:methylation:snakemake}]
+# Snakefile for WGBS analysis using Bismark
+configfile: "config.yaml"
+
+SAMPLES = config["samples"]
+GENOME_DIR = config["genome_dir"]
+
+rule all:
+    input:
+        "results/multiqc/multiqc_report.html",
+        expand("results/methylation/{sample}.bismark.cov.gz",
+               sample=SAMPLES),
+        expand("results/methylation/{sample}_CpG_report.txt",
+               sample=SAMPLES),
+        "results/dmr/dmrseq_results.tsv"
+
+rule trim_galore:
+    input:
+        r1 = "raw_data/{sample}_R1.fastq.gz",
+        r2 = "raw_data/{sample}_R2.fastq.gz"
+    output:
+        r1 = "results/trimmed/{sample}_R1_val_1.fq.gz",
+        r2 = "results/trimmed/{sample}_R2_val_2.fq.gz",
+        report1 = "results/trimmed/{sample}_R1.fastq.gz_trimming_report.txt",
+        report2 = "results/trimmed/{sample}_R2.fastq.gz_trimming_report.txt"
+    threads: 4
+    conda: "envs/trim_galore.yaml"
+    shell:
+        """
+        trim_galore --paired --cores {threads} \
+            --output_dir results/trimmed \
+            {input.r1} {input.r2}
+        """
+
+rule bismark_genome_preparation:
+    input:
+        genome = GENOME_DIR
+    output:
+        directory(GENOME_DIR + "/Bisulfite_Genome")
+    conda: "envs/bismark.yaml"
+    shell:
+        """
+        bismark_genome_preparation {input.genome}
+        """
+
+rule bismark_align:
+    input:
+        r1 = "results/trimmed/{sample}_R1_val_1.fq.gz",
+        r2 = "results/trimmed/{sample}_R2_val_2.fq.gz",
+        genome = GENOME_DIR,
+        idx = GENOME_DIR + "/Bisulfite_Genome"
+    output:
+        bam = "results/aligned/{sample}_pe.bam",
+        report = "results/aligned/{sample}_PE_report.txt"
+    threads: 8
+    resources:
+        mem_mb = 32000
+    conda: "envs/bismark.yaml"
+    shell:
+        """
+        bismark --genome {input.genome} \
+            -1 {input.r1} -2 {input.r2} \
+            --parallel {threads} \
+            --output_dir results/aligned \
+            --temp_dir results/tmp \
+            --non_directional  # Add if using PBAT library
+        """
+
+rule bismark_dedup:
+    input:
+        bam = "results/aligned/{sample}_pe.bam"
+    output:
+        bam = "results/dedup/{sample}_pe.deduplicated.bam",
+        report = "results/dedup/{sample}_pe.deduplication_report.txt"
+    conda: "envs/bismark.yaml"
+    shell:
+        """
+        deduplicate_bismark --paired --bam \
+            --output_dir results/dedup \
+            {input.bam}
+        """
+
+rule methylation_extraction:
+    input:
+        bam = "results/dedup/{sample}_pe.deduplicated.bam",
+        genome = GENOME_DIR
+    output:
+        cov = "results/methylation/{sample}.bismark.cov.gz",
+        cpg = "results/methylation/{sample}_CpG_report.txt",
+        mbias = "results/methylation/{sample}_pe.deduplicated.M-bias.txt"
+    threads: 4
+    conda: "envs/bismark.yaml"
+    shell:
+        """
+        bismark_methylation_extractor --paired-end \
+            --comprehensive --merge_non_CpG \
+            --multicore {threads} \
+            --cytosine_report --genome_folder {input.genome} \
+            --bedGraph --gzip \
+            --output results/methylation \
+            {input.bam}
+        """
+
+rule dmr_analysis:
+    input:
+        cpg_reports = expand(
+            "results/methylation/{sample}_CpG_report.txt",
+            sample=SAMPLES
+        )
+    output:
+        dmrs = "results/dmr/dmrseq_results.tsv",
+        plots = "results/dmr/dmr_plots.pdf"
+    conda: "envs/dmrseq.yaml"
+    script:
+        "scripts/run_dmrseq.R"
+
+rule multiqc:
+    input:
+        expand("results/trimmed/{sample}_R1.fastq.gz_trimming_report.txt",
+               sample=SAMPLES),
+        expand("results/aligned/{sample}_PE_report.txt",
+               sample=SAMPLES),
+        expand("results/dedup/{sample}_pe.deduplication_report.txt",
+               sample=SAMPLES),
+        expand("results/methylation/{sample}_pe.deduplicated.M-bias.txt",
+               sample=SAMPLES)
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "envs/multiqc.yaml"
+    shell:
+        """
+        multiqc results/ -o results/multiqc --force
+        """
+\end{lstlisting}
+
+\subsection{Nextflow Workflow}
+\label{subsec:methylation:nextflow}
+
+\begin{lstlisting}[language=Java, caption={Nextflow DSL2 workflow for WGBS analysis.}, label={lst:methylation:nextflow}]
+#!/usr/bin/env nextflow
+nextflow.enable.dsl=2
+
+// Parameters
+params.reads     = "raw_data/*_R{1,2}.fastq.gz"
+params.genome    = "reference/genome.fa"
+params.outdir    = "results"
+
+// Processes
+process TRIM_GALORE {
+    tag "$sample_id"
+    cpus 4
+    publishDir "${params.outdir}/trimmed", mode: 'copy'
+    conda 'bioconda::trim-galore=0.6.10'
+
+    input:
+    tuple val(sample_id), path(reads)
+
+    output:
+    tuple val(sample_id), path("*_val_{1,2}.fq.gz"), emit: trimmed
+    path "*_trimming_report.txt",                     emit: reports
+
+    script:
+    """
+    trim_galore --paired --cores ${task.cpus} \
+        ${reads[0]} ${reads[1]}
+    """
+}
+
+process BISMARK_INDEX {
+    cpus 8
+    memory '32 GB'
+    conda 'bioconda::bismark=0.24.2'
+
+    input:
+    path genome
+
+    output:
+    path "BissulfiteGenome", emit: index
+
+    script:
+    """
+    mkdir -p genome_dir
+    cp ${genome} genome_dir/
+    bismark_genome_preparation genome_dir/
+    mv genome_dir/Bisulfite_Genome BisulfiteGenome
+    """
+}
+
+process BISMARK_ALIGN {
+    tag "$sample_id"
+    cpus 8
+    memory '32 GB'
+    publishDir "${params.outdir}/aligned", mode: 'copy'
+    conda 'bioconda::bismark=0.24.2'
+
+    input:
+    tuple val(sample_id), path(reads)
+    path index
+
+    output:
+    tuple val(sample_id), path("*.bam"),  emit: bam
+    path "*_report.txt",                  emit: report
+
+    script:
+    """
+    bismark --genome . \
+        -1 ${reads[0]} -2 ${reads[1]} \
+        --parallel ${task.cpus} \
+        --temp_dir tmp/
+    """
+}
+
+process DEDUPLICATE {
+    tag "$sample_id"
+    publishDir "${params.outdir}/dedup", mode: 'copy'
+    conda 'bioconda::bismark=0.24.2'
+
+    input:
+    tuple val(sample_id), path(bam)
+
+    output:
+    tuple val(sample_id), path("*.deduplicated.bam"), emit: bam
+    path "*.deduplication_report.txt",                emit: report
+
+    script:
+    """
+    deduplicate_bismark --paired --bam ${bam}
+    """
+}
+
+process METHYLATION_EXTRACTION {
+    tag "$sample_id"
+    cpus 4
+    publishDir "${params.outdir}/methylation", mode: 'copy'
+    conda 'bioconda::bismark=0.24.2'
+
+    input:
+    tuple val(sample_id), path(bam)
+    path genome
+
+    output:
+    tuple val(sample_id), path("*.cov.gz"),       emit: coverage
+    tuple val(sample_id), path("*CpG_report.txt"),emit: cpg_report
+    path "*.M-bias.txt",                          emit: mbias
+
+    script:
+    """
+    bismark_methylation_extractor --paired-end \
+        --comprehensive --merge_non_CpG \
+        --multicore ${task.cpus} \
+        --cytosine_report --genome_folder . \
+        --bedGraph --gzip \
+        ${bam}
+    """
+}
+
+process DMR_ANALYSIS {
+    publishDir "${params.outdir}/dmr", mode: 'copy'
+    conda 'bioconda::bioconductor-dmrseq=1.18.0'
+
+    input:
+    path cpg_reports
+
+    output:
+    path "dmrseq_results.tsv", emit: dmrs
+    path "dmr_plots.pdf",      emit: plots
+
+    script:
+    """
+    Rscript ${projectDir}/scripts/run_dmrseq.R \
+        --input_dir . \
+        --output_dir .
+    """
+}
+
+process MULTIQC {
+    publishDir "${params.outdir}/multiqc", mode: 'copy'
+    conda 'bioconda::multiqc=1.21'
+
+    input:
+    path '*'
+
+    output:
+    path "multiqc_report.html"
+
+    script:
+    """
+    multiqc . --force
+    """
+}
+
+// Workflow
+workflow {
+    // Create channel from read pairs
+    reads_ch = Channel
+        .fromFilePairs(params.reads, checkIfExists: true)
+
+    // Run pipeline
+    TRIM_GALORE(reads_ch)
+    BISMARK_INDEX(file(params.genome))
+    BISMARK_ALIGN(TRIM_GALORE.out.trimmed, BISMARK_INDEX.out.index)
+    DEDUPLICATE(BISMARK_ALIGN.out.bam)
+    METHYLATION_EXTRACTION(DEDUPLICATE.out.bam, file(params.genome))
+    DMR_ANALYSIS(METHYLATION_EXTRACTION.out.cpg_report.map{ it[1] }.collect())
+    MULTIQC(
+        TRIM_GALORE.out.reports
+            .mix(BISMARK_ALIGN.out.report)
+            .mix(DEDUPLICATE.out.report)
+            .mix(METHYLATION_EXTRACTION.out.mbias)
+            .collect()
+    )
+}
+\end{lstlisting}
+
+\begin{tipbox}
+The nf-core community maintains \software{nf-core/methylseq}, a production-ready Nextflow pipeline for bisulfite sequencing that supports both Bismark and bwa-meth backends. For most users, this is the recommended starting point rather than building a pipeline from scratch. It includes comprehensive QC, supports EM-seq libraries, and integrates with institutional compute clusters.
+\end{tipbox}
+
+\subsection{Differential Methylation Analysis}
+\label{subsec:methylation:dmr}
+
+Identifying differentially methylated regions (DMRs) between conditions (e.g., tumour vs.\ normal, treated vs.\ control) is a central goal of methylation studies. Major tools include:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{DSS (Dispersion Shrinkage for Sequencing):} Bayesian hierarchical model based on the beta-binomial distribution. Handles biological variability through dispersion shrinkage. Works well with as few as two replicates per group. Provides both differentially methylated loci (DMLs) and DMRs.
+  \item \textbf{dmrseq:} Specifically designed for detecting DMRs (not individual CpGs). Uses a two-stage approach: (1) identifies candidate DMR regions based on methylation differences, then (2) tests significance using a permutation-based statistic. Excellent for detecting regions with consistent, moderate methylation differences.
+  \item \textbf{methylKit:} R/Bioconductor package with a complete workflow: reads coverage files, performs tiling-window or per-CpG analysis, and calls DMRs. Uses logistic regression or Fisher's exact test. Good for exploratory analysis.
+  \item \textbf{BSmooth:} Smoothing-based approach that borrows information across nearby CpGs to improve estimation of local methylation levels. Particularly useful when coverage is moderate (5--15$\times$).
+\end{itemize}
+
+\subsubsection{Beta-Binomial DMR Model (DSS)}
+\label{subsubsec:methylation:dss-model}
+
+The \software{DSS} (Dispersion Shrinkage for Sequencing) package implements a rigorous statistical framework for identifying differentially methylated loci (DMLs) and regions (DMRs) from bisulfite sequencing data. The model accounts for both sampling variation (from finite read coverage) and biological variation (from inter-replicate differences) through a hierarchical Beta-Binomial framework.
+
+\textbf{Per-CpG read-level model.} At a given CpG site $j$ in sample $i$, let $X_{ij}$ be the number of reads showing methylation (C retained) out of $n_{ij}$ total reads covering that site. Given the true methylation proportion $\theta_{ij}$, the read counts follow a Binomial distribution:
+\begin{equation}
+\label{eq:methylation:dss-binomial}
+X_{ij} \mid \theta_{ij} \sim \text{Binomial}(n_{ij},\; \theta_{ij})
+\end{equation}
+
+\textbf{Biological variability model.} Across biological replicates within the same condition, the true methylation proportion $\theta_{ij}$ is not fixed but varies. DSS models this variability with a Beta prior:
+\begin{equation}
+\label{eq:methylation:dss-beta}
+\theta_{ij} \sim \text{Beta}(\alpha_j,\; \beta_j)
+\end{equation}
+where the Beta distribution is parameterised by the mean methylation level $\mu_j = \alpha_j / (\alpha_j + \beta_j)$ and the dispersion $\phi_j = 1/(\alpha_j + \beta_j + 1)$. The dispersion parameter $\phi_j$ captures biological variability: larger $\phi_j$ implies greater heterogeneity across replicates.
+
+\textbf{Marginal distribution.} Integrating over $\theta_{ij}$, the marginal distribution of $X_{ij}$ is Beta-Binomial:
+\begin{equation}
+\label{eq:methylation:dss-betabinom}
+X_{ij} \sim \text{Beta-Binomial}(n_{ij},\; \alpha_j,\; \beta_j)
+\end{equation}
+
+This has variance $\text{Var}(X_{ij}) = n_{ij}\,\mu_j\,(1-\mu_j)\,[1 + (n_{ij}-1)\,\phi_j]$, which is larger than the Binomial variance by the factor $[1 + (n_{ij}-1)\,\phi_j]$, properly accounting for biological over-dispersion.
+
+\textbf{Differential methylation testing.} To test whether methylation differs between two groups (e.g., treatment vs.\ control) at each CpG site, DSS estimates $\mu_j$ and $\phi_j$ for each group using moment estimators with \textbf{dispersion shrinkage}---borrowing information across all CpG sites to stabilise the dispersion estimates, especially when the number of replicates is small. It then applies a \textbf{Wald test} for the difference in mean methylation:
+\begin{equation}
+\label{eq:methylation:dss-wald}
+W_j = \frac{\hat{\mu}_{j,1} - \hat{\mu}_{j,2}}{\sqrt{\widehat{\text{Var}}(\hat{\mu}_{j,1}) + \widehat{\text{Var}}(\hat{\mu}_{j,2})}}
+\end{equation}
+Under the null hypothesis of no differential methylation, $W_j$ approximately follows a standard normal distribution, yielding p-values that are corrected for multiple testing.
+
+\textbf{DMR construction.} DMLs are individual CpG sites with significant p-values. DSS then merges nearby DMLs into contiguous DMRs by requiring that significant CpGs within a DMR are separated by no more than a specified distance (default: 50\basepair{}) and that the region contains a minimum number of CpGs.
+
+\subsubsection{BSmooth Local-Likelihood Smoothing}
+\label{subsubsec:methylation:bsmooth}
+
+The \software{BSmooth} algorithm addresses a fundamental challenge in WGBS analysis: at typical sequencing depths (10--30$\times$), individual CpG sites are covered by relatively few reads, leading to noisy per-site methylation estimates. BSmooth improves these estimates by \textbf{borrowing information from neighbouring CpGs} through local-likelihood smoothing.
+
+\textbf{Motivation.} Consider a CpG site covered by only 5 reads, of which 3 show methylation. The raw estimate of $\hat{\theta} = 0.60$ has a wide confidence interval and is unreliable. However, if the 10 neighbouring CpGs within a 1\kilobase{} window all show similar methylation levels (0.55--0.70), we can borrow strength from these neighbours to obtain a more precise estimate.
+
+\textbf{Smoothing procedure.} BSmooth fits a \textbf{local-likelihood weighted regression} across CpG positions within a sliding window:
+\begin{enumerate}[itemsep=2pt]
+  \item For each CpG site, define a smoothing window containing a minimum number of CpGs (default: 70 CpGs or 1\kilobase{}, whichever spans more sites).
+  \item Within this window, fit a weighted logistic regression where CpGs closer to the target site receive higher weights (using a tricube kernel function).
+  \item The fitted value at the target CpG provides the smoothed methylation estimate $\tilde{\theta}_j$.
+  \item Weights also incorporate coverage: CpGs with higher read depth contribute more to the fit.
+\end{enumerate}
+
+\textbf{Why smoothing works.} Methylation levels at adjacent CpGs are highly correlated---nearby CpGs tend to share similar methylation states, especially within CpG islands and shores. Smoothing exploits this spatial autocorrelation to reduce noise without sacrificing genuine biological variation that occurs over larger genomic distances.
+
+\textbf{DMR detection with BSmooth.} After smoothing, BSmooth computes a t-statistic at each CpG comparing the smoothed methylation profiles between two groups. Contiguous regions where the t-statistic exceeds a threshold are identified as candidate DMRs, and their significance is assessed using area-under-the-curve statistics.
+
+\begin{tipbox}
+BSmooth is especially valuable for moderate-coverage WGBS experiments (5--15$\times$), where per-CpG estimates are noisy but there are sufficient neighbouring CpGs to support smoothing. At very high coverage ($>$30$\times$), the benefit of smoothing diminishes because individual CpG estimates are already precise. Conversely, in targeted sequencing (RRBS), smoothing may be unreliable because CpG coverage is fragmented and non-contiguous.
+\end{tipbox}
+
+\begin{warningbox}
+A common pitfall in DMR analysis is confusing \textbf{statistical significance} with \textbf{biological significance}. With sufficient sequencing depth, even very small methylation differences (e.g., 5\%) can be statistically significant. Most biologically meaningful DMRs show methylation differences $\geq$ 20--25\%. Always apply both a statistical threshold (e.g., FDR $<$ 0.05) and a minimum methylation difference threshold (e.g., $|\Delta\beta| \geq 0.2$).
+\end{warningbox}
+
+\subsection{Visualisation}
+\label{subsec:methylation:visualisation}
+
+Methylation data can be visualised in multiple ways:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Genome browser tracks:} Load Bismark coverage files (.bedGraph or .cov.gz) into IGV or the UCSC Genome Browser. Each CpG is displayed as a bar indicating methylation level (0--100\%).
+  \item \textbf{Methylation heatmaps:} Cluster samples and CpG regions using tools like \software{methylKit::clusterSamples()} or deepTools \software{computeMatrix + plotHeatmap} for methylation around specific genomic features (e.g., TSSs, enhancers).
+  \item \textbf{M-bias plots:} Generated by Bismark; show methylation level as a function of read position. Systematic biases at read ends (common in RRBS) indicate positions that should be excluded from methylation calling.
+  \item \textbf{PCA/MDS plots:} Principal component analysis or multi-dimensional scaling of methylation data to assess sample relationships and batch effects.
+  \item \textbf{Violin/bean plots:} Distribution of methylation levels across genomic features (promoters, gene bodies, repeats) by sample or condition.
+\end{itemize}
+
+%% ============================================================
+\section{Experimental Design Considerations}
+\label{sec:methylation:design}
+
+\begin{keyconcept}[title={Choosing a Methylation Method}]
+The choice of method depends on the experimental question:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Comprehensive, unbiased survey:} WGBS or EM-seq.
+  \item \textbf{CpG island--focused, budget-limited:} RRBS.
+  \item \textbf{Large clinical cohorts:} EPIC array.
+  \item \textbf{Distinguishing 5mC from 5hmC:} oxBS-seq, TAB-seq, or nanopore.
+  \item \textbf{Low-input or degraded DNA:} EM-seq or PBAT-WGBS.
+  \item \textbf{Haplotype-resolved methylation:} Nanopore or PacBio long-read sequencing.
+  \item \textbf{Targeted regions of interest:} Methyl-capture or amplicon bisulfite sequencing.
+\end{itemize}
+\end{keyconcept}
+
+Key design parameters to consider:
+
+\begin{enumerate}[itemsep=3pt]
+  \item \textbf{Biological replicates:} At least 3 per condition for DMR analysis; more improve statistical power.
+  \item \textbf{Sequencing depth:} See coverage recommendations above; under-sequenced WGBS wastes money without providing reliable single-CpG resolution.
+  \item \textbf{Batch effects:} Bisulfite conversion efficiency can vary between batches. Process all samples in a single batch or randomise samples across batches. Include conversion controls.
+  \item \textbf{Cell-type composition:} Bulk tissue methylation is a weighted average of constituent cell types. Cell-type deconvolution (e.g., MethylCIBERSORT, EpiDISH) or cell sorting prior to sequencing may be necessary for accurate interpretation.
+  \item \textbf{Paired samples:} When possible, pair tumour and normal samples from the same individual to reduce inter-individual variability.
+\end{enumerate}
+
+%% ============================================================
+\section{Chapter Summary}
+\label{sec:methylation:summary}
+
+DNA methylation is the most extensively studied epigenetic modification, with a rich toolkit of sequencing-based methods for its detection. Bisulfite sequencing (WGBS and RRBS) remains the historical gold standard, but enzymatic methods (EM-seq) offer a gentler, more accurate alternative for new projects. Long-read technologies from Oxford Nanopore and PacBio enable direct detection of modifications without chemical conversion, providing haplotype-resolved methylation information. The choice among these methods depends on the biological question, available input material, budget, and the need to distinguish between different cytosine modifications. Rigorous bioinformatics---from specialised alignment to appropriate statistical testing of DMRs---is essential for extracting reliable biological insights from methylation data.

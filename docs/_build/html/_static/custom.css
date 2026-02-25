@@ -1,0 +1,15 @@
+/* Wider content area */
+.wy-nav-content {
+    max-width: 900px;
+}
+
+/* Code block styling */
+div.highlight pre {
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+/* Tab styling adjustments */
+.sphinx-tabs-tab {
+    font-size: 0.9em;
+}

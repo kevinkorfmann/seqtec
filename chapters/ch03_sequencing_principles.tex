@@ -1,0 +1,944 @@
+\chapter{Principles of Modern Sequencing}
+\label{ch:seqprinciples}
+
+\begin{keyconcept}
+All modern sequencing technologies---despite their remarkably different chemistries---share a common logical framework: fragment nucleic acids, attach synthetic adapters, and read the sequence of individual fragments in a massively parallel fashion. This chapter explains the core principles that underpin every sequencing platform, from the chemistry of base reading to the metrics used to evaluate sequencing quality. Understanding these principles will prepare you for the platform-specific details in subsequent chapters.
+\end{keyconcept}
+
+% ============================================================
+\section{What All Sequencing Technologies Share}
+\label{sec:seqprinciples:shared}
+
+Despite their diversity, all modern sequencing technologies share a common workflow with three essential steps:
+
+\begin{enumerate}[itemsep=3pt]
+  \item \textbf{Fragmenting the nucleic acid:} Genomic DNA or RNA is broken into pieces of a manageable size. DNA can be fragmented mechanically (sonication, acoustic shearing) or enzymatically (tagmentation using Tn5 transposase). RNA is typically fragmented chemically (heat and divalent cations) or enzymatically after conversion to complementary DNA (cDNA).
+
+  \item \textbf{Attaching adapters:} Short, synthetic DNA sequences---called \textbf{adapters}---are ligated to the ends of fragments. Adapters serve multiple critical functions:
+  \begin{itemize}[itemsep=1pt]
+    \item They allow fragments to bind to the sequencing instrument's flow cell or bead surface.
+    \item They provide a priming site for sequencing reactions.
+    \item They contain index (barcode) sequences that identify which sample a fragment came from, enabling multiplexing.
+    \item On Illumina platforms, they contain sequences needed for bridge amplification (cluster generation).
+  \end{itemize}
+
+  \item \textbf{Reading bases:} The instrument reads the sequence of each fragment, one base at a time (in most technologies) or by monitoring a continuous signal (in nanopore and SMRT sequencing). The output is a collection of \textbf{reads}---short (or long) text strings representing the nucleotide sequences of individual fragments, accompanied by quality scores.
+\end{enumerate}
+
+The collection of adapter-ligated fragments is called a \textbf{sequencing library}. We will return to the concept of a library in detail in \cref{sec:seqprinciples:library}.
+
+\begin{tipbox}
+Think of a sequencing library like a collection of books in a physical library---each ``book'' (fragment) has a barcode label (adapter) that identifies it and allows the library system (sequencing instrument) to read it. The quality of the library determines the quality of the data.
+\end{tipbox}
+
+
+% ============================================================
+\section{Sequencing by Synthesis (SBS)}
+\label{sec:seqprinciples:sbs}
+
+\textbf{\Acrfull{SBS}} is the most widely used sequencing chemistry, employed by Illumina platforms. The fundamental idea is to monitor DNA polymerase as it synthesises a new strand complementary to a template, detecting each nucleotide as it is incorporated.
+
+\subsection{The Chemistry}
+\label{subsec:seqprinciples:sbs-chemistry}
+
+Illumina's \acrshort{SBS} uses \textbf{reversible terminators}---modified nucleotides with two key features:
+
+\begin{enumerate}[itemsep=2pt]
+  \item A \textbf{fluorescent label} attached to the base (each of the four bases---A, T, G, C---carries a different colour fluorophore).
+  \item A \textbf{removable blocking group} on the 3$'${}-OH of the sugar, which prevents the polymerase from adding more than one nucleotide per cycle.
+\end{enumerate}
+
+In each cycle:
+\begin{enumerate}[itemsep=2pt]
+  \item All four reversible terminators (fluorescently labelled A, T, G, C) are flowed across the flow cell simultaneously.
+  \item DNA polymerase incorporates the single complementary nucleotide at the 3$'${} end of each growing strand.
+  \item The blocking group prevents further incorporation---only one base is added per cycle.
+  \item The flow cell is imaged: a laser excites the fluorophore, and the emitted colour identifies the incorporated base.
+  \item The fluorescent label and the 3$'${} blocking group are chemically cleaved, regenerating a free 3$'${}-OH.
+  \item The cycle repeats for the next base.
+\end{enumerate}
+
+This cycle-by-cycle approach---incorporate, image, cleave, repeat---typically runs for 50--300 cycles, producing reads of 50--300\basepair{}.
+
+% TikZ: SBS principle
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  scale=0.85,
+  every node/.style={font=\small},
+  boxstep/.style={draw, rounded corners=3pt, thick, minimum width=3cm, minimum height=1.8cm, align=center, text width=2.8cm},
+  arrow/.style={-{Stealth[length=3mm]}, thick, MidnightBlue}
+]
+  % Step 1
+  \node[boxstep, fill=MidnightBlue!8] (s1) at (0,0) {1. Flow all four\\labelled dNTPs};
+
+  % Step 2
+  \node[boxstep, fill=OliveGreen!8] (s2) at (4.5,0) {2. Polymerase\\incorporates\\one base};
+
+  % Step 3
+  \node[boxstep, fill=Goldenrod!8] (s3) at (9,0) {3. Image:\\identify base\\by colour};
+
+  % Step 4
+  \node[boxstep, fill=BrickRed!8] (s4) at (13.5,0) {4. Cleave label\\and blocker};
+
+  % Arrows
+  \draw[arrow] (s1) -- (s2);
+  \draw[arrow] (s2) -- (s3);
+  \draw[arrow] (s3) -- (s4);
+
+  % Cycle arrow back
+  \draw[arrow, dashed] (s4.south) -- ++(0,-0.8) -| node[below, pos=0.25, font=\scriptsize\itshape] {Repeat for 50--300 cycles} (s1.south);
+
+  % Template strand illustration below steps
+  \begin{scope}[yshift=-3.2cm]
+    % Template
+    \node[font=\scriptsize\bfseries, MidnightBlue] at (-1.5,0) {Template:};
+    \foreach \x/\base in {0/A, 0.6/T, 1.2/G, 1.8/C, 2.4/A, 3.0/G, 3.6/T, 4.2/C} {
+      \node[font=\scriptsize\ttfamily] at (\x,0) {\base};
+    }
+
+    % Growing strand
+    \node[font=\scriptsize\bfseries, OliveGreen] at (-1.5,-0.5) {New strand:};
+    \foreach \x/\base in {0/T, 0.6/A, 1.2/C, 1.8/G} {
+      \node[font=\scriptsize\ttfamily, OliveGreen] at (\x,-0.5) {\base};
+    }
+    % Current incorporation
+    \node[font=\scriptsize\ttfamily, BrickRed, draw, rounded corners=1pt, fill=BrickRed!10] at (2.4,-0.5) {T};
+    \draw[-{Stealth}, BrickRed, thick] (2.4,-1.0) -- (2.4,-0.7);
+    \node[font=\tiny, BrickRed] at (2.4,-1.2) {incorporating};
+
+    % Remaining template
+    \foreach \x/\base in {3.0/?, 3.6/?, 4.2/?} {
+      \node[font=\scriptsize\ttfamily, gray] at (\x,-0.5) {\base};
+    }
+  \end{scope}
+
+\end{tikzpicture}
+\caption[Sequencing by synthesis (SBS) principle.]{The cycle of Illumina sequencing by synthesis (SBS). In each cycle, all four fluorescently labelled reversible terminators are presented to the growing strand. DNA polymerase incorporates one complementary base, which is identified by its fluorescent colour after imaging. The fluorescent label and 3$'${} blocking group are then removed, and the cycle repeats.}
+\label{fig:seqprinciples:sbs}
+\end{figure}
+
+\subsection{Cluster Generation}
+\label{subsec:seqprinciples:clusters}
+
+Before sequencing can begin on Illumina platforms, individual library fragments must be amplified into clusters of identical copies to generate a detectable fluorescent signal. This is accomplished through \textbf{bridge amplification} (also called \textbf{cluster generation}) on the surface of a \textbf{flow cell}:
+
+\begin{enumerate}[itemsep=2pt]
+  \item Library fragments are denatured (single-stranded) and flow across the flow cell, which is coated with short oligonucleotides complementary to the adapter sequences.
+  \item Fragments hybridise to the surface oligos and are copied by a polymerase.
+  \item The original template is washed away; the new copy bends over and hybridises to an adjacent surface oligo (forming a ``bridge'').
+  \item The bridge is extended by polymerase, creating a double-stranded bridge.
+  \item The bridge is denatured, yielding two single-stranded copies tethered to the surface.
+  \item This process repeats through many cycles, producing a tight cluster of approximately 1,000 identical copies of the original fragment.
+\end{enumerate}
+
+Each cluster produces a coherent fluorescent signal during sequencing, effectively amplifying the signal from a single molecule.
+
+\begin{warningbox}
+Cluster generation introduces a potential source of error: if two different library fragments land too close together on the flow cell and their clusters overlap, the result is a ``mixed'' cluster that produces ambiguous base calls. More sophisticated patterned flow cells (used in NovaSeq and newer platforms) mitigate this by arranging cluster positions in a regular grid, but mixed clusters remain a consideration in data quality.
+\end{warningbox}
+
+
+% ============================================================
+\section{Sequencing by Ligation}
+\label{sec:seqprinciples:sbl}
+
+\textbf{Sequencing by ligation} is an alternative approach in which DNA sequence is determined by the successive ligation (joining) of fluorescently labelled oligonucleotide probes to a primer hybridised to the template. Rather than using a polymerase to add single nucleotides, a ligase is used to join short probes whose identity encodes the sequence of the template.
+
+This approach was used by the \textbf{SOLiD} (Sequencing by Oligonucleotide Ligation and Detection) platform from Applied Biosystems (later Life Technologies, now Thermo Fisher). In SOLiD sequencing:
+
+\begin{enumerate}[itemsep=2pt]
+  \item A universal primer hybridises to the adapter sequence adjacent to the unknown template.
+  \item A pool of fluorescently labelled 8-mer oligonucleotide probes is added. Each probe interrogates two bases at a time (the first two bases of the probe encode the fluorescent colour in a two-base encoding scheme).
+  \item DNA ligase joins the probe to the primer if it matches the template.
+  \item The fluorescent signal is recorded, identifying the dinucleotide.
+  \item The fluorescent label is cleaved, and the cycle repeats with the next probe.
+  \item After several rounds, the extended strand is stripped, and the process restarts with a primer offset by one base, eventually covering every position.
+\end{enumerate}
+
+The two-base encoding scheme in SOLiD meant that each base was interrogated twice, providing inherent error correction. However, the short read lengths (50--75\basepair{}), relatively slow throughput, and complex data analysis led to SOLiD being largely superseded by Illumina platforms. The sequencing-by-ligation concept is primarily of historical interest, though elements of it persist in some specialised applications.
+
+
+% ============================================================
+\section{Nanopore Sequencing}
+\label{sec:seqprinciples:nanopore}
+
+\textbf{Nanopore sequencing}, commercialised by \acrfull{ONT}, takes a fundamentally different approach: instead of synthesising a new strand or ligating probes, it reads DNA (or RNA) directly by threading a single molecule through a tiny protein pore and measuring the resulting changes in electrical current.
+
+\subsection{The Principle}
+\label{subsec:seqprinciples:nanopore-principle}
+
+The core of a nanopore sequencer is a biological \textbf{nanopore}---a protein channel (currently a modified version of the CsgG protein) embedded in an electrically resistant polymer membrane. A voltage is applied across the membrane, driving a constant ionic current through the pore. When a strand of DNA passes through the pore:
+
+\begin{enumerate}[itemsep=2pt]
+  \item A \textbf{motor protein} (a helicase) at the top of the pore controls the translocation speed, feeding the DNA strand through the pore one nucleotide at a time.
+  \item As each nucleotide (or, more precisely, a k-mer of approximately 5--6 nucleotides) passes through the constriction zone of the pore, it partially blocks the ionic current.
+  \item The degree of current disruption depends on the identity and combination of bases in the constriction zone.
+  \item A sensitive amplifier measures the current in real time, producing a \textbf{signal trace} (a ``squiggle'') of current vs.\ time.
+  \item A computational algorithm (\textbf{basecaller}, typically a neural network) converts the raw signal into a nucleotide sequence.
+\end{enumerate}
+
+% TikZ: Nanopore sequencing principle
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.9]
+  % Membrane
+  \fill[gray!25] (-3,-0.3) rectangle (3,0.3);
+  \node[font=\small\itshape, gray] at (4.3,0) {Membrane};
+
+  % Pore (hourglass shape)
+  \fill[MidnightBlue!20] (-0.6,0.3) -- (-0.3,-0.3) -- (0.3,-0.3) -- (0.6,0.3) -- cycle;
+  \draw[thick, MidnightBlue] (-0.6,0.3) -- (-0.3,-0.3);
+  \draw[thick, MidnightBlue] (0.6,0.3) -- (0.3,-0.3);
+  \node[font=\tiny\bfseries, MidnightBlue] at (0,0) {Pore};
+
+  % DNA strand going through
+  \draw[very thick, BrickRed, decorate, decoration={snake, amplitude=1mm, segment length=3mm}]
+    (0,2.5) -- (0,0.6);
+  \draw[very thick, BrickRed] (0,0.6) -- (0,-0.6);
+  \draw[very thick, BrickRed, decorate, decoration={snake, amplitude=1mm, segment length=3mm}]
+    (0,-0.6) -- (0,-2.5);
+
+  % DNA label
+  \node[font=\small\bfseries, BrickRed] at (1.0,2.0) {DNA};
+
+  % Motor protein
+  \fill[OliveGreen!60, rounded corners=2pt] (-0.5,0.5) rectangle (0.5,1.0);
+  \node[font=\tiny\bfseries, white] at (0,0.75) {Motor};
+
+  % Bases passing through constriction
+  \foreach \y/\base in {0.3/A, 0.05/T, -0.2/G} {
+    \node[font=\tiny\bfseries\ttfamily, BrickRed] at (0.55,\y) {\base};
+  }
+
+  % Current flow arrows
+  \draw[-{Stealth}, thick, Goldenrod] (-2.5,1.5) -- (-2.5,-1.5);
+  \node[font=\small, Goldenrod, rotate=90] at (-3.0,0) {Ion current};
+
+  % Voltage labels
+  \node[font=\small] at (-2.5,2.0) {$+$};
+  \node[font=\small] at (-2.5,-2.0) {$-$};
+
+  % Signal trace (right side)
+  \begin{scope}[xshift=6cm, yshift=-0.5cm]
+    \draw[thick, -{Stealth}] (0,0) -- (4.5,0) node[right, font=\tiny] {Time};
+    \draw[thick, -{Stealth}] (0,-1.5) -- (0,2) node[above, font=\tiny] {Current};
+
+    % Squiggle signal
+    \draw[thick, MidnightBlue]
+      (0.2,1.2) -- (0.5,1.2) -- (0.5,0.5) -- (0.9,0.5) -- (0.9,1.5) -- (1.2,1.5)
+      -- (1.2,0.3) -- (1.6,0.3) -- (1.6,1.0) -- (2.0,1.0) -- (2.0,0.1) -- (2.3,0.1)
+      -- (2.3,0.8) -- (2.7,0.8) -- (2.7,1.4) -- (3.0,1.4) -- (3.0,0.6) -- (3.3,0.6)
+      -- (3.3,1.1) -- (3.7,1.1) -- (3.7,0.4) -- (4.0,0.4);
+
+    % Base labels below signal
+    \node[font=\tiny\ttfamily, BrickRed] at (0.35,-0.3) {A};
+    \node[font=\tiny\ttfamily, BrickRed] at (0.7,-0.3) {T};
+    \node[font=\tiny\ttfamily, BrickRed] at (1.05,-0.3) {G};
+    \node[font=\tiny\ttfamily, BrickRed] at (1.4,-0.3) {C};
+    \node[font=\tiny\ttfamily, BrickRed] at (1.8,-0.3) {A};
+    \node[font=\tiny\ttfamily, BrickRed] at (2.15,-0.3) {G};
+    \node[font=\tiny\ttfamily, BrickRed] at (2.5,-0.3) {T};
+    \node[font=\tiny\ttfamily, BrickRed] at (2.85,-0.3) {A};
+    \node[font=\tiny\ttfamily, BrickRed] at (3.15,-0.3) {C};
+    \node[font=\tiny\ttfamily, BrickRed] at (3.5,-0.3) {G};
+    \node[font=\tiny\ttfamily, BrickRed] at (3.85,-0.3) {T};
+
+    \node[font=\small\itshape] at (2.0,-1.0) {Raw signal (``squiggle'')};
+  \end{scope}
+
+\end{tikzpicture}
+\caption[Nanopore sequencing principle.]{The principle of nanopore sequencing. A single strand of DNA is threaded through a protein nanopore embedded in a membrane. A motor protein controls the translocation speed. As bases pass through the pore's constriction, they modulate the ionic current. The resulting signal trace (``squiggle'') is decoded by a neural network basecaller to determine the DNA sequence.}
+\label{fig:seqprinciples:nanopore}
+\end{figure}
+
+\subsection{Key Features of Nanopore Sequencing}
+\label{subsec:seqprinciples:nanopore-features}
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Ultra-long reads:} There is no theoretical upper limit to read length. Reads exceeding 4\megabase{} have been demonstrated. In routine practice, reads of 10--100\kilobase{} are common with appropriate library preparation.
+  \item \textbf{Direct detection of base modifications:} Because the raw signal is sensitive to chemical modifications, nanopore sequencing can detect 5-methylcytosine (5mC), 5-hydroxymethylcytosine (5hmC), N$^6$-methyladenosine (m$^6$A), and other modifications directly, without bisulfite conversion or antibody enrichment.
+  \item \textbf{Direct RNA sequencing:} \acrshort{ONT} offers a direct RNA sequencing protocol that threads native RNA molecules through the pore, avoiding reverse transcription and \acrshort{PCR} amplification entirely.
+  \item \textbf{Real-time data:} Data is generated and can be analysed as the sequencing run progresses, enabling applications like adaptive sampling (selectively sequencing or rejecting individual molecules in real time).
+  \item \textbf{Portability:} The MinION weighs about 100 grams and connects via USB. It has been used in the field for pathogen surveillance, in space on the ISS, and in Antarctic research stations.
+  \item \textbf{Higher error rate:} Raw single-pass accuracy is approximately 92--98\% (depending on pore chemistry and basecaller version), with errors primarily being insertions and deletions (indels), especially in homopolymer regions (runs of the same base). Consensus accuracy from multiple reads of the same region can exceed 99.9\%.
+\end{itemize}
+
+
+% ============================================================
+\section{Single-Molecule Real-Time (SMRT) Sequencing}
+\label{sec:seqprinciples:smrt}
+
+\textbf{\Acrfull{SMRTseq}}, developed by \acrfull{PacBio}, reads individual DNA molecules in real time by watching a single polymerase as it synthesises a complementary strand.
+
+\subsection{The Principle}
+\label{subsec:seqprinciples:smrt-principle}
+
+SMRT sequencing uses a \textbf{zero-mode waveguide (ZMW)}---a tiny well (approximately 70\,nm in diameter and 100\,nm deep) fabricated in a metal film on a glass substrate. A single DNA polymerase molecule is immobilised at the bottom of each ZMW, and a single circular DNA template molecule (a \textbf{SMRTbell}) is bound to the polymerase.
+
+\begin{enumerate}[itemsep=2pt]
+  \item All four fluorescently labelled nucleotides (each with a distinct colour) are present in solution simultaneously.
+  \item When the polymerase binds and incorporates a nucleotide, the fluorophore is held in the detection volume of the ZMW long enough to emit a characteristic pulse of light.
+  \item The fluorophore is cleaved from the nucleotide as part of the incorporation process (it is attached to the phosphate group, which is released as pyrophosphate).
+  \item The sequence of fluorescent pulses over time reveals the sequence of incorporated bases.
+\end{enumerate}
+
+The ZMW is so small that even though the solution is filled with fluorescent nucleotides, only nucleotides within the tiny detection volume at the bottom of the well contribute significantly to the signal. This allows detection of single-molecule incorporation events against the background.
+
+% TikZ: SMRT sequencing principle
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.85]
+  % ZMW well
+  \fill[gray!30] (-2,0) rectangle (-1.5,-2.5);
+  \fill[gray!30] (1.5,0) rectangle (2,-2.5);
+  \fill[gray!15] (-1.5,-2.5) rectangle (1.5,-3.0);
+
+  % Metal film
+  \fill[gray!50] (-3.5,0) rectangle (-2,0.3);
+  \fill[gray!50] (2,0) rectangle (3.5,0.3);
+  \node[font=\tiny\itshape, gray] at (-2.75,0.55) {Metal film};
+
+  % Glass substrate
+  \fill[cyan!8] (-3.5,-3.0) rectangle (3.5,-3.5);
+  \node[font=\tiny\itshape] at (0,-3.25) {Glass substrate};
+
+  % Polymerase at bottom
+  \fill[OliveGreen!70, rounded corners=2pt] (-0.4,-2.7) rectangle (0.4,-2.3);
+  \node[font=\tiny\bfseries, white] at (0,-2.5) {Pol};
+
+  % SMRTbell template (circular)
+  \draw[very thick, MidnightBlue] (0,-2.3) -- (0,-1.5);
+  \draw[very thick, MidnightBlue] (0,-1.5) to[out=90,in=180] (0.6,-1.0) to[out=0,in=90] (1.2,-1.5) -- (1.2,-2.3);
+  \draw[very thick, BrickRed, dashed] (-0.15,-2.3) -- (-0.15,-1.5);
+
+  % Fluorescent nucleotides in solution
+  \foreach \x/\y/\col in {-1.0/-0.5/red, 0.5/-0.8/blue, -0.5/-1.2/green, 1.0/-0.3/orange, -0.8/-1.8/blue, 0.8/-1.5/red} {
+    \filldraw[\col!70, opacity=0.6] (\x,\y) circle (1.5pt);
+  }
+
+  % Detection volume (highlighted zone)
+  \draw[Goldenrod, thick, dashed] (-0.8,-2.0) rectangle (0.8,-3.0);
+  \node[font=\tiny, Goldenrod, anchor=west] at (2.2,-2.5) {Detection volume};
+  \draw[-{Stealth}, Goldenrod, thin] (2.2,-2.5) -- (0.85,-2.5);
+
+  % Light emission arrow
+  \draw[-{Stealth}, thick, Goldenrod] (0,-3.5) -- (0,-4.3);
+  \node[font=\small, Goldenrod] at (0,-4.6) {Fluorescence detected};
+
+  % ZMW label
+  \node[font=\small\bfseries] at (0,0.8) {Zero-Mode Waveguide (ZMW)};
+
+  % Pulse trace
+  \begin{scope}[xshift=6cm, yshift=-1.5cm]
+    \draw[thick, -{Stealth}] (0,0) -- (4.5,0) node[right, font=\tiny] {Time};
+    \draw[thick, -{Stealth}] (0,-0.5) -- (0,2.2) node[above, font=\tiny] {Intensity};
+
+    % Pulses of different colours
+    \fill[green!60, rounded corners=1pt] (0.2,0) rectangle (0.5,1.5);
+    \fill[red!60, rounded corners=1pt] (0.7,0) rectangle (1.0,1.2);
+    \fill[blue!60, rounded corners=1pt] (1.2,0) rectangle (1.5,1.8);
+    \fill[orange!60, rounded corners=1pt] (1.7,0) rectangle (2.0,1.0);
+    \fill[green!60, rounded corners=1pt] (2.2,0) rectangle (2.5,1.5);
+    \fill[blue!60, rounded corners=1pt] (2.7,0) rectangle (3.0,1.8);
+    \fill[red!60, rounded corners=1pt] (3.2,0) rectangle (3.5,1.2);
+    \fill[orange!60, rounded corners=1pt] (3.7,0) rectangle (4.0,1.0);
+
+    % Base labels
+    \foreach \x/\base in {0.35/A, 0.85/T, 1.35/G, 1.85/C, 2.35/A, 2.85/G, 3.35/T, 3.85/C} {
+      \node[font=\tiny\ttfamily\bfseries] at (\x,-0.3) {\base};
+    }
+    \node[font=\small\itshape] at (2.0,-0.8) {Pulse trace};
+  \end{scope}
+
+\end{tikzpicture}
+\caption[SMRT sequencing principle.]{The principle of PacBio SMRT sequencing. A single DNA polymerase is immobilised at the bottom of a zero-mode waveguide (ZMW). Fluorescently labelled nucleotides are incorporated one at a time; each incorporation produces a characteristic pulse of light whose colour identifies the base. The ZMW's tiny detection volume ensures that only nucleotides being incorporated contribute to the signal.}
+\label{fig:seqprinciples:smrt}
+\end{figure}
+
+\subsection{SMRTbell Templates and HiFi Reads}
+\label{subsec:seqprinciples:smrtbell}
+
+A key innovation in PacBio sequencing is the \textbf{SMRTbell} library format. The double-stranded DNA insert is flanked by hairpin adapters, creating a single-stranded circular molecule. The polymerase can read around the circle multiple times (called \textbf{subreads} or \textbf{passes}), generating redundant coverage of the same molecule.
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Continuous long reads (CLR):} The polymerase reads the SMRTbell once or a few times. CLR reads can be very long (>50\kilobase{}) but have a raw single-pass error rate of approximately 10--15\% (mostly insertion errors).
+  \item \textbf{HiFi reads (CCS):} For shorter inserts (typically 10--25\kilobase{}), the polymerase makes many passes around the SMRTbell. The multiple passes are computationally combined via \textbf{circular consensus sequencing (CCS)} to produce \textbf{HiFi reads} with accuracy exceeding 99.9\% (Q30+). HiFi reads combine the advantages of long reads (resolving repeats, structural variants, and full-length transcripts) with the accuracy of short reads.
+\end{itemize}
+
+\begin{keyconcept}[title={HiFi Reads: The Best of Both Worlds}]
+PacBio HiFi reads (typically 10--25\kilobase{}, >Q20 accuracy) represent a significant advance: they are long enough to span most repetitive elements and structural variants, yet accurate enough for confident variant calling and haplotype phasing. HiFi sequencing has become a cornerstone technology for high-quality genome assembly and comprehensive variant detection.
+\end{keyconcept}
+
+
+% ============================================================
+\section{Key Sequencing Metrics}
+\label{sec:seqprinciples:metrics}
+
+To evaluate and compare sequencing technologies and to plan experiments, several key metrics are used.
+
+\subsection{Read Length}
+\label{subsec:seqprinciples:read-length}
+
+The \textbf{read length} is the number of bases sequenced per fragment (per read). It varies dramatically across platforms:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Illumina:} Typically 50--300\basepair{} (most commonly 150\basepair{} paired-end).
+  \item \textbf{PacBio HiFi:} Typically 10--25\kilobase{}.
+  \item \textbf{PacBio CLR:} Up to $>$100\kilobase{}.
+  \item \textbf{Oxford Nanopore:} Routinely 10--100\kilobase{}; records exceed 4\megabase{}.
+\end{itemize}
+
+Longer reads are advantageous for resolving repetitive regions, detecting structural variants, phasing haplotypes, and assembling genomes. Shorter reads are typically cheaper per base and have lower per-base error rates.
+
+\subsection{Throughput}
+\label{subsec:seqprinciples:throughput}
+
+\textbf{Throughput} is the total amount of sequence data generated per run, usually expressed in gigabases (\gigabase{}). High-throughput instruments (e.g., Illumina NovaSeq X: up to $\sim$16 terabases per year) generate far more data per run than portable devices (e.g., ONT MinION: $\sim$50\gigabase{} per flow cell).
+
+\subsection{Accuracy and Error Profiles}
+\label{subsec:seqprinciples:accuracy}
+
+\textbf{Accuracy} describes how often the sequencer correctly identifies the base. Different technologies exhibit different \textbf{error profiles}:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Illumina (SBS):} Very high per-base accuracy ($>$99.9\%). Dominant error type is \textbf{substitution errors} (one base called instead of another). Errors increase toward the end of reads due to phasing effects and signal decay.
+  \item \textbf{PacBio (SMRT):} Raw single-pass accuracy $\sim$85--90\%, but HiFi consensus accuracy exceeds 99.9\%. Dominant error type is \textbf{insertion errors}.
+  \item \textbf{Oxford Nanopore:} Raw single-pass accuracy $\sim$92--98\% (improving with newer pore chemistries and basecallers). Dominant error types are \textbf{insertions and deletions (indels)}, particularly in homopolymer regions (e.g., AAAAAA).
+\end{itemize}
+
+\begin{warningbox}
+The error \textit{type} matters as much as the error \textit{rate}. Substitution errors (Illumina) are relatively easy to correct computationally because they rarely occur at the same position in multiple reads. Systematic indel errors (nanopore, PacBio CLR), especially in homopolymers, are more challenging because they can be consistent across reads from the same region.
+\end{warningbox}
+
+
+% ============================================================
+\section{Paired-End vs.\ Single-End Reads}
+\label{sec:seqprinciples:paired-end}
+
+When sequencing a library on Illumina platforms, you can choose to sequence from one end of each fragment (\textbf{single-end} reads) or from both ends (\textbf{paired-end} reads).
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Single-end (SE) sequencing] Each fragment is sequenced from one end only, producing one read per fragment. Example: 1$\times$75\basepair{} (one read of 75 bases).
+
+  \item[Paired-end (PE) sequencing] Each fragment is sequenced from both ends, producing two reads per fragment. The two reads are from opposite ends of the same fragment and are in opposite orientations. Example: 2$\times$150\basepair{} (two reads of 150 bases each, from opposite ends).
+\end{description}
+
+Paired-end sequencing provides several advantages:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Improved alignment:} Both reads from a pair should map to locations separated by the expected insert size, providing a constraint that improves mapping accuracy, especially in repetitive regions.
+  \item \textbf{Structural variant detection:} Abnormal spacing or orientation of paired reads indicates insertions, deletions, inversions, or translocations.
+  \item \textbf{Improved assembly:} Paired reads provide long-range connectivity information that helps bridge gaps in genome assembly.
+  \item \textbf{Insert size estimation:} The distance between paired reads provides the fragment size distribution, which is a useful quality metric.
+\end{itemize}
+
+\begin{tipbox}
+For most applications (WGS, RNA-seq, ATAC-seq, ChIP-seq), paired-end 150\basepair{} (2$\times$150) sequencing is the standard choice on Illumina platforms. Single-end sequencing may be cost-effective for some applications (e.g., miRNA-seq, where fragments are short) or when the primary goal is counting (e.g., some ChIP-seq experiments).
+\end{tipbox}
+
+
+% ============================================================
+\section{Read Depth and Coverage}
+\label{sec:seqprinciples:coverage}
+
+Two of the most important concepts in experimental design are \textbf{read depth} and \textbf{coverage}.
+
+\subsection{Definitions}
+\label{subsec:seqprinciples:coverage-def}
+
+\begin{description}[style=nextline, itemsep=3pt]
+  \item[Sequencing depth (read depth)] The total number of reads generated in a sequencing experiment. Sometimes expressed as the total number of base pairs generated.
+
+  \item[Coverage (fold coverage, denoted $\times$)] The average number of times each base in the target region (e.g., the genome) is read. For example, 30$\times$ coverage means that, on average, each position in the genome is covered by 30 independent reads.
+\end{description}
+
+Coverage can be calculated as:
+
+\begin{equation}
+\text{Coverage} = \frac{N \times L}{G}
+\label{eq:seqprinciples:coverage}
+\end{equation}
+
+where $N$ is the number of reads, $L$ is the read length (in base pairs), and $G$ is the genome size (in base pairs).
+
+\begin{keyconcept}[title={Calculating Coverage}]
+For a human genome ($G \approx 3.2 \times 10^9$\basepair{}) sequenced with 800 million paired-end 150\basepair{} reads ($N = 800 \times 10^6 \times 2 = 1.6 \times 10^9$ reads total, $L = 150$\basepair{}):
+\[
+\text{Coverage} = \frac{1.6 \times 10^9 \times 150}{3.2 \times 10^9} = \frac{2.4 \times 10^{11}}{3.2 \times 10^9} = 75\times
+\]
+This is a rough estimate. Actual coverage will be somewhat lower due to PCR duplicates, low-quality reads, and reads mapping to multiple locations.
+\end{keyconcept}
+
+\subsection{Why Coverage Matters}
+\label{subsec:seqprinciples:coverage-importance}
+
+Coverage is critical because sequencing is fundamentally a \textbf{sampling process}: each read represents a random sample from the pool of library fragments. Higher coverage means more samples, which translates to:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{More confident base calls:} At a heterozygous SNP position (where the individual has one copy of each allele), you need enough reads to observe both alleles reliably. At 30$\times$ coverage, a heterozygous site will have, on average, $\sim$15 reads supporting each allele, providing high confidence.
+  \item \textbf{Better structural variant detection:} SVs require multiple discordant or split reads to be detected with confidence.
+  \item \textbf{More uniform representation:} Higher coverage helps compensate for biases in library preparation that cause some regions to be over-represented and others under-represented.
+\end{itemize}
+
+Typical coverage requirements vary by application:
+
+\begin{table}[htbp]
+\centering
+\caption{Typical coverage requirements for common sequencing applications.}
+\label{tab:seqprinciples:coverage-requirements}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries}l X r}
+\toprule
+\textbf{Application} & \textbf{Purpose} & \textbf{Typical Coverage} \\
+\midrule
+WGS (germline variants) & SNV and indel detection & 30--60$\times$ \\
+WGS (somatic variants) & Tumour mutation detection & 60--100$\times$ \\
+WES (exome) & Coding region variant detection & 100--200$\times$ \\
+RNA-seq (bulk) & Gene expression quantification & 20--50M reads/sample \\
+scRNA-seq & Single-cell expression profiling & 20,000--50,000 reads/cell \\
+ChIP-seq & Protein--DNA binding & 20--40M reads/sample \\
+ATAC-seq & Chromatin accessibility & 50--75M reads/sample \\
+WGBS & DNA methylation & 10--30$\times$ \\
+Hi-C & 3D genome architecture & 200M--1B read pairs \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{warningbox}
+Coverage is an \textit{average}. Due to biases (GC content, mappability, library complexity), some regions may have far more or far less coverage than the average. For clinical applications, minimum coverage thresholds at specific genomic positions (e.g., $\geq$20$\times$ at $\geq$95\% of target bases) are often more informative than average coverage alone.
+\end{warningbox}
+
+
+\subsection{The Lander--Waterman Model of Coverage}
+\label{subsec:seqprinciples:lander-waterman}
+
+The relationship between average coverage and the fraction of the genome covered by at least one read is formalised by the \textbf{Lander--Waterman model} (1988). If we assume that reads are distributed uniformly and independently (a Poisson process), then the probability that a given base is \textit{not} covered by any read is:
+
+\begin{equation}
+P(\text{uncovered}) = e^{-c}
+\label{eq:seqprinciples:lander-waterman}
+\end{equation}
+
+where $c = NL/G$ is the average coverage depth. Therefore, the fraction of the genome covered by at least one read is:
+
+\begin{equation}
+P(\text{covered}) = 1 - e^{-c}
+\label{eq:seqprinciples:genome-coverage}
+\end{equation}
+
+More generally, the probability that a position is covered by exactly $k$ reads follows a Poisson distribution:
+
+\begin{equation}
+P(X = k) = \frac{c^k \, e^{-c}}{k!}
+\label{eq:seqprinciples:poisson-coverage}
+\end{equation}
+
+\begin{keyconcept}[title={Coverage Thresholds from the Lander--Waterman Model}]
+At 30$\times$ average coverage, the Lander--Waterman model predicts that $1 - e^{-30} \approx 99.9999999\%$ of the genome is covered by at least one read. However, the fraction covered at $\geq$20$\times$ (important for confident variant calling) is:
+\[
+P(X \geq 20 \mid c=30) = 1 - \sum_{k=0}^{19} \frac{30^k e^{-30}}{k!} \approx 98.5\%
+\]
+This means roughly 1.5\% of the genome may fall below 20$\times$ even at 30$\times$ average coverage---a non-trivial fraction for clinical applications.
+\end{keyconcept}
+
+The Lander--Waterman model assumes \textbf{uniform random sampling}, which is an idealisation. In practice, coverage is not Poisson-distributed due to:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{GC bias:} Regions with extreme GC content (very high or very low) are under-represented in most library preparations, particularly those involving \acrshort{PCR} amplification.
+  \item \textbf{Mappability:} Repetitive regions where reads cannot be uniquely placed effectively have zero usable coverage.
+  \item \textbf{Library preparation biases:} Fragmentation, adapter ligation, and amplification each introduce systematic deviations from uniformity.
+\end{itemize}
+
+A more realistic model replaces the Poisson with a \textbf{negative binomial} distribution, which adds a dispersion parameter $r$ to account for overdispersion:
+
+\begin{equation}
+P(X = k) = \binom{k + r - 1}{k} \left(\frac{r}{r + c}\right)^r \left(\frac{c}{r + c}\right)^k
+\label{eq:seqprinciples:nb-coverage}
+\end{equation}
+
+where the variance is $\text{Var}(X) = c + c^2/r$. As $r \to \infty$, the negative binomial converges to the Poisson.
+
+
+\subsection{Adapter Ligation Efficiency}
+\label{subsec:seqprinciples:ligation-efficiency}
+
+A critical but often overlooked parameter in library preparation is the \textbf{adapter ligation efficiency}---the fraction of DNA fragments that successfully receive adapters on both ends and are therefore sequenceable. Fragments with adapters on only one end (or no adapters) are invisible to the sequencing instrument.
+
+Ligation efficiency depends on several factors:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{End quality:} Blunt-ended or A-tailed fragments ligate more efficiently than fragments with damaged or ragged ends. Enzymatic end repair is a standard step to maximise efficiency.
+  \item \textbf{Adapter:insert molar ratio:} Typically 10:1 to 100:1 excess of adapter molecules to fragment ends, ensuring that adapters are not limiting.
+  \item \textbf{Ligase and buffer conditions:} T4 DNA ligase at 20$\,^\circ$C for 10--30 minutes is standard. Lower temperatures favour ligation fidelity; longer incubations increase efficiency.
+  \item \textbf{Fragment size:} Very short fragments ($<$100\basepair{}) may ligate to adapters less efficiently due to steric constraints, while very long fragments ($>$20\kilobase{}) may suffer from shearing during handling.
+\end{itemize}
+
+If we denote the probability of successful adapter ligation to one end as $p$, then the probability that a fragment receives adapters on both ends (and is therefore sequenceable) is $p^2$. For typical ligation efficiencies of $p = 0.7$--$0.9$, this yields:
+
+\begin{table}[htbp]
+\centering
+\caption{Effect of single-end ligation efficiency on overall library yield.}
+\label{tab:seqprinciples:ligation-efficiency}
+\small
+\begin{tabular}{ccc}
+\toprule
+\textbf{Single-end efficiency ($p$)} & \textbf{Both-ends efficiency ($p^2$)} & \textbf{Effective library yield} \\
+\midrule
+0.70 & 0.49 & 49\% of input fragments \\
+0.80 & 0.64 & 64\% of input fragments \\
+0.90 & 0.81 & 81\% of input fragments \\
+0.95 & 0.90 & 90\% of input fragments \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tipbox}
+Ligation efficiency is one reason why the recommended minimum input for many library prep kits is 100--500 ng of DNA. Starting with less material means fewer fragments, and if ligation efficiency is suboptimal, the resulting library may have low complexity. For low-input protocols ($<$10 ng), specialised kits with optimised ligation chemistries or tagmentation-based approaches (which bypass traditional ligation) are preferred.
+\end{tipbox}
+
+
+% ============================================================
+\section{Multiplexing and Barcoding}
+\label{sec:seqprinciples:multiplexing}
+
+Modern sequencing instruments generate far more data than is needed for a single sample in many applications. \textbf{Multiplexing} (also called \textbf{pooling}) is the practice of combining multiple samples on a single sequencing run, using short DNA \textbf{barcodes} (also called \textbf{indexes} or \textbf{index sequences}) to identify which reads came from which sample.
+
+\subsection{How Indexing Works}
+\label{subsec:seqprinciples:indexing}
+
+During library preparation, each sample's fragments receive a unique barcode sequence incorporated into the adapter. Illumina uses \textbf{dual indexing}: two independent index sequences (i7 and i5) of 8--10\basepair{} each are incorporated into the adapter, one on each end of the fragment. After sequencing, an additional ``index read'' determines the barcode sequence, and reads are computationally sorted (\textbf{demultiplexed}) by barcode into sample-specific files.
+
+\subsection{Benefits of Multiplexing}
+\label{subsec:seqprinciples:multiplexing-benefits}
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Cost efficiency:} The sequencing run cost is shared among multiple samples. For example, if a NovaSeq S4 flow cell generates $\sim$10 billion read pairs, and your RNA-seq experiment requires 30 million reads per sample, you can multiplex over 300 samples on a single flow cell.
+  \item \textbf{Experimental design:} By balancing experimental conditions across lanes and flow cells, multiplexing reduces batch effects.
+  \item \textbf{Flexibility:} Different amounts of data can be allocated to different samples by adjusting the ratio of library input.
+\end{itemize}
+
+\begin{warningbox}[title={Index Hopping}]
+On some Illumina platforms with patterned flow cells (e.g., NovaSeq 6000 with the v1.0 reagent kit), a phenomenon called \textbf{index hopping} (or \textbf{index switching}) can occur: free adapter molecules from one sample can recombine with clusters from another sample during the exclusion amplification step, leading to incorrect sample assignment of a small percentage of reads (typically 0.1--2\%). Using \textbf{unique dual indexes (UDIs)}---where both the i7 and i5 indexes are unique to each sample---allows computational detection and removal of hopped reads. This problem has been significantly reduced in newer platforms and reagent kits.
+\end{warningbox}
+
+
+% ============================================================
+\section{Quality Scores: Phred Scores and Q30}
+\label{sec:seqprinciples:quality-scores}
+
+Every base call produced by a sequencing instrument is accompanied by a \textbf{quality score} that estimates the probability that the base call is incorrect.
+
+\subsection{Phred Quality Scores}
+\label{subsec:seqprinciples:phred}
+
+Quality scores follow the \textbf{Phred} scale, defined as:
+
+\begin{equation}
+Q = -10 \cdot \log_{10}(P_{\text{error}})
+\label{eq:seqprinciples:phred}
+\end{equation}
+
+where $P_{\text{error}}$ is the estimated probability of an incorrect base call. Higher $Q$ values indicate higher confidence:
+
+\begin{table}[htbp]
+\centering
+\caption{Phred quality scores and corresponding error probabilities.}
+\label{tab:seqprinciples:phred-scores}
+\small
+\begin{tabular}{ccc}
+\toprule
+\textbf{Phred Score ($Q$)} & \textbf{Error Probability} & \textbf{Accuracy} \\
+\midrule
+10 & 1 in 10 (10\%) & 90\% \\
+20 & 1 in 100 (1\%) & 99\% \\
+30 & 1 in 1,000 (0.1\%) & 99.9\% \\
+40 & 1 in 10,000 (0.01\%) & 99.99\% \\
+50 & 1 in 100,000 (0.001\%) & 99.999\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Q30 as a Benchmark}
+\label{subsec:seqprinciples:q30}
+
+\textbf{Q30} (a Phred score of 30, corresponding to 99.9\% accuracy) is widely used as a benchmark for sequencing quality. The ``percent of bases $\geq$ Q30'' is a standard metric reported by Illumina instruments. A typical Illumina run produces $>$85--90\% of bases at Q30 or above.
+
+
+\subsection{From Phred to Neural Basecallers}
+\label{subsec:seqprinciples:basecaller-math}
+
+The original Phred program (developed for Sanger sequencing in the late 1990s) estimated base quality by examining features of the electropherogram trace---peak spacing, peak resolution, and signal-to-noise ratio---and mapping these features to empirically calibrated error probabilities. Modern basecallers use fundamentally different approaches.
+
+\subsubsection{Neural Network Basecalling}
+
+Contemporary basecallers---including Illumina's \software{DRAGEN}, \acrshort{ONT}'s \software{Dorado}, and PacBio's \software{DeepConsensus}---employ deep neural networks (typically recurrent or transformer architectures) that take raw signal data as input and produce base calls with associated quality scores.
+
+For a neural basecaller, at each position the network outputs a vector of \textbf{logits} $\mathbf{z} = (z_A, z_C, z_G, z_T)$, which are transformed into probabilities via the \textbf{softmax} function:
+
+\begin{equation}
+P(b_i = k) = \frac{e^{z_k}}{\sum_{j \in \{A,C,G,T\}} e^{z_j}}, \quad k \in \{A,C,G,T\}
+\label{eq:seqprinciples:softmax}
+\end{equation}
+
+The called base is the one with the highest probability: $\hat{b}_i = \arg\max_k P(b_i = k)$. The Phred quality score is then derived from the posterior probability:
+
+\begin{equation}
+Q_i = -10 \cdot \log_{10}\bigl(1 - P(b_i = \hat{b}_i)\bigr) = -10 \cdot \log_{10}(P_{\text{error},i})
+\label{eq:seqprinciples:phred-from-softmax}
+\end{equation}
+
+\begin{warningbox}[title={Quality Score Calibration}]
+Neural basecallers can produce \textbf{miscalibrated} quality scores: the predicted error probability may not match the actual observed error rate. For instance, a basecaller might assign Q30 to bases that empirically have Q25 accuracy. Well-calibrated quality scores are essential for downstream tools (e.g., variant callers that use quality scores as priors). Tools like \software{Dorado} include calibration steps, but users should always verify calibration using known reference samples.
+\end{warningbox}
+
+
+\subsubsection{Basecalling Models and Accuracy Trade-offs}
+
+Modern nanopore basecallers offer multiple model tiers that trade speed for accuracy:
+
+\begin{table}[htbp]
+\centering
+\caption[Basecaller model comparison.]{Comparison of \software{Dorado} basecalling model tiers for Oxford Nanopore R10.4.1 chemistry. Speed is approximate and depends on hardware.}
+\label{tab:seqprinciples:basecaller-models}
+\small
+\begin{tabular}{lccl}
+\toprule
+\textbf{Model} & \textbf{Modal accuracy} & \textbf{Speed (samples/s)} & \textbf{Architecture} \\
+\midrule
+Fast & Q10--Q14 ($\sim$90--96\%) & $4 \times 10^6$ & Small CTC/CRF \\
+HAC (high accuracy) & Q16--Q20 ($\sim$97--99\%) & $1 \times 10^6$ & Medium CRF \\
+SUP (super accuracy) & Q20--Q25 ($\sim$99--99.7\%) & $3 \times 10^5$ & Large transformer \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The ``fast'' model is suitable for real-time applications (e.g., adaptive sampling), while the ``SUP'' model maximises accuracy at the cost of requiring a high-end GPU and significantly more compute time.
+
+
+\subsection{Quality Score Encoding in FASTQ Files}
+\label{subsec:seqprinciples:fastq-quality}
+
+In \acrshort{FASTQ} files (the standard output format for sequencing data), quality scores are encoded as single ASCII characters. Each character maps to a Phred score via its ASCII value:
+
+\[
+Q = \text{ASCII value} - 33 \quad \text{(Phred+33 encoding, the current standard)}
+\]
+
+For example, the ASCII character ``I'' has a value of 73, corresponding to $Q = 73 - 33 = 40$. The character ``!'' (ASCII 33) corresponds to $Q = 0$.
+
+\begin{tipbox}
+When you first look at a FASTQ file, the quality string may look like random characters: \texttt{IIIIIFFFFFFFHHHHH}. These are not random---each character encodes the Phred quality of the corresponding base in the sequence line. Tools like \software{FastQC} decode and visualise these quality scores for you, which is always the first step in analysing sequencing data.
+\end{tipbox}
+
+
+% ============================================================
+\section{The Concept of a Sequencing Library}
+\label{sec:seqprinciples:library}
+
+The term \textbf{sequencing library} refers to the complete collection of adapter-ligated DNA or cDNA fragments that are ready to be loaded onto a sequencing instrument. The library is the product of the \textbf{library preparation} process and represents the molecular ``input'' to the sequencing experiment.
+
+\subsection{What Defines a Library}
+\label{subsec:seqprinciples:library-definition}
+
+A sequencing library has several defining properties:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Insert size:} The length of the original DNA/cDNA fragment (excluding adapters). For short-read sequencing, typical insert sizes are 200--600\basepair{}. For long-read sequencing, inserts can be 10--100\kilobase{} or more.
+  \item \textbf{Adapter sequences:} Platform-specific synthetic sequences ligated to fragment ends. These contain priming sites, index sequences, and flow cell binding sequences.
+  \item \textbf{Complexity:} The number of unique fragments in the library. A high-complexity library contains many different fragments (good); a low-complexity library contains few unique fragments that are over-amplified (bad---leads to redundant data).
+  \item \textbf{Concentration:} The number of molecules per unit volume, typically measured in nanomolar (nM). Accurate quantification is essential for optimal loading onto the sequencing instrument.
+\end{itemize}
+
+\subsection{Library Complexity and Saturation}
+\label{subsec:seqprinciples:library-complexity}
+
+\textbf{Library complexity} is a critical concept. If a library has low complexity (few unique fragments), sequencing deeply will produce many identical reads (PCR duplicates) without providing new information. This is analogous to reading the same few books in a library over and over---no matter how many times you read them, you do not learn anything new.
+
+Library complexity is influenced by:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Input amount:} Starting with more DNA/RNA generally produces higher-complexity libraries.
+  \item \textbf{PCR amplification cycles:} Fewer cycles reduce amplification bias and preserve complexity; more cycles are needed for low-input samples but reduce complexity.
+  \item \textbf{Fragment size selection:} Stringent size selection can reduce complexity.
+\end{itemize}
+
+
+% ============================================================
+\section{Amplification Bias and PCR Duplicates}
+\label{sec:seqprinciples:pcr-bias}
+
+Most library preparation protocols include a \acrshort{PCR} amplification step to increase the amount of library material. While necessary (especially for low-input samples), PCR amplification introduces two problems.
+
+\subsection{PCR Duplicates}
+\label{subsec:seqprinciples:pcr-duplicates}
+
+\textbf{PCR duplicates} are multiple reads that originate from the same original library fragment (i.e., they are copies of the same molecule, amplified during PCR). PCR duplicates do not provide independent evidence about the genome; they are redundant copies and can inflate apparent coverage and bias quantitative measurements.
+
+PCR duplicates are identified computationally by their mapping coordinates: reads that align to the exact same genomic start and end positions are flagged as potential duplicates. Tools such as \software{Picard MarkDuplicates} and \software{samtools markdup} perform this task. In a typical WGS experiment at 30$\times$ coverage, the duplication rate is usually 5--15\%.
+
+\subsection{Amplification Bias}
+\label{subsec:seqprinciples:amplification-bias}
+
+PCR does not amplify all fragments equally. Fragments with extreme GC content (very high or very low), secondary structures, or certain sequence motifs may be amplified less efficiently, leading to under-representation in the final library. This \textbf{amplification bias} causes uneven coverage across the genome.
+
+Strategies to mitigate PCR bias include:
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{PCR-free library preparation:} Protocols that skip the amplification step entirely, starting with sufficient input DNA. PCR-free libraries show more uniform coverage and fewer duplicates.
+  \item \textbf{Minimising PCR cycles:} Using the fewest cycles necessary.
+  \item \textbf{Unique Molecular Identifiers (UMIs):} Short random sequences (\acrfull{UMI}) incorporated into the adapter before PCR. UMIs allow computational identification and removal of PCR duplicates even when two independent fragments happen to have the same mapping coordinates. UMIs are particularly important for quantitative applications (RNA-seq, ATAC-seq, single-cell sequencing).
+\end{itemize}
+
+\begin{keyconcept}[title={UMIs: Molecular Barcodes for Deduplication}]
+A \acrshort{UMI} is a short (typically 8--16\basepair{}) random nucleotide sequence attached to each library molecule before PCR amplification. Because each original molecule receives a unique UMI, reads with the same UMI and the same mapping position can be confidently identified as PCR duplicates, while reads with different UMIs at the same position are confirmed as independent molecules. UMIs are essential for accurate quantification in many modern sequencing applications.
+\end{keyconcept}
+
+
+% ============================================================
+\section{GC Bias}
+\label{sec:seqprinciples:gc-bias}
+
+\textbf{GC bias} refers to the uneven representation of genomic regions as a function of their guanine-cytosine content. In an ideal sequencing experiment, all regions would be represented proportionally regardless of GC content. In practice, regions with very high or very low GC content are often under-represented.
+
+GC bias has multiple sources:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{PCR amplification:} High-GC regions form stable secondary structures that impede amplification. AT-rich regions may denature too readily.
+  \item \textbf{Library preparation:} Some fragmentation methods and adapter ligation steps are sensitive to GC content.
+  \item \textbf{Cluster generation:} On Illumina platforms, bridge amplification efficiency can vary with GC content.
+  \item \textbf{Sequencing chemistry:} Polymerase incorporation rates can vary with local sequence context.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.85]
+  % Axes
+  \draw[thick, -{Stealth}] (0,0) -- (10,0) node[right, font=\small] {GC Content (\%)};
+  \draw[thick, -{Stealth}] (0,0) -- (0,5.5) node[above, font=\small, align=center] {Normalised\\Coverage};
+
+  % X-axis labels
+  \foreach \x/\lab in {0/0, 2/20, 4/40, 6/60, 8/80, 10/100} {
+    \draw (\x,-0.1) -- (\x,0.1);
+    \node[below, font=\scriptsize] at (\x,-0.15) {\lab};
+  }
+
+  % Y-axis labels
+  \foreach \y/\lab in {0/0, 1.25/0.5, 2.5/1.0, 3.75/1.5, 5/2.0} {
+    \draw (-0.1,\y) -- (0.1,\y);
+    \node[left, font=\scriptsize] at (-0.15,\y) {\lab};
+  }
+
+  % Ideal line
+  \draw[dashed, gray, thick] (0,2.5) -- (10,2.5);
+  \node[gray, font=\scriptsize, anchor=west] at (10.2,2.5) {Ideal};
+
+  % PCR library curve (bell-shaped, slightly shifted)
+  \draw[very thick, BrickRed] plot[smooth, tension=0.7] coordinates {
+    (0.5,0.3) (1,0.8) (2,1.8) (3,2.7) (4,3.0) (5,2.8) (6,2.3) (7,1.5) (8,0.8) (9,0.3) (9.5,0.1)
+  };
+  \node[BrickRed, font=\scriptsize\bfseries, anchor=west] at (7.5,3.5) {PCR library};
+
+  % PCR-free library curve (flatter)
+  \draw[very thick, OliveGreen] plot[smooth, tension=0.7] coordinates {
+    (0.5,0.8) (1,1.5) (2,2.2) (3,2.6) (4,2.7) (5,2.65) (6,2.5) (7,2.2) (8,1.5) (9,0.8) (9.5,0.5)
+  };
+  \node[OliveGreen, font=\scriptsize\bfseries, anchor=west] at (7.5,2.8) {PCR-free library};
+
+\end{tikzpicture}
+\caption[GC bias in sequencing.]{Schematic illustration of GC bias. The ideal scenario (dashed grey line) shows uniform coverage across all GC content levels. In practice, libraries prepared with PCR (red) show greater deviation from uniformity than PCR-free libraries (green), with under-representation of both AT-rich and GC-rich regions.}
+\label{fig:seqprinciples:gc-bias}
+\end{figure}
+
+GC bias can be partially corrected computationally during analysis, and PCR-free library preparation significantly reduces (but does not eliminate) the effect (\cref{fig:seqprinciples:gc-bias}).
+
+
+% ============================================================
+\section{Comparison of Major Sequencing Approaches}
+\label{sec:seqprinciples:comparison}
+
+\begin{table}[htbp]
+\centering
+\caption[Comparison of major sequencing platforms.]{Comparison of the major sequencing technology families as of 2025--2026. Values are approximate and vary by instrument model, chemistry version, and library preparation.}
+\label{tab:seqprinciples:platform-comparison}
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright}p{2.8cm} X X X}
+\toprule
+& \textbf{Illumina (SBS)} & \textbf{PacBio (SMRT)} & \textbf{Oxford Nanopore} \\
+\midrule
+Read length & 50--300\basepair{} & 10--25\kilobase{} (HiFi); $>$100\kilobase{} (CLR) & Routinely 10--100\kilobase{}; $>$4\megabase{} max \\
+\addlinespace
+Per-base accuracy & $>$99.9\% (Q30+) & $>$99.9\% (HiFi Q30+); $\sim$87\% (CLR raw) & $\sim$92--98\% (raw); $>$99\% (duplex) \\
+\addlinespace
+Dominant error type & Substitutions & Insertions (CLR); few errors (HiFi) & Indels (especially in homopolymers) \\
+\addlinespace
+Throughput per run & Up to $\sim$6\,Tb (NovaSeq X 25B) & $\sim$90\gigabase{} (Revio) & Up to $\sim$50\gigabase{} (PromethION flow cell) \\
+\addlinespace
+Run time & 12--48 hours & 12--30 hours & Minutes to 72 hours (user-defined) \\
+\addlinespace
+Base modifications & Requires chemical conversion (e.g., bisulfite) & Direct detection (kinetics) & Direct detection (current signal) \\
+\addlinespace
+Instrument cost & \$250K--\$1M+ & $\sim$\$600K (Revio) & \$1K (MinION) to $\sim$\$300K (PromethION) \\
+\addlinespace
+Key strengths & Throughput, accuracy, cost per base, ecosystem & HiFi accuracy + length, genome assembly, SV detection & Ultra-long reads, portability, real-time, direct RNA, modifications \\
+\addlinespace
+Key limitations & Short reads limit repeat resolution and SV detection & Higher cost per base than Illumina & Higher error rate, lower throughput than Illumina \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={Choosing a Platform}]
+No single platform is best for all applications. The choice depends on your experimental question:
+\begin{itemize}[nosep]
+  \item \textbf{High-throughput quantification} (RNA-seq, ChIP-seq, population-scale WGS): Illumina.
+  \item \textbf{Genome assembly, SV detection, haplotype phasing}: PacBio HiFi or ONT.
+  \item \textbf{Base modification detection}: ONT (direct) or PacBio (kinetic signatures).
+  \item \textbf{Field work and rapid diagnostics}: ONT MinION.
+  \item \textbf{Comprehensive analysis}: Many projects now use a combination of short-read and long-read technologies.
+\end{itemize}
+\end{tipbox}
+
+
+% ============================================================
+\section{The FASTQ File Format}
+\label{sec:seqprinciples:fastq}
+
+The primary output of most sequencing instruments (after base calling) is a set of \acrshort{FASTQ} files. Each read in a FASTQ file is represented by four lines:
+
+\begin{lstlisting}[language={},caption={Anatomy of a FASTQ record.},label={lst:seqprinciples:fastq}]
+@SEQ_ID read_name and optional description
+GATTTGGGGTTCAAAGCAGTATCGATCAAATAGTAAATCCATTTGTTCAACTCACAGTTT
++
+!''*((((***+))%%%++)(%%%%).1***-+*''))**55CCF>>>>>>CCCCCCC65
+\end{lstlisting}
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Line 1 (Header):} Begins with \texttt{@} followed by a sequence identifier and optional description. Contains information such as instrument name, run ID, flow cell ID, tile number, and cluster coordinates.
+  \item \textbf{Line 2 (Sequence):} The raw nucleotide sequence (A, T, G, C, or N for ambiguous bases).
+  \item \textbf{Line 3 (Separator):} A \texttt{+} sign (sometimes followed by the same identifier as line 1, but usually just \texttt{+}).
+  \item \textbf{Line 4 (Quality):} ASCII-encoded Phred quality scores, one character per base, corresponding to the bases in line 2.
+\end{enumerate}
+
+For paired-end sequencing, two FASTQ files are produced: one for ``read 1'' (R1) and one for ``read 2'' (R2). The files are ordered so that the $n$th record in R1 and the $n$th record in R2 correspond to the two ends of the same fragment.
+
+
+% ============================================================
+\section{Summary}
+\label{sec:seqprinciples:summary}
+
+This chapter has covered the core principles that underpin all modern sequencing technologies:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{All sequencing technologies share} a common logic: fragment, attach adapters, and read bases in a massively parallel fashion.
+  \item \textbf{Sequencing by synthesis (SBS)}, used by Illumina, reads bases cycle-by-cycle using fluorescently labelled reversible terminators, producing short, highly accurate reads.
+  \item \textbf{Sequencing by ligation} (SOLiD) used fluorescent oligonucleotide probes and a ligase; it is now largely of historical interest.
+  \item \textbf{Nanopore sequencing} (Oxford Nanopore) reads DNA or RNA directly by threading single molecules through a protein pore and measuring ionic current disruptions, producing ultra-long reads with direct modification detection.
+  \item \textbf{SMRT sequencing} (PacBio) watches a single polymerase in a zero-mode waveguide, producing long HiFi reads with high consensus accuracy.
+  \item \textbf{Key metrics} for evaluating sequencing include read length, throughput, accuracy, and error profiles, which differ substantially across platforms.
+  \item \textbf{Paired-end} sequencing provides two reads from each fragment, improving alignment, assembly, and variant detection.
+  \item \textbf{Coverage} (the average number of times each base is read) is a critical parameter for experimental design, calculated as $N \times L / G$.
+  \item \textbf{Multiplexing} uses DNA barcodes (indexes) to combine multiple samples on a single sequencing run, reducing costs.
+  \item \textbf{Phred quality scores} quantify the confidence of each base call; Q30 (99.9\% accuracy) is the standard benchmark.
+  \item A \textbf{sequencing library} is the collection of adapter-ligated fragments; its complexity determines the amount of unique information available.
+  \item \textbf{PCR duplicates} and \textbf{amplification bias} are artefacts of library amplification that can be mitigated by PCR-free protocols and UMIs.
+  \item \textbf{GC bias} causes uneven coverage as a function of GC content and is particularly pronounced in PCR-amplified libraries.
+\end{itemize}
+
+With these principles established, the following chapters will dive deeper into specific sequencing platforms (Chapters~4--5), library preparation methods (Chapter~6), and the diverse applications of sequencing across genomics, transcriptomics, and epigenomics.

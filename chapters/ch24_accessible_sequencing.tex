@@ -1,0 +1,917 @@
+\chapter{Accessible Sequencing: Democratising Genomics}
+\label{ch:accessible}
+
+\begin{keyconcept}
+Sequencing technology is no longer the exclusive province of well-funded core facilities and genome centres. The dramatic reduction in instrument costs, the emergence of portable nanopore sequencers, and the growth of community laboratories have opened genomics to individual researchers, educators, citizen scientists, and field biologists working in remote locations. This chapter maps the landscape of accessible sequencing---from budget planning and platform selection to field deployment, educational applications, and the legal and ethical frameworks that govern this expanding frontier. The goal is to provide a realistic, practical guide for anyone who wants to generate sequence data outside a traditional institutional setting.
+\end{keyconcept}
+
+%% ============================================================
+\section{The Landscape of Accessible Sequencing}
+\label{sec:accessible:landscape}
+%% ============================================================
+
+The cost of sequencing a human genome has fallen from approximately \$2.7 billion (the Human Genome Project, completed 2003) to under \$200 for consumables on the latest Illumina platforms. Yet the cost of \emph{entry}---the capital expenditure required to begin generating sequence data independently---remained prohibitively high until the mid-2010s. The introduction of Oxford Nanopore's MinION in 2014 fundamentally changed this equation, creating a category of sequencing devices that cost less than a high-end laptop.
+
+Today, a researcher, educator, or citizen scientist can enter the sequencing space at several cost tiers:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Under \$1,000:} A MinION starter pack provides the sequencing device itself (the MinION Mk1B) plus initial flow cells and reagents. This is sufficient for bacterial genomes, amplicon sequencing, and educational demonstrations.
+  \item \textbf{\$1,000--\$5,000:} Adding a Flongle adapter, additional flow cells, a basic \acrshort{PCR} thermocycler, and a used laptop with a GPU enables a modest but capable sequencing programme.
+  \item \textbf{\$5,000--\$10,000:} The Illumina iSeq 100 (list price ${\sim}$\$20,000 new, often available refurbished for \$8,000--\$12,000) or the \acrshort{ONT} PromethION P2 Solo (${\sim}$\$9,800) provides substantially higher throughput while remaining within reach of individual laboratories.
+  \item \textbf{\$10,000--\$50,000:} Shared-access models with benchtop instruments such as the Illumina MiSeq or NextSeq 550 become feasible for departments, teaching institutions, and community laboratories.
+\end{itemize}
+
+\Cref{tab:accessible:platforms} compares the key accessible sequencing platforms available as of 2025.
+
+\begin{table}[htbp]
+\centering
+\caption[Comparison of accessible sequencing platforms]{Comparison of accessible sequencing platforms. Costs are approximate and represent list prices for the instrument plus a single run of consumables; actual costs vary by region and negotiation.}
+\label{tab:accessible:platforms}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l l c c c c X@{}}
+\toprule
+\textbf{Platform} & \textbf{Vendor} & \textbf{Output} & \textbf{Read Length} & \textbf{Accuracy} & \textbf{Cost\fmark{a}} & \textbf{Best For} \\
+\midrule
+MinION Mk1B & \acrshort{ONT} & 50\gigabase & $>$100\kilobase & Q20+ (sup) & \$1,000 & Portability, long reads, rapid prototyping \\
+\addlinespace
+Flongle & \acrshort{ONT} & 2.8\gigabase & $>$100\kilobase & Q20+ (sup) & \$140/run & Low-cost amplicons, targeted panels, teaching \\
+\addlinespace
+P2 Solo & \acrshort{ONT} & 290\gigabase & $>$100\kilobase & Q20+ (sup) & \$9,800 & Human \acrshort{WGS}, large genomes, production \\
+\addlinespace
+iSeq 100 & Illumina & 1.2\gigabase & $2 \times 150\basepair$ & $>$Q30 & \$20,000 & Small panels, 16S, low-throughput short reads \\
+\bottomrule
+\end{tabularx}
+\vspace{2pt}
+{\footnotesize \fmark{a} MinION cost reflects the starter pack; Flongle cost is per-flow-cell consumable; P2 Solo and iSeq 100 costs are instrument list prices.}
+\end{table}
+
+\begin{tipbox}[title={Refurbished and Decommissioned Instruments}]
+Illumina MiSeq and Ion Torrent PGM instruments are increasingly available on the secondary market as institutions upgrade. A refurbished MiSeq can often be obtained for \$15,000--\$25,000---a fraction of its original list price. Ensure that service contracts or at minimum a warranty period are included, and verify that the instrument firmware is compatible with current reagent kits before purchasing.
+\end{tipbox}
+
+The choice between platforms involves trade-offs that depend on the application. Short-read platforms (iSeq 100, MiSeq) offer high per-base accuracy and compatibility with the vast existing ecosystem of Illumina-based bioinformatics tools (see \cref{ch:seqprinciples}). Long-read platforms (\acrshort{ONT} MinION, Flongle, P2 Solo) offer portability, real-time data streaming, the ability to detect base modifications natively, and ultra-long reads that simplify de novo assembly (see \cref{ch:longread}).
+
+%% ============================================================
+\section{Oxford Nanopore for the Individual Researcher}
+\label{sec:accessible:ont}
+%% ============================================================
+
+Oxford Nanopore Technologies has done more than any other company to lower the barrier to entry for independent sequencing. The MinION---a USB-powered sequencing device roughly the size of a stapler---was the first sequencing instrument that a single researcher could purchase, unbox, and begin using in an afternoon.
+
+\subsection{MinION and Mk1C}
+\label{subsec:accessible:minion}
+
+The \textbf{MinION Mk1B} is the flagship accessible device. It contains no internal compute; sequencing data is streamed via USB~3.0 to a host computer where basecalling is performed. The \textbf{MinION Mk1C} integrates an NVIDIA Jetson Xavier GPU module with a touchscreen, making it a self-contained sequencing-and-basecalling device---particularly useful for field deployment where carrying a separate laptop is impractical.
+
+Key specifications of the MinION platform:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Flow cell:} R10.4.1 (current generation), containing ${\sim}$2,048 individually addressable nanopores arranged in 512 channels.
+  \item \textbf{Output:} Up to 50\gigabase{} per flow cell under ideal conditions; typical yields range from 10--30\gigabase{} depending on library quality and pore occupancy.
+  \item \textbf{Read length:} Limited primarily by input DNA fragment length, not the device. Reads exceeding 4\megabase{} have been demonstrated.
+  \item \textbf{Run time:} Up to 72 hours, but most runs yield the majority of data within 24--48 hours.
+  \item \textbf{Accuracy:} With R10.4.1 chemistry and the ``super-accurate'' (sup) basecalling model, simplex read accuracy exceeds Q20 ($>$99\% per-base). Duplex reads (both strands of the same molecule) achieve Q30+ ($>$99.9\%).
+  \item \textbf{Power draw:} Approximately 2--3\,W for the MinION device itself; the host computer or Mk1C draws an additional 10--30\,W.
+\end{itemize}
+
+\subsection{Flongle: The Disposable Flow Cell}
+\label{subsec:accessible:flongle}
+
+The \textbf{Flongle} is a single-use flow cell adapter for the MinION that contains 126 channels (compared to 512 on a standard MinION flow cell). It produces up to 2.8\gigabase{} of data---sufficient for many targeted applications---at a consumable cost of approximately \$140 per flow cell (including the adapter, which is reusable).
+
+The Flongle is ideally suited for:
+
+\begin{itemize}[itemsep=2pt]
+  \item Bacterial genome assembly (a 5\megabase{} genome at 30$\times$ coverage requires only 150\megabase{} of data).
+  \item Amplicon sequencing (16S, ITS, \acrshort{PCR} products for genotyping).
+  \item \acrshort{QC} runs to verify library quality before committing a full MinION flow cell.
+  \item Teaching and training exercises.
+  \item Rapid pathogen identification in point-of-care settings.
+\end{itemize}
+
+The economics of the Flongle are compelling: at \$140 per flow cell, the per-sample cost for a bacterial genome (including library preparation) is approximately \$200--\$250. This is competitive with outsourcing to a core facility, with the added benefit of turnaround times measured in hours rather than weeks.
+
+\subsection{PromethION P2 Solo}
+\label{subsec:accessible:p2solo}
+
+For researchers who need higher throughput but cannot justify a full PromethION 48 ($>$\$200,000), the \textbf{PromethION P2 Solo} offers two PromethION flow cells (each with ${\sim}$2,675 channels) in a benchtop format priced at approximately \$9,800. Each P2 Solo flow cell can yield up to 145\gigabase{}, making 30$\times$ human \acrshort{WGS} feasible from a single flow cell.
+
+The P2 Solo requires a dedicated compute resource for basecalling, ideally a workstation equipped with a high-end NVIDIA GPU (see \cref{tab:accessible:basecalling}).
+
+\subsection{Computing Requirements for Nanopore Basecalling}
+\label{subsec:accessible:compute}
+
+Basecalling---the process of translating raw electrical signal into nucleotide sequences---is the most computationally intensive step in the \acrshort{ONT} workflow. The basecalling model used dramatically affects both accuracy and compute time. \Cref{tab:accessible:basecalling} provides benchmarks for basecalling a typical MinION run (${\sim}$20\gigabase{}) on different hardware configurations.
+
+\begin{table}[htbp]
+\centering
+\caption[Basecalling compute benchmarks]{Approximate basecalling times for 20\gigabase{} of MinION R10.4.1 data using \software{Dorado} on different hardware configurations. Times are wall-clock hours for a complete run.}
+\label{tab:accessible:basecalling}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l l c c c@{}}
+\toprule
+\textbf{Hardware} & \textbf{Specification} & \textbf{Fast} & \textbf{HAC} & \textbf{SUP} \\
+\midrule
+CPU only & 16-core Xeon / Ryzen 9 & 8\,h & 48\,h & $>$200\,h \\
+\addlinespace
+Entry GPU & NVIDIA RTX 3060 (12\,GB) & 0.5\,h & 2.5\,h & 12\,h \\
+\addlinespace
+Mid-range GPU & NVIDIA RTX 4080 (16\,GB) & 0.3\,h & 1.2\,h & 5\,h \\
+\addlinespace
+High-end GPU & NVIDIA A100 (80\,GB) & 0.2\,h & 0.6\,h & 2\,h \\
+\addlinespace
+Mk1C (internal) & Jetson Xavier NX & 4\,h & 18\,h & N/A\fmark{b} \\
+\addlinespace
+Apple Silicon & M2 Pro (16\,GB unified) & 1.5\,h & 6\,h & 28\,h \\
+\bottomrule
+\end{tabularx}
+\vspace{2pt}
+{\footnotesize \fmark{b} The Mk1C hardware is insufficient for SUP basecalling in a practical time frame; use an external GPU workstation for SUP accuracy.}
+\end{table}
+
+\begin{warningbox}[title={Basecalling Model Selection}]
+The choice of basecalling model involves a direct trade-off between accuracy and compute cost. The ``fast'' model (approximately Q8--Q10) is suitable for real-time species identification during a run but insufficient for variant calling. The ``high accuracy'' (HAC, Q15--Q18) model is appropriate for most applications. The ``super-accurate'' (SUP, Q20+) model is recommended for variant calling, methylation detection, and any application where per-base accuracy is critical---but requires a capable GPU. Running SUP basecalling on a CPU is not practical for production use.
+\end{warningbox}
+
+\begin{lstlisting}[language=bash,caption={Basecalling with Dorado on a GPU workstation.},label=lst:dorado-basecall]
+# Download the appropriate model
+dorado download --model dna_r10.4.1_e8.2_400bps_sup@v5.0.0
+
+# Basecall a directory of POD5 files using the SUP model
+dorado basecaller \
+  dna_r10.4.1_e8.2_400bps_sup@v5.0.0 \
+  /data/pod5/ \
+  --device cuda:0 \
+  --emit-moves \
+  > basecalled.bam
+
+# Convert to FASTQ if needed
+samtools fastq basecalled.bam > basecalled.fastq
+
+# For methylation-aware basecalling (5mC and 5hmC)
+dorado basecaller \
+  dna_r10.4.1_e8.2_400bps_sup@v5.0.0 \
+  /data/pod5/ \
+  --device cuda:0 \
+  --modified-bases 5mCG_5hmCG \
+  > basecalled_mods.bam
+\end{lstlisting}
+
+%% ============================================================
+\section{Budget Planning and Cost Modelling}
+\label{sec:accessible:budget}
+%% ============================================================
+
+One of the most common mistakes made by researchers entering the accessible sequencing space is underestimating total project costs. The sequencing device itself is often the smallest line item; reagents, library preparation kits, sample preparation consumables, compute resources, and personnel time dominate the budget. This section provides itemised cost models for five common project types.
+
+\subsection{Itemised Cost Models}
+\label{subsec:accessible:costmodels}
+
+\Cref{tab:accessible:costmodels} provides realistic, itemised cost estimates for five representative projects using \acrshort{ONT} MinION or Flongle as the primary sequencing platform. All costs are approximate and based on 2025 list prices.
+
+\begin{table}[htbp]
+\centering
+\caption[Itemised cost models for five accessible sequencing projects]{Itemised cost models for five representative projects. Costs assume a MinION Mk1B already in hand (starter pack, \$1,000, not included in per-project costs). Library preparation costs include consumables only.}
+\label{tab:accessible:costmodels}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}X r r r r r@{}}
+\toprule
+\textbf{Cost Item} & \textbf{Bacterial} & \textbf{16S} & \textbf{Human} & \textbf{eDNA} & \textbf{Food} \\
+ & \textbf{Genome} & \textbf{Amplicon} & \textbf{WGS} & \textbf{Biodiv.} & \textbf{Auth.} \\
+\midrule
+DNA extraction kit & \$50 & \$120 & \$30 & \$200 & \$80 \\
+Library prep kit & \$120 & \$60 & \$180 & \$90 & \$90 \\
+Flow cell (type) & \$140\fmark{c} & \$140\fmark{c} & \$900\fmark{d} & \$140\fmark{c} & \$140\fmark{c} \\
+Barcoding expansion & --- & \$45 & --- & \$45 & \$45 \\
+\acrshort{PCR} primers / reagents & --- & \$30 & --- & \$30 & \$30 \\
+Compute (cloud GPU) & \$5 & \$2 & \$40 & \$5 & \$3 \\
+Consumables (tips, tubes) & \$15 & \$25 & \$20 & \$30 & \$20 \\
+\midrule
+\textbf{Total per project} & \textbf{\$330} & \textbf{\$422} & \textbf{\$1,170} & \textbf{\$540} & \textbf{\$408} \\
+\textbf{Samples per run} & 1 & 24 & 1 & 12 & 12 \\
+\textbf{Cost per sample} & \textbf{\$330} & \textbf{\$18} & \textbf{\$1,170} & \textbf{\$45} & \textbf{\$34} \\
+\bottomrule
+\end{tabularx}
+\vspace{2pt}
+{\footnotesize \fmark{c} Flongle flow cell. \fmark{d} Standard MinION R10.4.1 flow cell.}
+\end{table}
+
+\begin{keyconcept}[title={Hidden Costs to Budget For}]
+Beyond the obvious consumables, accessible sequencing projects should budget for:
+\begin{itemize}[nosep]
+  \item \textbf{Sample collection and transport:} Preservation reagents, cold chain, shipping.
+  \item \textbf{Data storage:} A single MinION run generates 50--200\,GB of raw POD5 files. Cloud storage costs accumulate.
+  \item \textbf{Compute:} GPU basecalling, alignment, assembly. Cloud GPU instances (e.g., AWS \texttt{g5.xlarge}) cost \$1--\$3/hour.
+  \item \textbf{Failed runs:} Budget for a 10--20\% failure rate due to clogged pores, degraded reagents, or library preparation issues.
+  \item \textbf{Personnel time:} Even ``automated'' protocols require skilled hands. Factor in training time.
+\end{itemize}
+\end{keyconcept}
+
+\subsection{Reagent Shelf Life}
+\label{subsec:accessible:shelflife}
+
+Reagent degradation is a frequently overlooked cost driver, particularly for low-throughput users who may not consume reagents before expiration. Key shelf-life considerations include:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{\acrshort{ONT} flow cells:} Stored at 2--8$^{\circ}$C, flow cells have a shelf life of approximately 8--12 weeks from manufacture. Using flow cells near their expiration date results in reduced pore counts and lower yields. Order flow cells as close to the planned experiment date as possible.
+  \item \textbf{Library preparation kits:} Most \acrshort{ONT} library prep kits (Ligation Sequencing Kit, Rapid Barcoding Kit) have a shelf life of 3--6 months at $-20^{\circ}$C. Kits contain enzymes that degrade with repeated freeze--thaw cycles; aliquot on first use.
+  \item \textbf{DNA extraction reagents:} Column-based kits (Qiagen, Zymo) are stable for 12--18 months at room temperature. Enzymatic lysis reagents may have shorter shelf lives.
+  \item \textbf{\acrshort{PCR} reagents:} Polymerases and master mixes are typically stable for 6--12 months at $-20^{\circ}$C. Primers dissolved in TE buffer are stable for years at $-20^{\circ}$C.
+\end{itemize}
+
+\begin{tipbox}[title={Group Purchasing for Low-Throughput Users}]
+If you sequence infrequently (fewer than one run per month), consider coordinating with nearby laboratories or community lab members to place joint orders, share flow cells, and run samples together. A Flongle flow cell with native barcoding can accommodate up to 24 samples---pooling samples from multiple users minimises per-sample cost and reduces reagent waste.
+\end{tipbox}
+
+\subsection{Shared Equipment Models and Cost-per-Sample Analysis}
+\label{subsec:accessible:shared}
+
+For institutions considering a shared sequencing resource, the cost per sample can be modelled as:
+
+\begin{equation}
+\label{eq:accessible:costsample}
+C_{\text{sample}} = \frac{C_{\text{instrument}}}{N_{\text{lifetime}} \times S_{\text{run}}} + \frac{C_{\text{consumable}}}{S_{\text{run}}} + C_{\text{extraction}} + C_{\text{overhead}}
+\end{equation}
+
+\noindent where $C_{\text{instrument}}$ is the capital cost of the instrument, $N_{\text{lifetime}}$ is the total number of runs over the instrument's lifetime, $S_{\text{run}}$ is the number of samples per run, $C_{\text{consumable}}$ is the per-run consumable cost (flow cell + library prep), $C_{\text{extraction}}$ is the per-sample DNA extraction cost, and $C_{\text{overhead}}$ captures personnel time, compute, storage, and facility costs.
+
+For example, consider a community laboratory that purchases a MinION starter pack (\$1,000) and plans to perform 100 Flongle runs over two years, with 12 barcoded samples per run:
+
+\begin{align}
+C_{\text{sample}} &= \frac{\$1{,}000}{100 \times 12} + \frac{\$140 + \$90}{12} + \$10 + \$5 \notag \\
+                    &= \$0.83 + \$19.17 + \$10 + \$5 \notag \\
+                    &= \$35.00 \text{ per sample}
+\end{align}
+
+This is competitive with commercial sequencing services, with the added advantages of rapid turnaround (same-day results), complete control over the protocol, and the educational value of performing sequencing in-house.
+
+%% ============================================================
+\section{Community Labs and Maker Spaces}
+\label{sec:accessible:community}
+%% ============================================================
+
+Community biology laboratories---also known as biohacker spaces or DIY biology labs---have emerged as important venues for accessible sequencing. These spaces provide shared equipment, training, and a collaborative community that lowers the barrier to entry for individuals who lack institutional affiliation.
+
+\subsection{Prominent Community Laboratories}
+\label{subsec:accessible:communitylabs}
+
+Several community labs have pioneered accessible sequencing programmes:
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=4pt]
+  \item[Genspace (New York City, USA)]
+  Founded in 2010, Genspace is one of the world's first community biology laboratories. It offers courses in DNA extraction, \acrshort{PCR}, gel electrophoresis, and nanopore sequencing. Genspace operates as a non-profit with membership fees (\$100/month) and course-based revenue. The lab maintains MinION devices available for member use and has contributed to citizen science projects including environmental DNA monitoring of the Gowanus Canal.
+
+  \item[BioCurious (Santa Clara, California, USA)]
+  A community laboratory in Silicon Valley that has hosted sequencing workshops and synthetic biology projects since 2011. BioCurious provides a BSL-1 workspace, shared equipment, and mentorship from experienced molecular biologists.
+
+  \item[La Paillasse (Paris, France)]
+  One of Europe's leading community biology spaces, La Paillasse has been involved in open-source biology projects since 2014. It has hosted nanopore sequencing workshops and contributed to food safety and environmental monitoring projects.
+
+  \item[BioFoundry (Sydney, Australia)]
+  Australia's first community laboratory, BioFoundry offers nanopore sequencing training and has supported eDNA biodiversity monitoring projects in urban waterways.
+\end{description}
+
+\subsection{Setting Up a Sequencing Corner}
+\label{subsec:accessible:setup}
+
+A functional sequencing workspace can be established within a community laboratory, teaching institution, or even a well-organised home laboratory, provided that appropriate biosafety measures are in place. The following requirements apply to \textbf{BSL-1} (Biosafety Level 1) work only---that is, work with organisms and samples that pose no known risk to healthy adults.
+
+\begin{protocolbox}[title={Minimum Requirements for a BSL-1 Sequencing Workspace}]
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Work surface:} A cleanable, non-porous bench surface (stainless steel, epoxy resin, or chemical-resistant laminate). Minimum 1.5\,m $\times$ 0.6\,m of clear bench space.
+  \item \textbf{Decontamination:} 10\% bleach solution or 70\% ethanol for surface decontamination. An autoclave or pressure cooker for waste decontamination.
+  \item \textbf{Personal protective equipment (PPE):} Disposable nitrile gloves, laboratory coat, and safety glasses.
+  \item \textbf{Waste disposal:} Biohazard bags for contaminated consumables; sharps container if using scalpels or needles.
+  \item \textbf{Hand washing:} A sink with soap and water within the workspace.
+  \item \textbf{No food or drink:} The workspace must be separated from food preparation and consumption areas.
+  \item \textbf{Ventilation:} Adequate general ventilation. A biosafety cabinet is \emph{not} required for BSL-1 work but is recommended for handling samples that may contain allergens or irritants.
+  \item \textbf{Documentation:} A laboratory notebook (physical or electronic) for recording all procedures, reagent lot numbers, and results.
+  \item \textbf{Training:} All users should receive basic laboratory safety training covering chemical hazards, biological waste handling, and emergency procedures.
+\end{enumerate}
+\end{protocolbox}
+
+\subsection{Minimum Equipment for a Sequencing Laboratory}
+\label{subsec:accessible:equipment}
+
+\Cref{tab:accessible:equipment} lists the minimum equipment required for a functional nanopore sequencing laboratory, along with approximate costs and potential budget alternatives.
+
+\begin{table}[htbp]
+\centering
+\caption[Minimum equipment for a nanopore sequencing laboratory]{Minimum equipment for a basic nanopore sequencing laboratory. ``Budget alternative'' indicates lower-cost substitutes suitable for educational or low-throughput settings.}
+\label{tab:accessible:equipment}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l r l X@{}}
+\toprule
+\textbf{Equipment} & \textbf{Cost} & \textbf{Essential?} & \textbf{Budget Alternative} \\
+\midrule
+MinION Mk1B & \$1,000 & Yes & --- \\
+Laptop (16\,GB RAM, GPU) & \$1,200 & Yes & Used/refurbished; cloud basecalling \\
+Micropipettes (P2, P20, P200, P1000) & \$1,500 & Yes & Used pipettes (\$200--\$500) \\
+Minicentrifuge & \$200 & Yes & --- \\
+Vortex mixer & \$150 & Yes & Manual flicking (not recommended) \\
+Heat block or thermocycler & \$300 & Yes & Sous vide cooker for lysis steps \\
+Magnetic rack (for SPRI beads) & \$50 & Yes & 3D-printed rack with neodymium magnets \\
+Qubit fluorometer & \$3,000 & Recommended & NanoDrop (\$1,500) or gel estimation \\
+Gel electrophoresis system & \$500 & Recommended & Pre-cast gel kits (\$100) \\
+Mini \acrshort{PCR} thermocycler & \$500 & For amplicons & miniPCR (\$500, educational pricing) \\
+$-20^{\circ}$C freezer & \$500 & Yes & Shared freezer; dorm-style mini-freezer \\
+\midrule
+\textbf{Total (essential only)} & \textbf{\$4,900} & & \\
+\textbf{Total (with recommended)} & \textbf{\$9,100} & & \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tipbox}[title={3D-Printed and Open-Source Lab Equipment}]
+The open-source hardware movement has produced functional designs for many common laboratory instruments. Magnetic racks, tube holders, gel electrophoresis chambers, and even centrifuges can be 3D-printed at a fraction of commercial cost. Resources such as the Open Bioeconomy Lab, NIH 3D Print Exchange, and Thingiverse host verified designs. The \software{OpenPCR} project provides plans for a thermocycler that can be assembled for under \$500.
+\end{tipbox}
+
+%% ============================================================
+\section{Field Sequencing}
+\label{sec:accessible:field}
+%% ============================================================
+
+One of the most transformative aspects of portable sequencing is the ability to generate sequence data in the field---at the point of sample collection, in remote locations without reliable electricity or internet, and in outbreak settings where rapid pathogen identification saves lives. The MinION's small size, low power consumption, and tolerance of temperature variation make it uniquely suited to field deployment.
+
+\subsection{Power Requirements}
+\label{subsec:accessible:power}
+
+The MinION Mk1B draws approximately 2--3\,W via USB, while the host laptop typically requires 30--65\,W depending on whether GPU basecalling is performed. Total system power for a MinION + laptop configuration is therefore 35--70\,W.
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{USB power banks:} A 100\,Wh USB-C PD power bank can sustain a MinION + efficient laptop for approximately 2--3 hours of sequencing. Multiple power banks can be carried for extended field work.
+  \item \textbf{Solar panels:} A 100\,W portable solar panel with a LiFePO$_4$ battery station (e.g., 500\,Wh capacity) can sustain continuous sequencing during daylight hours and provide 7--10 hours of overnight operation.
+  \item \textbf{Vehicle power:} A car cigarette lighter or 12\,V outlet with an inverter provides reliable power for roadside or vehicle-based sequencing.
+  \item \textbf{Generator:} For multi-day field campaigns, a small ($<$1\,kW) inverter generator provides indefinite runtime.
+\end{itemize}
+
+\subsection{Temperature Constraints}
+\label{subsec:accessible:temperature}
+
+\acrshort{ONT} flow cells are sensitive to temperature. The recommended operating range is 20--35$^{\circ}$C; the optimal range is 22--30$^{\circ}$C. Outside this range:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Below 15$^{\circ}$C:} Enzyme activity decreases, translocation speed slows, and basecalling accuracy degrades. In cold environments, insulate the MinION in a small cooler with a chemical hand warmer.
+  \item \textbf{Above 35$^{\circ}$C:} Pore lifetime decreases and DNA may denature. In hot environments, shade the device and use a small USB fan for convective cooling. Avoid direct sunlight.
+\end{itemize}
+
+\subsection{Data Transfer in the Field}
+\label{subsec:accessible:datatransfer}
+
+A single MinION run generates 50--200\,GB of raw signal data (POD5 format). Transferring this volume of data over satellite or cellular networks is often impractical. Strategies include:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{On-device basecalling:} Perform basecalling locally (fast or HAC model) to reduce data to 1--5\,GB of FASTQ/BAM, which is transferable over a cellular connection.
+  \item \textbf{Real-time selective sequencing:} Use \software{ReadFish} or \acrshort{ONT}'s adaptive sampling to reject off-target reads, reducing data volume and focusing on sequences of interest.
+  \item \textbf{Portable storage:} Carry ruggedised external SSDs (2--4\,TB) and transfer data physically when returning from the field.
+  \item \textbf{Satellite internet:} Starlink terminals (${\sim}$100\,Mbps) can enable data transfer in remote locations with clear sky access.
+\end{itemize}
+
+\subsection{Case Studies in Field Sequencing}
+\label{subsec:accessible:fieldcases}
+
+\subsubsection{Real-Time Genomic Surveillance of Ebola (2015)}
+
+The seminal demonstration of field sequencing was performed by Quick et al.\ (2016) during the West African Ebola outbreak. Using MinION devices deployed to Guinea, the team sequenced 142 Ebola virus genomes within 48 hours of sample collection. Real-time phylogenetic analysis revealed transmission chains, identified cross-border transmission events, and demonstrated that the outbreak was sustained by human-to-human transmission rather than repeated zoonotic introductions. The entire sequencing laboratory fit in a single suitcase, operated on a generator, and demonstrated that genomic surveillance could be performed in resource-limited settings with minimal infrastructure.
+
+\subsubsection{eDNA Biodiversity Monitoring}
+
+Environmental DNA (eDNA) is DNA shed by organisms into their environment---water, soil, air---and can be collected non-invasively to survey biodiversity. Portable sequencing brings the analysis to the field site, enabling same-day species detection. Notable deployments include:
+
+\begin{itemize}[itemsep=2pt]
+  \item Detection of aquatic species in Amazonian rivers using water samples filtered and sequenced on-site with MinION.
+  \item Monitoring of invasive species in the Great Lakes using portable eDNA sequencing at boat launches.
+  \item Marine biodiversity surveys at remote coral reef sites, where MinION sequencing of the mitochondrial \gene{COI} barcode region identified fish species present in water samples within hours of collection.
+\end{itemize}
+
+These applications are discussed further in the context of metagenomic methods in \cref{ch:metagenomics}.
+
+\subsection{Field Sequencing Setup}
+\label{subsec:accessible:fieldsetup}
+
+\Cref{fig:accessible:fieldsetup} illustrates a minimal field sequencing setup. The key principle is to minimise the number of components while maintaining a complete workflow from sample to sequence.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  >={Stealth[length=3mm]},
+  node distance=1.8cm,
+  every node/.style={font=\sffamily\small},
+  box/.style={
+    draw, rounded corners=4pt, minimum width=2.8cm, minimum height=1.2cm,
+    align=center, thick
+  },
+  supply/.style={box, fill=Goldenrod!15, draw=Goldenrod!70},
+  device/.style={box, fill=MidnightBlue!12, draw=MidnightBlue!70},
+  data/.style={box, fill=OliveGreen!12, draw=OliveGreen!70},
+  annotation/.style={font=\sffamily\tiny, text=gray!70, align=center}
+]
+
+% --- Row 1: Sample and reagents ---
+\node[supply] (sample) {Sample\\collection};
+\node[supply, right=of sample] (extraction) {DNA\\extraction};
+\node[supply, right=of extraction] (libprep) {Library\\preparation};
+
+% --- Row 2: Sequencing hardware ---
+\node[device, below=2.0cm of sample] (power) {Power bank\\(100--500\,Wh)};
+\node[device, below=2.0cm of extraction] (minion) {MinION\\Mk1B / Mk1C};
+\node[device, below=2.0cm of libprep] (laptop) {Laptop\\(GPU optional)};
+
+% --- Row 3: Data outputs ---
+\node[data, below=2.0cm of power] (storage) {Portable SSD\\(2--4\,TB)};
+\node[data, below=2.0cm of minion] (basecall) {Basecalled\\reads (BAM)};
+\node[data, below=2.0cm of laptop] (analysis) {Real-time\\analysis};
+
+% --- Arrows: sample flow ---
+\draw[->, thick, BrickRed!70] (sample) -- (extraction);
+\draw[->, thick, BrickRed!70] (extraction) -- (libprep);
+\draw[->, thick, BrickRed!70] (libprep) -- (minion) node[midway, right, annotation] {load\\flow cell};
+
+% --- Arrows: power ---
+\draw[->, thick, Goldenrod!80] (power) -- (minion) node[midway, above, annotation] {USB-C};
+\draw[->, thick, Goldenrod!80] (power) -- (laptop) node[midway, below, annotation, sloped] {USB-C PD};
+
+% --- Arrows: data flow ---
+\draw[->, thick, MidnightBlue!70] (minion) -- (laptop) node[midway, above, annotation] {USB 3.0};
+\draw[->, thick, OliveGreen!70] (laptop) -- (basecall);
+\draw[->, thick, OliveGreen!70] (basecall) -- (analysis);
+\draw[->, thick, OliveGreen!70] (laptop) -- (storage) node[midway, above, annotation, sloped] {backup};
+\draw[->, thick, OliveGreen!70] (basecall) -- (storage);
+
+% --- Annotations ---
+\node[annotation, above=0.3cm of sample] {Water filter,\\swab, tissue};
+\node[annotation, above=0.3cm of extraction] {Spin column\\or bead-based};
+\node[annotation, above=0.3cm of libprep] {Rapid kit\\(10 min)};
+\node[annotation, below=0.3cm of analysis] {Species ID,\\phylogenetics,\\AMR detection};
+
+\end{tikzpicture}
+\caption[Field sequencing setup]{Schematic of a minimal field sequencing setup showing the three phases of the workflow: sample preparation (top, gold), sequencing hardware (middle, blue), and data handling (bottom, green). Arrows indicate sample flow (red), power delivery (gold), and data flow (blue/green).}
+\label{fig:accessible:fieldsetup}
+\end{figure}
+
+\begin{protocolbox}[title={Field Sequencing Packing Checklist}]
+The following items constitute a complete field sequencing kit that fits in a single carry-on-sized case:
+\begin{enumerate}[itemsep=1pt]
+  \item MinION Mk1B (or Mk1C) with USB cable
+  \item 2--4 Flongle or MinION flow cells (in cold pack pouch, 2--8$^{\circ}$C)
+  \item Rapid Barcoding Kit (SQK-RBK114.24)
+  \item Spin-column DNA extraction kit (e.g., Qiagen DNeasy or Zymo Quick-DNA)
+  \item Micropipettes (P20, P200) with filter tips
+  \item Magnetic rack and AMPure XP beads (or Zymo Select-a-Size)
+  \item Minicentrifuge (palm-sized, battery-operated)
+  \item Laptop with \software{MinKNOW} and \software{Dorado} pre-installed
+  \item 100\,Wh USB-C PD power bank (for MinION) + laptop charger
+  \item Portable SSD for data backup
+  \item Nitrile gloves, 70\% isopropanol wipes, waste bag
+  \item Laboratory notebook and permanent marker
+\end{enumerate}
+Total weight: approximately 5--7\,kg including the laptop.
+\end{protocolbox}
+
+%% ============================================================
+\section{Educational and Outreach Applications}
+\label{sec:accessible:education}
+%% ============================================================
+
+Sequencing technology is an extraordinarily powerful tool for science education. The ability to extract DNA from an organism, generate a sequence, and identify it computationally provides a visceral, end-to-end experience of molecular biology that textbooks alone cannot replicate. The accessibility of nanopore sequencing has made it feasible to bring real sequencing into undergraduate laboratories, high school classrooms, and public outreach events.
+
+\subsection{Designing a Teaching Laboratory Sequencing Module}
+\label{subsec:accessible:teachlab}
+
+A successful teaching laboratory sequencing module must be:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Robust:} Protocols must work reliably in the hands of novices. Use the simplest possible library preparation kit (e.g., \acrshort{ONT} Rapid Barcoding Kit, which requires 10 minutes of hands-on time and no \acrshort{PCR}).
+  \item \textbf{Fast:} Students must see results within a single laboratory session (3--4 hours). Nanopore sequencing produces data in real time, allowing species identification within 30--60 minutes of loading.
+  \item \textbf{Affordable:} Per-student costs must be manageable within institutional teaching budgets.
+  \item \textbf{Safe:} All work must be BSL-1 compatible. Use non-pathogenic organisms or environmental samples that pose no known health risk.
+  \item \textbf{Pedagogically meaningful:} The experiment should connect to core concepts in molecular biology, genetics, and bioinformatics as covered in the foundational chapters of this book (see \cref{ch:seqprinciples}).
+\end{itemize}
+
+\subsection{Suggested Curriculum Outline}
+\label{subsec:accessible:curriculum}
+
+The following five-session curriculum is designed for an undergraduate molecular biology or genomics course. Each session is 3--4 hours.
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=4pt]
+  \item[Session 1: DNA Extraction and Quantification]
+  Students extract DNA from an assigned sample (environmental water, soil, cheek swab, food product, or bacterial culture). They quantify DNA using a Qubit fluorometer and assess quality by gel electrophoresis or NanoDrop A260/A280 ratio. \emph{Learning objectives:} Cell lysis mechanisms, DNA purification chemistry, quality metrics.
+
+  \item[Session 2: Library Preparation and Sequencing]
+  Students prepare a nanopore library using the Rapid Barcoding Kit. Each student receives a unique barcode. Barcoded libraries are pooled and loaded onto a single Flongle or MinION flow cell. Sequencing begins during the session and runs overnight. \emph{Learning objectives:} Library preparation principles (see \cref{ch:libprep}), adapter ligation, multiplexing by barcoding.
+
+  \item[Session 3: Basecalling and Quality Control]
+  Students retrieve basecalled FASTQ data and perform \acrshort{QC} using \software{NanoPlot} and \software{FastQC}. They examine read length distributions, quality scores, and per-barcode yields. \emph{Learning objectives:} Phred quality scores, read length distributions, demultiplexing.
+
+  \item[Session 4: Bioinformatics Analysis]
+  Depending on the sample type: (a) for amplicon data, students run \software{BLAST} or \software{minimap2} against reference databases for species identification; (b) for bacterial genomes, students perform de novo assembly with \software{Flye} and assess assembly quality with \software{QUAST}. \emph{Learning objectives:} Sequence alignment, de novo assembly, genome annotation.
+
+  \item[Session 5: Interpretation and Presentation]
+  Students interpret their results in biological context, write a short report, and present findings to the class. For eDNA projects, this may include comparing detected species to known local biodiversity. \emph{Learning objectives:} Scientific communication, critical evaluation of sequence data.
+\end{description}
+
+\subsection{Cost Per Student}
+\label{subsec:accessible:coststudent}
+
+Assuming a class of 24 students sharing a single Flongle flow cell with barcoding:
+
+\begin{align}
+C_{\text{student}} &= \frac{C_{\text{flowcell}} + C_{\text{libprep}} + C_{\text{barcoding}}}{24} + C_{\text{extraction}} + C_{\text{consumables}} \notag \\
+                     &= \frac{\$140 + \$60 + \$45}{24} + \$8 + \$5 \notag \\
+                     &= \$10.21 + \$8 + \$5 \notag \\
+                     &= \$23.21 \text{ per student}
+\end{align}
+
+This is comparable to the cost of a conventional molecular biology teaching lab exercise involving \acrshort{PCR} and gel electrophoresis, and far less expensive than outsourcing Sanger sequencing of individual student samples.
+
+\begin{tipbox}[title={Oxford Nanopore Educational Discounts}]
+\acrshort{ONT} offers an educational programme with discounted starter packs and flow cells for registered academic institutions. Contact the \acrshort{ONT} education team or check the Oxford Nanopore store for current academic pricing. Several grant programmes (e.g., the HHMI Inclusive Excellence programme in the US, the Wellcome Trust Public Engagement Grants in the UK) specifically fund sequencing equipment for teaching laboratories.
+\end{tipbox}
+
+\subsection{High School Protocols}
+\label{subsec:accessible:highschool}
+
+Sequencing can be brought into high school settings with appropriate simplification:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Pre-extracted DNA:} Provide students with pre-extracted, quantified DNA to avoid the time and consumable cost of extraction in a high school setting.
+  \item \textbf{Teacher-performed library preparation:} The teacher or a trained assistant prepares the library. Students participate in loading the flow cell and monitoring the sequencing run.
+  \item \textbf{Simplified bioinformatics:} Use \software{EPI2ME} (Oxford Nanopore's cloud-based analysis platform) or pre-built \software{Galaxy} workflows rather than command-line tools.
+  \item \textbf{Focus on species identification:} The ``What's in my sample?'' question (species identification from environmental DNA, food products, or bacterial cultures) is inherently engaging and requires minimal bioinformatics infrastructure.
+  \item \textbf{Partner with a local university:} University researchers can provide equipment, expertise, and mentorship. Many universities have outreach programmes that actively seek partnerships with local schools.
+\end{itemize}
+
+%% ============================================================
+\section{What Can You Realistically Do with \$1,000?}
+\label{sec:accessible:thousand}
+%% ============================================================
+
+The MinION starter pack costs approximately \$1,000 and includes the device, two Flongle flow cells, one MinION flow cell, and a wash kit. With this initial investment, what sequencing projects are realistically achievable? \Cref{tab:accessible:feasibility} provides a feasibility matrix.
+
+\begin{table}[htbp]
+\centering
+\caption[Feasibility matrix: what \$1,000 can accomplish]{Feasibility matrix for sequencing projects within a \$1,000 total budget (including the MinION starter pack). Coverage is estimated for the included flow cells. ``Feasible'' indicates that useful results can be obtained; ``marginal'' indicates that results are possible but may be incomplete.}
+\label{tab:accessible:feasibility}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}X c c c l@{}}
+\toprule
+\textbf{Project} & \textbf{Genome Size} & \textbf{Data Needed} & \textbf{Achievable?} & \textbf{Notes} \\
+\midrule
+Bacterial genome (single) & 5\megabase & 150\megabase{} (30$\times$) & Feasible & Flongle; excellent results \\
+\addlinespace
+16S amplicon (24 samples) & N/A & 50\megabase & Feasible & Flongle + barcoding \\
+\addlinespace
+Fungal genome & 30--40\megabase & 1.2\gigabase{} (30$\times$) & Feasible & Flongle; sufficient yield \\
+\addlinespace
+Plant/insect genome & 200\megabase--2\gigabase & 6--60\gigabase{} (30$\times$) & Marginal & MinION flow cell; low coverage for large genomes \\
+\addlinespace
+Human \acrshort{WGS} (30$\times$) & 3.1\gigabase & 93\gigabase & Not feasible & Requires multiple flow cells (\$900+ each) \\
+\addlinespace
+Viral genome & 10--30\kilobase & $<$1\megabase & Feasible & Flongle; massive over-coverage \\
+\addlinespace
+eDNA species detection & N/A & 100\megabase & Feasible & Flongle; amplicon approach \\
+\addlinespace
+Food authentication & N/A & 100\megabase & Feasible & Flongle; barcode approach \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{warningbox}[title={Honest Expectations}]
+The \$1,000 entry point is real but comes with important caveats:
+\begin{itemize}[nosep]
+  \item The starter pack does \emph{not} include DNA extraction kits, library preparation reagents, pipettes, or any other laboratory equipment. Total out-of-pocket cost for a first project is realistically \$1,300--\$1,800.
+  \item The included flow cells have limited shelf life. If you do not use them within 8--12 weeks, pore counts degrade significantly.
+  \item Basecalling at SUP accuracy requires a computer with a capable GPU (\$800+ if purchased new) or access to cloud computing.
+  \item Nanopore sequencing has a steeper learning curve than users accustomed to ``send sample, receive data'' core facility models. Expect your first 2--3 runs to be practice runs with suboptimal results.
+  \item Assembly, annotation, and downstream analysis require bioinformatics skills. Free resources (e.g., \software{Galaxy}, \acrshort{ONT}'s \software{EPI2ME}, this textbook) can help, but plan for a learning investment.
+\end{itemize}
+\end{warningbox}
+
+\begin{tipbox}[title={Maximising the Value of Your First Flow Cell}]
+Your first MinION or Flongle run should be a low-stakes experiment designed to familiarise you with the workflow. Suggestions:
+\begin{itemize}[nosep]
+  \item Extract DNA from an easily lysed bacterium (e.g., \species{Escherichia coli} DH5$\alpha$) and prepare a rapid library. The genome is well-characterised, so you can assess your results against the known reference.
+  \item Use the \acrshort{ONT} Lambda phage control DNA included in many kits as a positive control alongside your experimental sample.
+  \item Do not attempt barcoding on your first run---run a single unbarcoded library to simplify troubleshooting.
+\end{itemize}
+\end{tipbox}
+
+%% ============================================================
+\section{Citizen Science Sequencing Projects}
+\label{sec:accessible:citizenscience}
+%% ============================================================
+
+The accessibility of nanopore sequencing has enabled a new category of citizen science: projects in which non-professional scientists generate and analyse sequence data to address questions of community relevance. Unlike traditional citizen science (which typically involves observation and data collection), sequencing-based citizen science produces molecular data that can contribute to professional research.
+
+\subsection{Environmental DNA Barcoding}
+\label{subsec:accessible:edna}
+
+Environmental DNA (eDNA) barcoding is perhaps the most natural fit for citizen science sequencing. Participants collect water, soil, or air samples from their local environment, extract DNA, amplify taxonomic barcode regions (mitochondrial \gene{COI} for animals, \gene{rbcL}/\gene{matK} for plants, 16S for bacteria, ITS for fungi), and sequence the amplicons on a MinION or Flongle.
+
+A well-designed eDNA citizen science project includes:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Standardised sampling protocol:} Define sample volume, filtration method, preservation buffer, and collection metadata (GPS coordinates, date, water temperature, pH).
+  \item \textbf{Centralised library preparation:} Participants send extracted DNA (or even raw samples with preservation buffer) to a central laboratory for library preparation and sequencing. This ensures consistent quality.
+  \item \textbf{Open data portal:} Results are uploaded to a public database where participants and the broader community can explore detected species, visualise biodiversity maps, and track changes over time.
+  \item \textbf{Quality assurance:} Include negative controls (blank extractions, no-template \acrshort{PCR} controls) and positive controls (spike-in of known DNA) in every batch.
+\end{enumerate}
+
+\subsection{Food Fraud Detection}
+\label{subsec:accessible:foodfraud}
+
+Food fraud---the deliberate mislabelling or adulteration of food products---is a global problem affecting seafood, meat, spices, olive oil, and honey. DNA barcoding can detect species substitution (e.g., tilapia sold as red snapper) with high sensitivity and specificity.
+
+Citizen science food authentication projects have been conducted by community laboratories, journalism organisations, and consumer advocacy groups. A typical workflow involves:
+
+\begin{itemize}[itemsep=2pt]
+  \item Purchasing food products from local markets and supermarkets.
+  \item Extracting DNA using commercial kits optimised for processed food matrices.
+  \item Amplifying species-specific markers (\gene{COI}, \gene{cytb}, 16S) with universal or taxon-specific primers.
+  \item Sequencing amplicons on a Flongle and querying results against BOLD (Barcode of Life Data System) or NCBI \software{BLAST}.
+\end{itemize}
+
+\begin{keyconcept}[title={DNA Barcoding for Species Identification}]
+DNA barcoding uses a short, standardised gene region to identify the species of origin of a biological sample. The most commonly used barcode regions are:
+\begin{description}[nosep]
+  \item[\gene{COI}] Cytochrome c oxidase subunit I (${\sim}$658\basepair). The standard barcode for animals. Deposited in the BOLD database ($>$14 million records).
+  \item[\gene{rbcL}] RuBisCO large subunit. A standard plant barcode.
+  \item[\gene{matK}] Maturase K. Used in combination with \gene{rbcL} for plants.
+  \item[ITS] Internal transcribed spacer of ribosomal DNA. The standard fungal barcode.
+  \item[16S rRNA] Used for bacterial and archaeal identification (see \cref{ch:metagenomics}).
+\end{description}
+\end{keyconcept}
+
+\subsection{Antimicrobial Resistance Monitoring in Waterways}
+\label{subsec:accessible:amr}
+
+Antimicrobial resistance (\acrshort{AMR}) genes in environmental water are a growing public health concern. Rivers, lakes, and wastewater effluent harbour bacteria carrying resistance genes that can transfer to human pathogens. Citizen science monitoring of \acrshort{AMR} in local waterways can:
+
+\begin{itemize}[itemsep=2pt]
+  \item Establish baseline levels of resistance genes in local water bodies.
+  \item Detect hotspots near hospitals, farms, and wastewater treatment plants.
+  \item Track seasonal and temporal trends.
+  \item Generate data that informs public health policy.
+\end{itemize}
+
+A nanopore-based \acrshort{AMR} monitoring workflow involves collecting water samples, extracting metagenomic DNA, performing either shotgun sequencing or targeted amplification of known resistance genes, and querying results against the CARD (Comprehensive Antibiotic Resistance Database) or ResFinder databases.
+
+\begin{lstlisting}[language=bash,caption={AMR gene detection from environmental water using nanopore data.},label=lst:amr-detection]
+# Basecall raw data
+dorado basecaller \
+  dna_r10.4.1_e8.2_400bps_hac@v5.0.0 \
+  /data/pod5/ --device cuda:0 > reads.bam
+
+# Convert to FASTQ
+samtools fastq reads.bam > reads.fastq
+
+# Map reads against CARD database
+minimap2 -a card_database.fasta reads.fastq | \
+  samtools sort -o aligned_card.bam
+samtools index aligned_card.bam
+
+# Alternatively, use ABRicate for rapid AMR screening
+abricate --db card reads.fasta > amr_results.tab
+abricate --summary amr_results.tab > amr_summary.tab
+
+# Visualise results
+cat amr_summary.tab | column -t
+\end{lstlisting}
+
+\subsection{Concrete Project Examples}
+\label{subsec:accessible:projectexamples}
+
+\Cref{tab:accessible:citizenprojects} summarises several concrete citizen science sequencing projects that have been successfully conducted or are currently active.
+
+\begin{table}[htbp]
+\centering
+\caption[Citizen science sequencing project examples]{Examples of citizen science sequencing projects. Projects range from community laboratory initiatives to coordinated national programmes.}
+\label{tab:accessible:citizenprojects}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}l l l X@{}}
+\toprule
+\textbf{Project} & \textbf{Target} & \textbf{Platform} & \textbf{Description} \\
+\midrule
+Gowanus Canal eDNA & Aquatic biodiv. & MinION & Genspace members sampled water from a superfund site; identified fish, invertebrate, and microbial species. \\
+\addlinespace
+Sushi DNA Test & Food fraud & Flongle & High school students tested sushi from NYC restaurants; found 30\% mislabelling rate. \\
+\addlinespace
+Thames AMR Watch & AMR monitoring & MinION & Community scientists monitored AMR genes in the River Thames at 12 sites over 12 months. \\
+\addlinespace
+BioBlitz Sequencing & Terrestrial biodiv. & Flongle & Weekend bioblitz events where participants collected insects and sequenced \gene{COI} barcodes on-site. \\
+\addlinespace
+Honey Authentication & Food fraud & Flongle & Beekeeping clubs tested commercial honey for adulteration with corn syrup and species verification of pollen DNA. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ============================================================
+\section{Legal, Ethical, and Biosafety Considerations}
+\label{sec:accessible:legal}
+%% ============================================================
+
+The democratisation of sequencing brings with it significant legal, ethical, and biosafety responsibilities. The ability of any individual to generate genomic data---from environmental samples, food products, microorganisms, and potentially human tissues---raises questions that the genomics community has traditionally addressed within institutional frameworks. As sequencing moves outside these frameworks, practitioners must be aware of and comply with applicable regulations.
+
+\subsection{The Nagoya Protocol and Access and Benefit Sharing}
+\label{subsec:accessible:nagoya}
+
+The \textbf{Nagoya Protocol} on Access to Genetic Resources and the Fair and Equitable Sharing of Benefits Arising from their Utilization is an international agreement (effective October 2014) supplementing the Convention on Biological Diversity. It establishes a legal framework for:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Prior informed consent (PIC):} Researchers must obtain consent from the country of origin before accessing genetic resources.
+  \item \textbf{Mutually agreed terms (MAT):} Benefits arising from the use of genetic resources must be shared with the providing country under terms agreed upon before access.
+  \item \textbf{Digital sequence information (DSI):} The status of DNA sequence data (as opposed to physical genetic material) under the Nagoya Protocol remains contested. A landmark decision at COP-15 (2022) established a multilateral mechanism for benefit sharing from DSI, with implementation details still being negotiated.
+\end{itemize}
+
+\begin{warningbox}[title={Nagoya Protocol Compliance}]
+The Nagoya Protocol applies to anyone accessing genetic resources from another country, regardless of whether you are an academic researcher, a citizen scientist, or a hobbyist. Collecting soil, water, or biological samples abroad and sequencing them without the appropriate permits may constitute a violation of international law. Before collecting biological samples internationally, check:
+\begin{enumerate}[nosep]
+  \item Whether the country of collection has ratified the Nagoya Protocol.
+  \item What permits are required from the national competent authority.
+  \item Whether your institution has an Access and Benefit Sharing (ABS) policy.
+\end{enumerate}
+Ignorance of the Nagoya Protocol does not constitute a legal defence.
+\end{warningbox}
+
+\subsection{Dual-Use Research Concerns}
+\label{subsec:accessible:dualuse}
+
+Dual-use research of concern (DURC) refers to research that, while intended for beneficial purposes, could be misused to threaten public health, agriculture, or national security. In the context of accessible sequencing, potential dual-use concerns include:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Pathogen characterisation:} Sequencing pathogenic organisms to identify virulence factors or antimicrobial resistance mechanisms. While this research is scientifically valuable, the resulting sequence data could theoretically inform the engineering of more dangerous pathogens.
+  \item \textbf{Synthesis-enabling information:} Complete genome sequences of dangerous pathogens (e.g., \species{Variola major}, 1918 influenza virus) are publicly available. Sequencing technology \emph{per se} does not create a dual-use risk, but combined with DNA synthesis capabilities, it could theoretically enable recreation of dangerous organisms.
+  \item \textbf{Environmental surveillance:} Monitoring for the presence of regulated or dangerous organisms could reveal information about biosecurity vulnerabilities.
+\end{itemize}
+
+In practice, the dual-use risk of accessible sequencing is low relative to the benefits. Sequencing is fundamentally a \emph{reading} technology, not a \emph{writing} technology. The ability to sequence a pathogen genome does not confer the ability to synthesise or engineer that pathogen. Nevertheless, community laboratories and citizen scientists should be aware of dual-use frameworks (e.g., the US Government Policy for Institutional DURC Oversight, the EU Code of Conduct for Responsible Nanosciences and Nanotechnologies Research) and exercise appropriate judgement.
+
+\subsection{Ethics Approval for Human Samples}
+\label{subsec:accessible:ethics}
+
+Any project that involves sequencing human-derived biological material---including cheek swabs, saliva, blood, tissue biopsies, or cell lines---requires ethics approval from an Institutional Review Board (IRB) or Research Ethics Committee (REC). This requirement applies regardless of the institutional setting:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Academic institutions:} Submit a protocol to the institutional IRB/REC. Include details on informed consent, data storage, de-identification, and participant privacy protections.
+  \item \textbf{Community laboratories:} If the community lab is not affiliated with an institution that has an IRB, ethical oversight must be arranged through a commercial IRB (e.g., WCG IRB, Advarra) or by partnering with a local university.
+  \item \textbf{Self-experimentation:} Sequencing your own genome does not typically require IRB approval (you are both the researcher and the subject). However, you should carefully consider the implications of incidental findings (e.g., discovering a pathogenic variant in \gene{BRCA1} or \gene{APOE}) before proceeding.
+  \item \textbf{Educational settings:} Students sequencing their own DNA (e.g., cheek swabs) requires careful ethical consideration. Many institutions prohibit this practice or require IRB approval, informed consent from students, and the option to use an alternative sample (e.g., bacterial culture) without academic penalty.
+\end{itemize}
+
+\begin{keyconcept}[title={Informed Consent for Genomic Studies}]
+Informed consent for genomic sequencing must address several unique considerations:
+\begin{itemize}[nosep]
+  \item \textbf{Scope of data:} Genomic data is inherently identifiable. Even ``anonymised'' genomic data can potentially be re-identified through linkage to public databases.
+  \item \textbf{Incidental findings:} Whole-genome or whole-exome sequencing may reveal clinically significant variants unrelated to the study purpose. The consent process must specify whether and how incidental findings will be communicated.
+  \item \textbf{Data sharing:} Participants must be informed about whether their data will be deposited in public repositories and the implications of this (see \cref{ch:datastandards}).
+  \item \textbf{Future use:} Broad consent models allow data to be used for future, unspecified research. Narrow consent limits use to the specific study.
+  \item \textbf{Withdrawal:} Participants must be able to withdraw consent, though complete data deletion from distributed databases may be technically challenging.
+\end{itemize}
+\end{keyconcept}
+
+\subsection{Data Sharing Obligations}
+\label{subsec:accessible:datasharing}
+
+Many funding agencies and journals mandate that sequence data be deposited in public repositories (e.g., NCBI SRA, ENA) as a condition of publication (see \cref{ch:datastandards}). Even in the absence of a publication mandate, open data sharing is a core principle of genomics:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Environmental and microbial data:} There are generally no restrictions on sharing environmental metagenomic data, though Nagoya Protocol obligations may apply.
+  \item \textbf{Human data:} Controlled-access repositories (e.g., dbGaP, EGA) must be used for human genomic data to protect participant privacy. Never deposit identifiable human sequence data in open-access repositories.
+  \item \textbf{Pathogen data:} Pathogen genome sequences from outbreak surveillance are typically expected to be shared rapidly via GISAID, GenBank, or the relevant public health authority.
+\end{itemize}
+
+\subsection{Biosafety Levels and Regulated Organisms}
+\label{subsec:accessible:biosafety}
+
+Work in community laboratories and non-institutional settings is typically restricted to Biosafety Level 1 (BSL-1). This means working only with organisms that are ``not known to consistently cause disease in healthy adult humans.'' Key points:
+
+\begin{description}[style=nextline, font=\bfseries, itemsep=4pt]
+  \item[BSL-1 organisms (permitted)]
+  Non-pathogenic \species{Escherichia coli} strains (e.g., K-12, DH5$\alpha$), \species{Saccharomyces cerevisiae}, environmental samples from non-clinical sources, food products, plant material.
+
+  \item[BSL-2 organisms (NOT permitted in community labs)]
+  Organisms that can cause disease but for which treatments exist: \species{Staphylococcus aureus}, \species{Salmonella} spp., \species{Candida albicans}, human cell lines (due to potential blood-borne pathogen contamination), clinical specimens.
+
+  \item[BSL-3 and BSL-4 organisms (specialised facilities only)]
+  \species{Mycobacterium tuberculosis}, SARS-CoV-2, Ebola virus, \species{Francisella tularensis}. These require specialised containment facilities and are far outside the scope of accessible sequencing.
+\end{description}
+
+\begin{warningbox}[title={Environmental Samples May Contain Pathogens}]
+Environmental samples (soil, water, sewage) may contain BSL-2 organisms even though the sample itself was collected from a non-clinical source. For example, urban waterways may harbour \species{Salmonella}, \species{Legionella}, and antibiotic-resistant \species{Enterobacteriaceae}. While the risk to healthy adults from handling these samples with standard BSL-1 precautions (gloves, hand washing, no mouth pipetting) is low, practitioners should:
+\begin{enumerate}[nosep]
+  \item Never attempt to culture organisms from environmental samples in a BSL-1 facility.
+  \item Treat all environmental samples as potentially containing pathogens.
+  \item Decontaminate all waste (autoclave or 10\% bleach for 30 minutes) before disposal.
+  \item Wash hands thoroughly after handling samples.
+\end{enumerate}
+\end{warningbox}
+
+\subsection{Regulatory Frameworks by Region}
+\label{subsec:accessible:regulation}
+
+Regulations governing the use of sequencing technology outside institutional settings vary by jurisdiction:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{United States:} The NIH Guidelines for Research Involving Recombinant or Synthetic Nucleic Acid Molecules apply to all NIH-funded research. The CDC Select Agent Program regulates possession and use of certain dangerous pathogens. Community laboratories that do not receive federal funding are not bound by NIH Guidelines but may be subject to state and local regulations.
+  \item \textbf{European Union:} The EU Directive 2009/41/EC on contained use of genetically modified micro-organisms applies to any facility working with GMOs. Sequencing of naturally occurring organisms does not fall under this directive. GDPR applies to any project generating identifiable human data.
+  \item \textbf{United Kingdom:} The Health and Safety Executive (HSE) regulates work with biological agents under COSHH regulations. The Human Tissue Act 2004 governs the use of human tissue for research.
+  \item \textbf{Australia:} The Office of the Gene Technology Regulator (OGTR) oversees work with GMOs. Sequencing of non-GMO material is generally unregulated at the federal level.
+\end{itemize}
+
+%% ============================================================
+\section{Building a Sustainable Accessible Sequencing Programme}
+\label{sec:accessible:sustainable}
+%% ============================================================
+
+Accessible sequencing is most impactful when it is sustained over time rather than limited to one-off demonstrations. This section addresses practical strategies for building a lasting programme.
+
+\subsection{Funding Models}
+\label{subsec:accessible:funding}
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Grant funding:} Many funding agencies now support public engagement, citizen science, and science education. NSF CAREER awards, NIH SEPA (Science Education Partnership Awards), Wellcome Trust Public Engagement Grants, and ERC Consolidator Grants with outreach components can fund sequencing equipment and consumables.
+  \item \textbf{Crowdfunding:} Platforms such as Experiment.com and Kickstarter have successfully funded community sequencing projects. A well-designed crowdfunding campaign with clear deliverables (e.g., ``We will sequence 100 local water samples and publish a biodiversity map'') can raise \$5,000--\$20,000.
+  \item \textbf{Membership fees:} Community laboratories sustain operations through monthly membership fees (\$50--\$150/month) that cover rent, utilities, and shared consumables. Sequencing supplies can be funded through supplemental project-specific fees.
+  \item \textbf{Industry partnerships:} \acrshort{ONT} and other sequencing companies have programmes that provide discounted or donated equipment to community labs and educational institutions.
+\end{itemize}
+
+\subsection{Training and Skill Development}
+\label{subsec:accessible:training}
+
+The bottleneck for accessible sequencing is often not hardware or reagent costs but human expertise. Effective training programmes should cover:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Wet-lab skills:} Micropipetting technique, DNA extraction, library preparation, flow cell loading. Hands-on practice with supervision is essential---no amount of video tutorials substitutes for guided bench work.
+  \item \textbf{Computational skills:} Command-line basics (navigating directories, running programs, reading output files), basecalling, alignment, assembly. Free resources include the \acrshort{ONT} nanopore sequencing tutorials, Software Carpentry workshops, and online courses on platforms such as Coursera and edX.
+  \item \textbf{Experimental design:} Controls, replicates, appropriate sequencing depth, and statistical considerations (see \cref{ch:expdesign} for a detailed treatment).
+  \item \textbf{Data management:} File naming conventions, metadata recording, backup strategies, and data deposition in public repositories.
+\end{enumerate}
+
+\begin{tipbox}[title={Start Simple, Iterate}]
+The most successful accessible sequencing programmes begin with a single, well-defined project (e.g., ``sequence the bacteria in our local creek'') and expand gradually as participants gain skills and confidence. Resist the temptation to attempt a complex multi-omic project on day one. Master the basics of DNA extraction, library preparation, and basecalling before adding complexity.
+\end{tipbox}
+
+\subsection{Data Quality and Reproducibility}
+\label{subsec:accessible:quality}
+
+One concern about accessible sequencing is data quality. Are sequences generated in community laboratories, field settings, or teaching labs of sufficient quality for research? The answer depends on adherence to good laboratory practices:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Use positive controls:} Include a known DNA sample (e.g., \acrshort{ONT} Lambda control DNA, \species{E.\ coli} K-12 genomic DNA) in every sequencing run. If the positive control fails, the entire run should be treated as suspect.
+  \item \textbf{Use negative controls:} Include a no-template control in every \acrshort{PCR} amplification and a blank extraction control for every batch of extractions. Negative controls that show amplification indicate contamination.
+  \item \textbf{Record metadata:} Document every detail of the protocol---reagent lot numbers, incubation times, flow cell IDs, software versions, basecalling models. This is essential for troubleshooting and reproducibility.
+  \item \textbf{Compare to references:} Whenever possible, validate results against known reference sequences or orthogonal methods (e.g., Sanger sequencing of a subset of samples).
+\end{itemize}
+
+%% ============================================================
+\section{Looking Forward: The Future of Accessible Sequencing}
+\label{sec:accessible:future}
+%% ============================================================
+
+The trend toward accessible sequencing is accelerating. Several developments on the horizon will further lower barriers:
+
+\begin{itemize}[itemsep=2pt]
+  \item \textbf{Sample-to-answer devices:} Integrated devices that combine sample lysis, DNA extraction, library preparation, and sequencing in a single consumable---eliminating the need for laboratory equipment and pipetting skills entirely. \acrshort{ONT}'s prototype ``VolTRAX'' microfluidic device represents an early step in this direction.
+  \item \textbf{Improved basecalling on edge devices:} Advances in neural network quantisation and hardware acceleration will enable SUP-quality basecalling on low-power devices (phones, tablets, embedded systems), removing the GPU bottleneck.
+  \item \textbf{Falling consumable costs:} Flow cell costs continue to decline. If Flongle-class flow cells reach \$50 per unit, the per-sample cost for bacterial genomes will approach \$100, making sequencing as routine as PCR.
+  \item \textbf{Protein sequencing:} \acrshort{ONT} and other companies are developing nanopore-based protein sequencing, which would extend the accessible-sequencing paradigm beyond nucleic acids.
+  \item \textbf{Regulatory clarity:} As community sequencing becomes more common, regulatory frameworks will mature to address the specific circumstances of non-institutional research, providing clearer guidance and reducing uncertainty for practitioners.
+\end{itemize}
+
+The democratisation of sequencing is not merely a technological achievement---it is a societal one. When a high school student can identify the species in a local pond, when a community group can monitor antimicrobial resistance in their watershed, and when a field biologist can sequence a viral genome during an outbreak without waiting weeks for results from a distant laboratory, the power of genomics is multiplied far beyond what any single institution could achieve. The challenge now is to ensure that this expansion is accompanied by appropriate training, ethical awareness, and commitment to data quality.
+
+\begin{keyconcept}[title={The Accessible Sequencing Ecosystem}]
+Accessible sequencing succeeds when four elements come together:
+\begin{enumerate}[nosep]
+  \item \textbf{Affordable hardware:} Portable, low-cost sequencing devices (MinION, Flongle).
+  \item \textbf{Simple protocols:} Rapid library preparation kits that require minimal equipment and expertise (see \cref{ch:libprep}).
+  \item \textbf{User-friendly analysis:} Cloud-based or graphical bioinformatics tools (\software{EPI2ME}, \software{Galaxy}) that do not require command-line proficiency.
+  \item \textbf{Community support:} Training resources, community laboratories, online forums, and mentorship networks that help newcomers overcome the learning curve.
+\end{enumerate}
+When all four elements are in place, sequencing transitions from a specialised technique to a broadly accessible scientific tool---much as microscopy did in the 19th century and PCR did in the late 20th century.
+\end{keyconcept}
+
+%% ============================================================
+\section{Summary}
+\label{sec:accessible:summary}
+%% ============================================================
+
+This chapter has surveyed the expanding landscape of accessible sequencing, from the practical mechanics of budget planning and platform selection to the broader implications of democratised genomics. The key takeaways are:
+
+\begin{enumerate}[itemsep=2pt]
+  \item \textbf{Entry costs are genuinely low:} A complete nanopore sequencing setup can be assembled for \$1,000--\$5,000, enabling bacterial genomes, amplicon surveys, and small targeted projects.
+  \item \textbf{Budget realistically:} Consumables, compute, and personnel time dominate costs. The sequencing device itself is often the smallest line item.
+  \item \textbf{Field sequencing is proven:} Portable sequencing has been deployed in outbreak response, biodiversity monitoring, and remote research settings with real scientific impact.
+  \item \textbf{Education benefits enormously:} Real sequencing in teaching labs provides an unmatched pedagogical experience at a per-student cost comparable to traditional molecular biology exercises.
+  \item \textbf{Citizen science is growing:} eDNA barcoding, food fraud detection, and \acrshort{AMR} monitoring are all feasible as community-driven projects.
+  \item \textbf{Legal and ethical frameworks apply:} The Nagoya Protocol, biosafety regulations, ethics approval for human samples, and data sharing obligations apply regardless of the institutional setting.
+  \item \textbf{Quality requires discipline:} Positive controls, negative controls, metadata recording, and reproducible protocols are non-negotiable, whether sequencing is performed in a genome centre or a community laboratory.
+\end{enumerate}
+
+The tools are available. The protocols are established. The cost barrier has fallen. The remaining challenge is to ensure that the growing community of accessible sequencing practitioners operates with scientific rigour, ethical responsibility, and a commitment to open science.
