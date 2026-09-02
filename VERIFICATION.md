@@ -1,10 +1,10 @@
-# Codex verification ledger: SeqTec Version 2
+# Verification ledger: SeqTec Version 2
 
 Last reconciled: 2026-09-01  
 Baseline: GitHub `main` at `9dc81e1`  
 Edition: `2.0.0-dev`
 
-This ledger records a source-grounded Codex review campaign. It does not claim
+This ledger records a source-grounded review campaign. It does not claim
 independent domain-expert peer review. A chapter becomes `VERIFIED` only after its
 claims, calculations, examples, cross-references, website counterparts, strict
 build, and rendered pages have passed the gates below. A global disclaimer or a

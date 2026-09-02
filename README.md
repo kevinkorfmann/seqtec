@@ -21,7 +21,7 @@ public fixture where feasible. The book and website must then build without
 warnings, and the rendered PDF must be inspected.
 
 Progress, evidence, corrections, and unresolved limitations are recorded in
-[`CODEX_VERIFICATION.md`](CODEX_VERIFICATION.md). Until that ledger marks a
+[`VERIFICATION.md`](VERIFICATION.md). Until that ledger marks a
 chapter `VERIFIED`, treat it as a draft under review.
 
 ## Build and test
