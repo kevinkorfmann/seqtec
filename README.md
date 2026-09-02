@@ -24,6 +24,43 @@ Progress, evidence, corrections, and unresolved limitations are recorded in
 [`VERIFICATION.md`](VERIFICATION.md). Until that ledger marks a
 chapter `VERIFIED`, treat it as a draft under review.
 
+## Version 2 progress
+
+**Overall completion: approximately 15% (as of 2026-09-01).** This is a
+conservative editorial estimate, not the percentage of sentences sampled. No
+chapter is counted as finished until it clears every gate in
+[`VERIFICATION.md`](VERIFICATION.md); currently **0 of 26 chapters are fully
+verified**.
+
+Completed so far:
+
+- Established the chapter ledger, evidence rules, source-integrity tests, and
+  continuous book/website builds.
+- Added an initial 33-item DOI-verified primary bibliography and a verification
+  anchor to every chapter.
+- Corrected confirmed cross-cutting errors in platform throughput, genome
+  coverage arithmetic, pricing language, policy scope, terminology, and
+  cross-references.
+- Removed committed generated files and repaired the largest PDF defects:
+  oversized floats, unbreakable listings and protocol boxes, broken references,
+  glossary generation, and several unreadable tables.
+- Confirmed that source integrity, DOI retrieval, tests, strict website build,
+  and the 647-page book build pass locally.
+
+Still required for Version 2:
+
+- Complete the claim-by-claim primary-source audit for all 26 chapters and
+  record evidence for every material correction.
+- Pin and execute the published Snakemake, Nextflow, shell, Python, and R
+  examples against small public fixtures where feasible.
+- Reconcile the companion website with the book and run external-link checking.
+- Finish current vendor, kit, policy, software-version, protocol, biosafety, and
+  jurisdiction-specific checks.
+- Correct remaining dense or overfull horizontal layouts, then visually inspect
+  the complete book and website.
+- Obtain specialist review for wet-lab, clinical, legal/privacy, and biosafety
+  material before calling those sections authoritative.
+
 ## Build and test
 
 ```bash
