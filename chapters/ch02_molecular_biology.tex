@@ -1,6 +1,10 @@
 \chapter{Molecular Biology Essentials}
 \label{ch:molbio}
 
+\begin{sourcebox}
+The structural foundation begins with the original double-helix report \cite{watson1953}. Later mechanistic and numerical statements require their own primary sources; this citation does not by itself validate the entire chapter.
+\end{sourcebox}
+
 \begin{keyconcept}
 Before we can understand how sequencing technologies work, we need to understand what they are reading. This chapter builds the molecular biology foundation---from the structure of cells and DNA to gene expression, epigenetics, and genetic variation---that underpins every sequencing experiment described in this book. If you already have a strong background in molecular biology, you may wish to skim this chapter and use it as a reference.
 \end{keyconcept}
@@ -104,7 +108,7 @@ Thymine  & N-3 (deprotonation) & 9.9 & Enol form \\
 \end{tabular}
 \end{table}
 
-\textbf{Tautomeric forms} of nucleobases---rare structural isomers in which a proton shifts between nitrogen and oxygen atoms---are of particular significance. When a base transiently adopts its rare tautomer, it can form non-canonical base pairs (e.g., enol-T pairs with G instead of A, imino-C pairs with A instead of G). This is one of the fundamental mechanisms of spontaneous mutation during DNA replication, with tautomeric mispairing occurring at rates of approximately $10^{-4}$ to $10^{-5}$ per base pair.
+\textbf{Tautomeric forms} of nucleobases---rare structural isomers in which a proton shifts between nitrogen and oxygen atoms---are of particular significance. When a base transiently adopts its rare tautomer, it can form non-canonical base pairs (e.g., enol-T pairs with G instead of A, imino-C pairs with A instead of G). This is one plausible molecular mechanism of spontaneous mutation during DNA replication. A single universal ``tautomeric mispairing rate'' should not be quoted: the abundance and lifetime of rare states, polymerase selectivity, proofreading, and mismatch repair all affect the observed error rate.
 
 \begin{warningbox}[title={Tautomers and Sequencing Errors}]
 The same tautomeric equilibria that cause natural replication errors can also affect sequencing accuracy. In sequencing-by-synthesis, a rare tautomer of the template base may cause the polymerase to incorporate the wrong fluorescent nucleotide. This contributes to the small but non-zero substitution error rate observed even in high-fidelity platforms such as Illumina.
@@ -342,7 +346,7 @@ A \textbf{gene} is a segment of DNA that contains the instructions for producing
 \subsection{Gene Structure: Exons and Introns}
 \label{subsec:molbio:exons-introns}
 
-In eukaryotes, most protein-coding genes have a \textbf{split structure}: the coding sequence is divided into segments called \textbf{exons}, separated by non-coding sequences called \textbf{introns}. When the gene is transcribed, the entire region (exons + introns) is copied into a precursor RNA molecule (pre-mRNA). The introns are then removed through a process called \textbf{splicing}, and the exons are joined together to form the mature mRNA (see \cref{subsec:molbio:transcription}).
+In eukaryotes, most protein-coding genes have a \textbf{split structure}: the coding sequence is divided into segments called \textbf{exons}, separated by non-coding sequences called \textbf{introns}. When the gene is transcribed, the entire region (exons + introns) is copied into a precursor RNA molecule (pre-mRNA). The introns are then removed through a process called \textbf{splicing}, and the exons are joined together to form the mature mRNA (see \cref{sec:molbio:transcription}).
 
 This arrangement allows for \textbf{alternative splicing}: different combinations of exons can be included in the final mRNA, producing different protein variants (called \textbf{isoforms}) from a single gene. Alternative splicing dramatically increases the diversity of proteins that can be produced from a finite number of genes. It is estimated that over 95\% of human multi-exon genes undergo alternative splicing.
 
@@ -400,6 +404,7 @@ In 1958, Francis Crick articulated what he called the \textbf{Central Dogma of m
 % TikZ: Central Dogma diagram
 \begin{figure}[htbp]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
   node distance=3.5cm,
   mol/.style={
@@ -431,7 +436,8 @@ In 1958, Francis Crick articulated what he called the \textbf{Central Dogma of m
   \draw[arrow, dashed, gray] (rna) to[out=30, in=-30, looseness=4]
     node[process, right, xshift=3mm] {\color{gray}RNA Replication} (rna);
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \caption[The Central Dogma of molecular biology.]{The Central Dogma: genetic information flows from DNA to RNA (transcription) to protein (translation). DNA can also be replicated. Dashed arrows indicate processes that occur in special contexts: reverse transcription (used by retroviruses and retrotransposons) and RNA-dependent RNA replication (used by some RNA viruses).}
 \label{fig:molbio:central-dogma}
 \end{figure}

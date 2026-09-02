@@ -4,6 +4,10 @@
 \chapter{RNA Sequencing: Measuring Gene Expression}
 \label{ch:rnaseq}
 
+\begin{sourcebox}
+The differential-expression and transcript-quantification sections are anchored by the DESeq2 and Salmon method papers \cite{love2014,patro2017}. Method assumptions, design matrices, transcript annotations, and software versions must be reported for a reproducible analysis.
+\end{sourcebox}
+
 \begin{keyconcept}
 RNA sequencing (\acrshort{RNA-seq}) measures the transcriptome---the complete set of RNA
 transcripts in a cell, tissue, or organism at a given moment. Because gene
@@ -567,6 +571,7 @@ nascent RNA method.
 % TikZ: RNA-seq analysis workflow
 \begin{figure}[htbp]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
   node distance=0.8cm and 1.5cm,
   every node/.style={font=\small},
@@ -619,7 +624,8 @@ nascent RNA method.
 \node[tool, right=0.05cm of fusion] {STAR-Fusion, Arriba};
 \node[tool, below=0.05cm of iso] {rMATS, SUPPA2, Leafcutter};
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \caption{Overview of the bulk RNA-seq bioinformatics workflow. Two main paths
 exist after trimming: alignment-based quantification (left, using STAR/HISAT2
 followed by featureCounts) or pseudo-alignment-based quantification (right,
@@ -1024,7 +1030,7 @@ many cancers (e.g., \gene{BCR-ABL1} in CML, \gene{EML4-ALK} in lung cancer).
 
 \begin{lstlisting}[language=Python, caption={Complete Snakemake workflow for
 bulk RNA-seq analysis with STAR alignment and featureCounts quantification.},
-label={lst:rnaseq:snakemake}, float=htbp]
+label={lst:rnaseq:snakemake}]
 # Snakefile for Bulk RNA-seq Analysis
 # ====================================
 # Pipeline: FastQC -> fastp -> STAR -> featureCounts -> DESeq2
@@ -1226,7 +1232,7 @@ rule deseq2:
 
 \begin{lstlisting}[language=Java, caption={Complete Nextflow DSL2 workflow for
 bulk RNA-seq analysis with STAR alignment and featureCounts quantification.},
-label={lst:rnaseq:nextflow}, float=htbp]
+label={lst:rnaseq:nextflow}]
 #!/usr/bin/env nextflow
 // RNA-seq Analysis Pipeline (Nextflow DSL2)
 // ==========================================

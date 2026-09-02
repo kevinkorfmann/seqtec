@@ -1,6 +1,10 @@
 \chapter{Metagenomics and Microbiome Sequencing}
 \label{ch:metagenomics}
 
+\begin{sourcebox}
+Amplicon sequence-variant inference and genome-resolved quality terminology are anchored by primary method and standards papers \cite{callahan2016}. Database completeness, taxonomic labels, and classifier performance change over time and depend strongly on the sampled biome.
+\end{sourcebox}
+
 The world teems with microbial life. A single gram of soil contains billions of bacteria from thousands of species; the human gut harbours a community of trillions of microorganisms whose collective genome dwarfs our own. Traditionally, studying these communities required culturing individual organisms in the laboratory---a process that captures only an estimated 1\% of environmental microbial diversity. Metagenomics bypasses this ``great plate count anomaly'' by sequencing DNA directly from environmental or clinical samples, revealing the full genetic repertoire of entire microbial communities. This chapter covers both amplicon-based and shotgun metagenomic approaches, along with the computational tools needed to extract biological insight from complex community data.
 
 %% ============================================================
@@ -420,7 +424,8 @@ The \textbf{Minimum Information about a Metagenome-Assembled Genome (MIMAG)} sta
 \centering
 \caption{MIMAG quality tiers for metagenome-assembled genomes.}
 \label{tab:metagenomics:mimag_tiers}
-\begin{tabular}{@{}lccccc@{}}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}p{1.7cm} p{1.8cm} p{1.8cm} p{2.6cm} p{1.7cm} X@{}}
 \toprule
 \textbf{Quality Tier} & \textbf{Completeness} & \textbf{Contamination} & \textbf{rRNA (23S, 16S, 5S)} & \textbf{tRNAs ($\geq$18)} & \textbf{Use Case} \\
 \midrule
@@ -428,7 +433,7 @@ High quality & $>$90\% & $<$5\% & All present & Yes & Phylogenomics, reference \
 Medium quality & $\geq$50\% & $<$10\% & Partial or absent & Not required & Metabolic profiling \\
 Low quality & $<$50\% & $<$10\% & Not assessed & Not required & Gene-level analyses only \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \subsubsection{CheckM Workflow for MAG Quality Assessment}

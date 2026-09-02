@@ -4,6 +4,10 @@
 \chapter{Single-Cell RNA Sequencing}
 \label{ch:scrnaseq}
 
+\begin{sourcebox}
+The analysis-framework discussion is anchored by the Scanpy and multimodal Seurat method papers \cite{wolf2018,hao2021}. Cell recovery, multiplet rate, barcode lists, and reads-per-cell recommendations are chemistry-specific and must be read from the matching 10x protocol revision.
+\end{sourcebox}
+
 \begin{keyconcept}
 Single-cell RNA sequencing (\acrshort{scRNA-seq}) measures the transcriptome
 of individual cells, revealing cellular heterogeneity that is invisible to bulk
@@ -1159,7 +1163,7 @@ Best use case & Standard profiling & Deep per-cell profiling & Budget-friendly s
 
 \begin{lstlisting}[language=Python, caption={Snakemake workflow for 10x
 Chromium scRNA-seq analysis using STARsolo and Scanpy.},
-label={lst:scrnaseq:snakemake}, float=htbp]
+label={lst:scrnaseq:snakemake}]
 # Snakefile for scRNA-seq Analysis (10x Chromium)
 # ================================================
 # Pipeline: STARsolo -> Scanpy (QC, norm, cluster, annotate)
@@ -1275,7 +1279,7 @@ rule multiqc:
 
 \begin{lstlisting}[language=Java, caption={Nextflow DSL2 workflow for 10x
 Chromium scRNA-seq analysis using STARsolo and Scanpy.},
-label={lst:scrnaseq:nextflow}, float=htbp]
+label={lst:scrnaseq:nextflow}]
 #!/usr/bin/env nextflow
 // scRNA-seq Analysis Pipeline (Nextflow DSL2)
 // =============================================

@@ -21,7 +21,7 @@ This book assumes essentially no prior knowledge of molecular biology or bioinfo
 
 \section*{How to Read This Book}
 
-The book is organised into seven parts:
+The book is organised into eight parts:
 
 \begin{description}[style=nextline]
   \item[Part~I: Foundations] covers the essential molecular biology, the history of sequencing, and the core principles shared by all modern sequencing technologies.
@@ -31,13 +31,20 @@ The book is organised into seven parts:
   \item[Part~V: Epigenomics] dives into DNA methylation, chromatin accessibility, histone modifications, and three-dimensional genome architecture.
   \item[Part~VI: Multiomics and Emerging Frontiers] covers the latest technologies that combine multiple measurement modalities and the cutting-edge methods pushing the field forward.
   \item[Part~VII: Bioinformatics and Data Analysis] walks through computational workflows, experimental design, data standards, and reproducibility---with concrete examples using both Nextflow and Snakemake workflow managers.
+  \item[Part~VIII: Democratisation of Sequencing] covers affordable and field-deployable sequencing, practical laboratory protocols, and complete do-it-yourself analysis walkthroughs.
 \end{description}
 
 Each chapter can largely be read independently, though readers entirely new to the field will benefit from reading Parts~I and~II first. Throughout the text, coloured boxes highlight key concepts, practical tips, protocol summaries, and important caveats.
 
+\section*{Verification and Scope}
+
+Version~2 is being reviewed chapter by chapter against primary papers, official standards, and current manufacturer or software documentation. The repository's \texttt{CODEX\_VERIFICATION.md} ledger records what was checked, the evidence used, and any remaining limitations. A successful build or a plausible example is not treated as proof of scientific correctness. Numerical recommendations are starting points rather than universal acceptance criteria: study design, sample type, assay version, instrument chemistry, and analysis objective can all change the appropriate threshold.
+
+This book is an educational reference, not a substitute for a validated clinical workflow, a current kit protocol, institutional biosafety review, or legal advice. Before acting on a protocol or command, readers should confirm the exact reagent-kit revision and software version they are using.
+
 \section*{A Note on Pace of Change}
 
-Sequencing technology evolves rapidly. We have endeavoured to cover the state of the art as of early 2026, but specific instrument models, software versions, and even company names may change. The fundamental principles---the chemistry, the biology, and the analytical strategies---evolve much more slowly and will remain relevant for years to come.
+Sequencing technology evolves rapidly. Version~2 separates durable principles from time-sensitive specifications and records a verification date for the latter. Instrument models, software defaults, prices, cloud services, regulations, and kit instructions can change after publication. The fundamental chemistry, biology, and analytical strategies evolve more slowly, but readers should still consult the cited primary source and current official documentation.
 
 \vspace{1cm}
 \noindent\textit{Happy sequencing.}

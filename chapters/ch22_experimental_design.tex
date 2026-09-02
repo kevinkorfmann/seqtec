@@ -1,6 +1,10 @@
 \chapter{Experimental Design and Best Practices}
 \label{ch:expdesign}
 
+\begin{sourcebox}
+Statistical recommendations are assay- and objective-specific. The RNA-seq discussion uses the negative-binomial framework implemented by DESeq2 \cite{love2014}, while platform-capacity examples are independently recalculated from bases rather than inferred from a flow-cell product name.
+\end{sourcebox}
+
 \begin{keyconcept}
 Experimental design is the single most important factor in determining whether a sequencing experiment will produce reliable, interpretable results. No amount of computational sophistication can compensate for a fundamentally flawed experimental design. Careful planning of replicates, sequencing depth, controls, and batch structure before the first sample is collected saves enormous time, money, and frustration.
 \end{keyconcept}
@@ -82,16 +86,25 @@ If your budget allows, add more biological replicates rather than increasing seq
 
 Sequencing depth (the number of reads or coverage) must be matched to the application. Insufficient depth leads to incomplete data; excessive depth wastes resources with diminishing returns.
 
-\begin{table}[htbp]
-\centering
-\caption{Recommended sequencing depth by application.}
-\label{tab:seq-depth}
 \small
 \renewcommand{\arraystretch}{1.3}
-\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\begin{longtable}{@{}p{3.4cm} p{4.4cm} p{6.0cm}@{}}
+\caption{Illustrative sequencing-depth starting points by application; optimal depth is study- and platform-dependent.}
+\label{tab:seq-depth}\\
 \toprule
 \textbf{Application} & \textbf{Recommended Depth} & \textbf{Notes} \\
 \midrule
+\endfirsthead
+\caption[]{Illustrative sequencing-depth starting points by application (continued).}\\
+\toprule
+\textbf{Application} & \textbf{Recommended Depth} & \textbf{Notes} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{3}{r}{\textit{Continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
 WGS (germline, human) & 30$\times$ coverage & Standard for clinical and research germline calling. Higher (40--60$\times$) for rare variant detection or structural variant analysis. \\
 \addlinespace
 WGS (somatic, tumor) & 60--100$\times$ tumor, 30--40$\times$ normal & Higher tumor depth needed to detect low-frequency somatic mutations. Ultra-deep ($>$200$\times$) for cfDNA/liquid biopsy. \\
@@ -121,9 +134,7 @@ RRBS & 10--30M reads & Reduced representation targets CpG-rich regions. \\
 16S amplicon & 10,000--100,000 reads/sample & 10,000 minimum for community surveys; 50,000+ for rare taxon detection. \\
 \addlinespace
 Shotgun metagenomics & 5--20M reads/sample & More for strain-level resolution or metagenomic assembly. \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\end{longtable}
 
 \begin{warningbox}[title={Depth vs Coverage vs Reads}]
 These terms are often used interchangeably but have distinct meanings:
@@ -582,7 +593,7 @@ The number of samples that can be multiplexed depends on the required depth per 
 \text{Number of samples} = \frac{\text{Flow cell output (reads)}}{\text{Required reads per sample}}
 \end{equation}
 
-For example, a NovaSeq X 10B flow cell producing 10 billion reads can accommodate approximately 330 WGS samples at 30$\times$ coverage ($\sim$30M read pairs each with PE150 for a 3~Gb genome), or 333 RNA-seq samples at 30M reads each.
+For example, an Illumina NovaSeq X 10B flow cell produces approximately 10--13 billion read pairs with a 2$\times$150\basepair{} run, corresponding to roughly 3--4~Tb of sequence. A 3~Gb human genome at 30$\times$ mean coverage requires about 90~Gb, or approximately 300 million 2$\times$150 read pairs before allowing for duplicates, unusable reads, and coverage non-uniformity. The theoretical capacity is therefore about 33--43 human genomes, and practical pooling should be lower. By contrast, 10 billion read pairs could support about 333 RNA-seq libraries at 30 million read pairs each. Always calculate pooling from bases required and the current vendor specification; the flow-cell name is not itself a guaranteed read count.
 
 \subsection{Index Compatibility and Distance}
 
@@ -656,6 +667,7 @@ Contact your institutional sequencing core facility or commercial provider early
 
 \begin{figure}[htbp]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
   decision/.style={diamond, draw=MidnightBlue!70, fill=MidnightBlue!8,
     inner sep=2pt, aspect=2.5, align=center, font=\small\sffamily},
@@ -695,7 +707,8 @@ Contact your institutional sequencing core facility or commercial provider early
 \draw[arr] (q2c) -- node[lbl, left] {Chromatin} (r5);
 \draw[arr] (q2c) -- node[lbl, right] {Methylation} (r6);
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \caption[Sequencing strategy decision tree.]{Simplified decision tree for selecting a sequencing strategy. Start with the biological layer of interest, then refine based on scope (whole-genome vs targeted) and resolution (bulk vs single-cell).}
 \label{fig:exp-decision-tree}
 \end{figure}

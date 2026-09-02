@@ -1,6 +1,10 @@
 \chapter{Principles of Modern Sequencing}
 \label{ch:seqprinciples}
 
+\begin{sourcebox}
+Core anchors include the Lander--Waterman coverage model, reversible-terminator sequencing, single-molecule real-time sequencing, and ultra-long nanopore sequencing \cite{landerwaterman1988,bentley2008,eid2009,jain2018}. Vendor throughput and accuracy figures are dated specifications, not timeless properties of a technology family.
+\end{sourcebox}
+
 \begin{keyconcept}
 All modern sequencing technologies---despite their remarkably different chemistries---share a common logical framework: fragment nucleic acids, attach synthetic adapters, and read the sequence of individual fragments in a massively parallel fashion. This chapter explains the core principles that underpin every sequencing platform, from the chemistry of base reading to the metrics used to evaluate sequencing quality. Understanding these principles will prepare you for the platform-specific details in subsequent chapters.
 \end{keyconcept}
@@ -394,7 +398,7 @@ Longer reads are advantageous for resolving repetitive regions, detecting struct
 \subsection{Throughput}
 \label{subsec:seqprinciples:throughput}
 
-\textbf{Throughput} is the total amount of sequence data generated per run, usually expressed in gigabases (\gigabase{}). High-throughput instruments (e.g., Illumina NovaSeq X: up to $\sim$16 terabases per year) generate far more data per run than portable devices (e.g., ONT MinION: $\sim$50\gigabase{} per flow cell).
+\textbf{Throughput} is the total amount of sequence data generated per run, usually expressed in gigabases (\gigabase{}). A run must be defined carefully: Illumina reports output by flow-cell type and read configuration, PacBio may report yield per SMRT Cell and per multi-cell instrument run, and ONT flow cells can be stopped at a user-selected time. As verified on 1 September 2026, an Illumina NovaSeq X Plus dual-25B run is specified at up to approximately 16~Tb, whereas a MinION/GridION flow cell has a theoretical maximum near 50~Gb. These are vendor specifications rather than guaranteed yields; library type and run performance affect realized output.
 
 \subsection{Accuracy and Error Profiles}
 \label{subsec:seqprinciples:accuracy}
@@ -869,13 +873,13 @@ Per-base accuracy & $>$99.9\% (Q30+) & $>$99.9\% (HiFi Q30+); $\sim$87\% (CLR ra
 \addlinespace
 Dominant error type & Substitutions & Insertions (CLR); few errors (HiFi) & Indels (especially in homopolymers) \\
 \addlinespace
-Throughput per run & Up to $\sim$6\,Tb (NovaSeq X 25B) & $\sim$90\gigabase{} (Revio) & Up to $\sim$50\gigabase{} (PromethION flow cell) \\
+Throughput per run & Up to $\sim$8\,Tb per 25B flow cell; $\sim$16\,Tb dual-flow-cell run & Up to $\sim$120\gigabase{} per Revio SMRT Cell; $\sim$480\gigabase{} for four cells & Up to $\sim$50\gigabase{} per MinION flow cell or $\sim$200\gigabase{} per current PromethION flow cell \\
 \addlinespace
 Run time & 12--48 hours & 12--30 hours & Minutes to 72 hours (user-defined) \\
 \addlinespace
 Base modifications & Requires chemical conversion (e.g., bisulfite) & Direct detection (kinetics) & Direct detection (current signal) \\
 \addlinespace
-Instrument cost & \$250K--\$1M+ & $\sim$\$600K (Revio) & \$1K (MinION) to $\sim$\$300K (PromethION) \\
+Instrument cost & Quote- and configuration-dependent & Quote- and configuration-dependent & Device or access-plan dependent \\
 \addlinespace
 Key strengths & Throughput, accuracy, cost per base, ecosystem & HiFi accuracy + length, genome assembly, SV detection & Ultra-long reads, portability, real-time, direct RNA, modifications \\
 \addlinespace

@@ -1,6 +1,10 @@
 \chapter{DIY Analysis: From Raw Reads to Results}
 \label{ch:diyanalysis}
 
+\begin{sourcebox}
+Assembly, taxonomic classification, and long-read small-variant calling are anchored by the Flye, Kraken~2, and Clair3 papers \cite{kolmogorov2019,wood2019,zheng2022}. Version~2 additionally requires commands to run on identified public fixtures; paper-level method accuracy is not a guarantee for every sample.
+\end{sourcebox}
+
 \begin{keyconcept}
 This chapter is your hands-on laboratory notebook for long-read nanopore data analysis. We walk through every step---from configuring your computer and basecalling raw signal data to assembling bacterial genomes, identifying species from metagenomic samples, and calling variants in human genomes. Every command is given in full, every parameter is explained, and complete workflow implementations in both \textbf{Snakemake} and \textbf{Nextflow} are provided so that you can reproduce each analysis end-to-end. Whether you are a bench scientist running your first MinION experiment or a bioinformatician building production pipelines, this chapter gives you the tools to go from raw reads to publication-ready results on your own hardware.
 \end{keyconcept}

@@ -1,7 +1,11 @@
 \chapter{Short-Read Sequencing Platforms}
 \label{ch:shortread}
 
-Short-read sequencing---the generation of millions to billions of relatively short DNA sequence reads, typically 50--600 bases in length---remains the workhorse of modern genomics. Since the commercialisation of the first massively parallel sequencing instruments in the mid-2000s, short-read platforms have driven an extraordinary collapse in the cost of DNA sequencing, from roughly \$100 million per human genome (Sanger-era) to well under \$200 today. This chapter provides a comprehensive survey of the platforms available, beginning with the dominant Illumina ecosystem and extending to the growing number of competitors that have entered the market.
+\begin{sourcebox}
+Illumina chemistry is anchored by the original whole-genome reversible-terminator demonstration \cite{bentley2008}. Current instrument capacities, prices, and quality guarantees must be tied to a named flow cell, read configuration, document revision, and access date.
+\end{sourcebox}
+
+Short-read sequencing---the generation of millions to billions of relatively short DNA sequence reads, typically 50--600 bases in length---remains a workhorse of modern genomics. Since the commercialisation of the first massively parallel sequencing instruments in the mid-2000s, short-read platforms have sharply reduced sequencing reagent cost. A quoted consumables cost, however, is not the total cost of a genome: library preparation, quality control, instrument access, labour, compute, storage, re-runs, interpretation, and required coverage all matter. This chapter surveys the principal platform families without treating vendor list prices or marketing targets as stable scientific facts.
 
 \section{Illumina: The Dominant Platform}
 \label{sec:illumina}
@@ -346,10 +350,10 @@ The NovaSeq~X series, launched in 2023 as successors to the NovaSeq~6000, are Il
 
 \begin{itemize}[nosep]
   \item \textbf{Read lengths:} up to $2 \times 150$\basepair.
-  \item \textbf{Output:} 1.3~Tb (10B flow cell) to 16~Tb (25B flow cell, NovaSeq~X~Plus with two flow cells running simultaneously).
+  \item \textbf{Output:} for 2$\times$150\basepair{} sequencing, approximately 3--4~Tb per 10B flow cell and 8--10.5~Tb per 25B flow cell; a NovaSeq~X~Plus dual-25B run is specified at approximately 16~Tb in specification sheet M-US-00197 v9.0. The higher end of vendor ranges is not guaranteed.
   \item \textbf{Reads per run:} up to 25~billion clusters per flow cell (25B).
   \item \textbf{Run time:} approximately 13 hours (10B) to 48 hours (25B $2 \times 150$\basepair).
-  \item \textbf{Cost:} approximately \$2--4 per Gb; roughly \$200 for a 30$\times$ human genome.
+  \item \textbf{Cost:} depends on contract, utilization, region, flow cell, library preparation, and whether the estimate includes only reagents or the full service. Convert a current local quote to cost per usable base rather than relying on a universal number.
   \item \textbf{Flow cell types:} 1.5B, 10B, and 25B (referring to billions of nanowells).
   \item \textbf{DRAGEN on-instrument:} full secondary analysis pipeline.
   \item \textbf{Typical applications:} large-scale population \gls{WGS}, clinical whole-genome/exome sequencing, large \gls{RNA-seq} projects, single-cell atlases, \gls{WGBS}.
@@ -523,8 +527,8 @@ Singular Genomics filed for bankruptcy in late 2023 and ceased operations. The G
 \midrule
 MiSeq v3          & Illumina   & $2\times300$\basepair & 15~Gb   & \$100--200  & 5--55\,h   \\
 NextSeq 2000 (P3) & Illumina   & $2\times150$\basepair & 360~Gb  & \$15--30    & 11--48\,h  \\
-NovaSeq X (10B)   & Illumina   & $2\times150$\basepair & 1.3~Tb  & \$2--4      & 13--24\,h  \\
-NovaSeq X Plus (25B) & Illumina & $2\times150$\basepair & 16~Tb  & \$2--3      & 24--48\,h  \\
+NovaSeq X (10B)   & Illumina   & $2\times150$\basepair & $\sim$3--4~Tb/flow cell  & Quote-dependent & $\sim$22\,h  \\
+NovaSeq X Plus (25B) & Illumina & $2\times150$\basepair & $\sim$16~Tb/dual run  & Quote-dependent & $\sim$38\,h  \\
 \addlinespace
 DNBSEQ-G99        & MGI/BGI    & $2\times150$\basepair & 15~Gb   & \$60--120   & 12--24\,h  \\
 DNBSEQ-G400       & MGI/BGI    & $2\times200$\basepair & 720~Gb  & \$8--15     & 24--48\,h  \\

@@ -1,7 +1,11 @@
 \chapter{Whole-Genome and Exome Sequencing}
 \label{ch:genomeseq}
 
-The ability to read the complete DNA sequence of an organism---or strategically selected portions of it---has transformed biology, medicine, and agriculture. In this chapter, we explore the three major strategies for interrogating genomic DNA: \textbf{whole-genome sequencing (WGS)}, which captures every nucleotide from telomere to telomere; \textbf{whole-exome sequencing (WES)}, which focuses on the protein-coding regions; and \textbf{targeted gene panels}, which zoom in on a curated set of genes relevant to a specific clinical question. We examine the technical workflows, compare the trade-offs of each approach, and build complete analysis pipelines in both Snakemake and Nextflow.
+\begin{sourcebox}
+Claims about complete human sequence and formerly unresolved regions are anchored by the telomere-to-telomere assembly report \cite{nurk2022}. ``Whole genome'' describes assay intent; real datasets still contain coverage, mappability, ploidy, and reference-representation limitations.
+\end{sourcebox}
+
+The ability to sample DNA sequence across an organism's genome---or strategically selected portions of it---has transformed biology, medicine, and agriculture. In this chapter, we explore three major strategies for interrogating genomic DNA: \textbf{whole-genome sequencing (WGS)}, which samples the genome broadly but does not guarantee complete telomere-to-telomere coverage; \textbf{whole-exome sequencing (WES)}, which focuses on captured protein-coding regions; and \textbf{targeted gene panels}, which zoom in on a curated set of genes relevant to a specific clinical question. We examine the technical workflows, compare the trade-offs of each approach, and build complete analysis pipelines in both Snakemake and Nextflow.
 
 %% ============================================================
 \section{Whole-Genome Sequencing (WGS)}
@@ -311,7 +315,8 @@ Typically, 80--90\% of target bases achieve $\geq$20$\times$ coverage, but some 
 \centering
 \caption{Comparison of major exome capture kits.}
 \label{tab:capture_kits}
-\begin{tabularx}{\textwidth}{@{}lXccc@{}}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}p{2.4cm} X p{2.2cm} p{1.7cm} p{3.8cm}@{}}
 \toprule
 \textbf{Kit} & \textbf{Probe Type} & \textbf{Target Size} & \textbf{Uniformity} & \textbf{Notable Features} \\
 \midrule

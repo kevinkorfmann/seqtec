@@ -5,8 +5,10 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{microtype}
+\setlength{\emergencystretch}{3em}
 
 % --- Page Layout ---
+\usepackage{csquotes}
 \usepackage[
   top=2.5cm,
   bottom=2.5cm,
@@ -87,7 +89,7 @@
   url=false,
   isbn=false
 ]{biblatex}
-% \addbibresource{references.bib}  % Uncomment when bibliography file is created
+\addbibresource{references.bib}
 
 % --- Header/Footer ---
 \usepackage{fancyhdr}
@@ -117,6 +119,7 @@
 \usepackage[most]{tcolorbox}
 
 \newtcolorbox{keyconcept}[1][]{
+  breakable,
   colback=MidnightBlue!5,
   colframe=MidnightBlue!70,
   fonttitle=\bfseries,
@@ -125,6 +128,7 @@
 }
 
 \newtcolorbox{protocolbox}[1][]{
+  breakable,
   colback=OliveGreen!5,
   colframe=OliveGreen!70,
   fonttitle=\bfseries,
@@ -133,6 +137,7 @@
 }
 
 \newtcolorbox{warningbox}[1][]{
+  breakable,
   colback=BrickRed!5,
   colframe=BrickRed!70,
   fonttitle=\bfseries,
@@ -141,10 +146,20 @@
 }
 
 \newtcolorbox{tipbox}[1][]{
+  breakable,
   colback=Goldenrod!8,
   colframe=Goldenrod!70,
   fonttitle=\bfseries,
   title={Practical Tip},
+  #1
+}
+
+\newtcolorbox{sourcebox}[1][]{
+  breakable,
+  colback=gray!4,
+  colframe=gray!55,
+  fonttitle=\bfseries,
+  title={Verification anchors},
   #1
 }
 
@@ -205,7 +220,7 @@
   {\Large From Molecules to Meaning:\\[0.2cm]
    Technologies, Applications, and Bioinformatics\\[0.2cm]
    for the Modern Genomics Era}\\[2cm]
-  {\large A Comprehensive Reference}
+  {\large Version 2 --- rigorously reviewed edition}
 }
 \author{}
 \date{\today}
@@ -272,7 +287,7 @@
   \node[anchor=north, text width=12cm, align=center]
     at ([yshift=-18cm]current page.north) {
       {\fontsize{13}{18}\selectfont\color{MidnightBlue!70}
-       A Comprehensive Reference}
+       Version 2 --- rigorously reviewed edition}
     };
 
   % Decorative bottom rule
@@ -360,6 +375,6 @@
 \printglossary[type=\acronymtype,title={List of Acronyms}]
 \printglossary[title={Glossary}]
 
-% \printbibliography[heading=bibintoc,title={References}]  % Uncomment with .bib file
+\printbibliography[heading=bibintoc,title={References}]
 
 \end{document}

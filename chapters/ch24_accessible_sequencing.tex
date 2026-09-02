@@ -1,6 +1,10 @@
 \chapter{Accessible Sequencing: Democratising Genomics}
 \label{ch:accessible}
 
+\begin{sourcebox}
+Portable field sequencing is anchored by a real-time Ebola surveillance deployment \cite{quick2016}. Accessibility does not remove biosafety, ethics, consent, permitting, benefit-sharing, or data-security obligations, which vary by sample and jurisdiction.
+\end{sourcebox}
+
 \begin{keyconcept}
 Sequencing technology is no longer the exclusive province of well-funded core facilities and genome centres. The dramatic reduction in instrument costs, the emergence of portable nanopore sequencers, and the growth of community laboratories have opened genomics to individual researchers, educators, citizen scientists, and field biologists working in remote locations. This chapter maps the landscape of accessible sequencing---from budget planning and platform selection to field deployment, educational applications, and the legal and ethical frameworks that govern this expanding frontier. The goal is to provide a realistic, practical guide for anyone who wants to generate sequence data outside a traditional institutional setting.
 \end{keyconcept}
@@ -10,40 +14,31 @@ Sequencing technology is no longer the exclusive province of well-funded core fa
 \label{sec:accessible:landscape}
 %% ============================================================
 
-The cost of sequencing a human genome has fallen from approximately \$2.7 billion (the Human Genome Project, completed 2003) to under \$200 for consumables on the latest Illumina platforms. Yet the cost of \emph{entry}---the capital expenditure required to begin generating sequence data independently---remained prohibitively high until the mid-2010s. The introduction of Oxford Nanopore's MinION in 2014 fundamentally changed this equation, creating a category of sequencing devices that cost less than a high-end laptop.
+The Human Genome Project's total programme cost and a modern marginal reagent estimate measure different things and should not be presented as a direct price comparison. Modern sequencing has nevertheless reduced the marginal cost of generating bases dramatically. Oxford Nanopore's MinION early-access programme in 2014 also changed the capital-access model by introducing a portable device, although a device or starter-pack price is only a small part of a functioning laboratory's cost.
 
-Today, a researcher, educator, or citizen scientist can enter the sequencing space at several cost tiers:
+Purchase prices and access plans change too rapidly for stable cost tiers. As one concrete check, the US Oxford Nanopore store listed a MinION Enhanced starter pack at \$3{,}199 and an individual MinION/GridION DNA flow cell at \$840 when accessed on 1 September 2026. Those figures exclude extraction, library preparation, cold-chain shipping, pipettes, quality control, compute, storage, training, facilities, and failed runs. Budget from a dated regional quote and a complete bill of materials.
 
-\begin{itemize}[itemsep=2pt]
-  \item \textbf{Under \$1,000:} A MinION starter pack provides the sequencing device itself (the MinION Mk1B) plus initial flow cells and reagents. This is sufficient for bacterial genomes, amplicon sequencing, and educational demonstrations.
-  \item \textbf{\$1,000--\$5,000:} Adding a Flongle adapter, additional flow cells, a basic \acrshort{PCR} thermocycler, and a used laptop with a GPU enables a modest but capable sequencing programme.
-  \item \textbf{\$5,000--\$10,000:} The Illumina iSeq 100 (list price ${\sim}$\$20,000 new, often available refurbished for \$8,000--\$12,000) or the \acrshort{ONT} PromethION P2 Solo (${\sim}$\$9,800) provides substantially higher throughput while remaining within reach of individual laboratories.
-  \item \textbf{\$10,000--\$50,000:} Shared-access models with benchtop instruments such as the Illumina MiSeq or NextSeq 550 become feasible for departments, teaching institutions, and community laboratories.
-\end{itemize}
-
-\Cref{tab:accessible:platforms} compares the key accessible sequencing platforms available as of 2025.
+\Cref{tab:accessible:platforms} therefore compares capabilities rather than asserting universal purchase prices.
 
 \begin{table}[htbp]
 \centering
-\caption[Comparison of accessible sequencing platforms]{Comparison of accessible sequencing platforms. Costs are approximate and represent list prices for the instrument plus a single run of consumables; actual costs vary by region and negotiation.}
+\caption[Comparison of accessible sequencing platforms]{Illustrative capabilities of accessible sequencing platforms. Output is a vendor maximum rather than an expected yield. Obtain a dated regional quote for devices, access plans, flow cells, kits, shipping, and support.}
 \label{tab:accessible:platforms}
 \small
 \renewcommand{\arraystretch}{1.3}
-\begin{tabularx}{\textwidth}{@{}l l c c c c X@{}}
+\begin{tabularx}{\textwidth}{@{}p{2.1cm} p{3.3cm} X p{4.3cm}@{}}
 \toprule
-\textbf{Platform} & \textbf{Vendor} & \textbf{Output} & \textbf{Read Length} & \textbf{Accuracy} & \textbf{Cost\fmark{a}} & \textbf{Best For} \\
+\textbf{Platform} & \textbf{Illustrative output/read format} & \textbf{Verification caveat} & \textbf{Best For} \\
 \midrule
-MinION Mk1B & \acrshort{ONT} & 50\gigabase & $>$100\kilobase & Q20+ (sup) & \$1,000 & Portability, long reads, rapid prototyping \\
+MinION & Up to 50\gigabase; long reads & Yield and accuracy are chemistry-, model-, and sample-dependent; obtain current quote & Portability, long reads, rapid prototyping \\
 \addlinespace
-Flongle & \acrshort{ONT} & 2.8\gigabase & $>$100\kilobase & Q20+ (sup) & \$140/run & Low-cost amplicons, targeted panels, teaching \\
+Flongle & Lower-throughput long reads & Verify the current compatible device, yield, and pack contents & Amplicons, targeted panels, teaching \\
 \addlinespace
-P2 Solo & \acrshort{ONT} & 290\gigabase & $>$100\kilobase & Q20+ (sup) & \$9,800 & Human \acrshort{WGS}, large genomes, production \\
+P2 Solo & Current PromethION flow-cell specification & Verify current compute, yield, and regional commercial terms & Larger genomes and higher-throughput work \\
 \addlinespace
-iSeq 100 & Illumina & 1.2\gigabase & $2 \times 150\basepair$ & $>$Q30 & \$20,000 & Small panels, 16S, low-throughput short reads \\
+iSeq 100 & Up to 1.2\gigabase; up to $2 \times 150\basepair$ & Verify current availability, kit, cycle count, and support & Small panels, 16S, low-throughput short reads \\
 \bottomrule
 \end{tabularx}
-\vspace{2pt}
-{\footnotesize \fmark{a} MinION cost reflects the starter pack; Flongle cost is per-flow-cell consumable; P2 Solo and iSeq 100 costs are instrument list prices.}
 \end{table}
 
 \begin{tipbox}[title={Refurbished and Decommissioned Instruments}]
@@ -78,7 +73,7 @@ Key specifications of the MinION platform:
 \subsection{Flongle: The Disposable Flow Cell}
 \label{subsec:accessible:flongle}
 
-The \textbf{Flongle} is a single-use flow cell adapter for the MinION that contains 126 channels (compared to 512 on a standard MinION flow cell). It produces up to 2.8\gigabase{} of data---sufficient for many targeted applications---at a consumable cost of approximately \$140 per flow cell (including the adapter, which is reusable).
+The \textbf{Flongle} is a lower-throughput flow-cell format for compatible MinION devices. Channel count, advertised yield, pack contents, and regional price are product-version dependent; check the current device and consumables pages before designing an experiment.
 
 The Flongle is ideally suited for:
 
@@ -90,12 +85,12 @@ The Flongle is ideally suited for:
   \item Rapid pathogen identification in point-of-care settings.
 \end{itemize}
 
-The economics of the Flongle are compelling: at \$140 per flow cell, the per-sample cost for a bacterial genome (including library preparation) is approximately \$200--\$250. This is competitive with outsourcing to a core facility, with the added benefit of turnaround times measured in hours rather than weeks.
+Whether Flongle is economical depends on the current regional quote, multiplexing efficiency, extraction and library costs, compute, labour, and the cost of failed runs. Compare a dated, fully loaded in-house estimate with a dated core-facility quote.
 
 \subsection{PromethION P2 Solo}
 \label{subsec:accessible:p2solo}
 
-For researchers who need higher throughput but cannot justify a full PromethION 48 ($>$\$200,000), the \textbf{PromethION P2 Solo} offers two PromethION flow cells (each with ${\sim}$2,675 channels) in a benchtop format priced at approximately \$9,800. Each P2 Solo flow cell can yield up to 145\gigabase{}, making 30$\times$ human \acrshort{WGS} feasible from a single flow cell.
+The \textbf{PromethION P2 Solo} is a benchtop route to higher-throughput nanopore sequencing. Instrument bundles, compute requirements, flow-cell specifications, and prices change; use the current regional product page and a written quote. Human 30$\times$ WGS requires about 93\gigabase{} of usable sequence before allowing for filtering and coverage non-uniformity, so feasibility must be checked against observed rather than headline yield.
 
 The P2 Solo requires a dedicated compute resource for basecalling, ideally a workstation equipped with a high-end NVIDIA GPU (see \cref{tab:accessible:basecalling}).
 
@@ -169,11 +164,11 @@ One of the most common mistakes made by researchers entering the accessible sequ
 \subsection{Itemised Cost Models}
 \label{subsec:accessible:costmodels}
 
-\Cref{tab:accessible:costmodels} provides realistic, itemised cost estimates for five representative projects using \acrshort{ONT} MinION or Flongle as the primary sequencing platform. All costs are approximate and based on 2025 list prices.
+\Cref{tab:accessible:costmodels} is a budgeting worksheet, not a price list. Populate every cell from dated regional quotes and local labour, compute, storage, and failure-rate assumptions.
 
 \begin{table}[htbp]
 \centering
-\caption[Itemised cost models for five accessible sequencing projects]{Itemised cost models for five representative projects. Costs assume a MinION Mk1B already in hand (starter pack, \$1,000, not included in per-project costs). Library preparation costs include consumables only.}
+\caption[Budget worksheet for accessible sequencing projects]{Budget worksheet for representative projects. Replace ``quote'' with dated local values before making a purchasing decision.}
 \label{tab:accessible:costmodels}
 \small
 \renewcommand{\arraystretch}{1.25}
@@ -182,21 +177,16 @@ One of the most common mistakes made by researchers entering the accessible sequ
 \textbf{Cost Item} & \textbf{Bacterial} & \textbf{16S} & \textbf{Human} & \textbf{eDNA} & \textbf{Food} \\
  & \textbf{Genome} & \textbf{Amplicon} & \textbf{WGS} & \textbf{Biodiv.} & \textbf{Auth.} \\
 \midrule
-DNA extraction kit & \$50 & \$120 & \$30 & \$200 & \$80 \\
-Library prep kit & \$120 & \$60 & \$180 & \$90 & \$90 \\
-Flow cell (type) & \$140\fmark{c} & \$140\fmark{c} & \$900\fmark{d} & \$140\fmark{c} & \$140\fmark{c} \\
-Barcoding expansion & --- & \$45 & --- & \$45 & \$45 \\
-\acrshort{PCR} primers / reagents & --- & \$30 & --- & \$30 & \$30 \\
-Compute (cloud GPU) & \$5 & \$2 & \$40 & \$5 & \$3 \\
-Consumables (tips, tubes) & \$15 & \$25 & \$20 & \$30 & \$20 \\
+DNA extraction & quote & quote & quote & quote & quote \\
+Library preparation and barcoding & quote & quote & quote & quote & quote \\
+Flow cell(s) and shipping & quote & quote & quote & quote & quote \\
+Compute, storage, and consumables & local & local & local & local & local \\
+Labour, QC, and failed-run reserve & local & local & local & local & local \\
 \midrule
-\textbf{Total per project} & \textbf{\$330} & \textbf{\$422} & \textbf{\$1,170} & \textbf{\$540} & \textbf{\$408} \\
-\textbf{Samples per run} & 1 & 24 & 1 & 12 & 12 \\
-\textbf{Cost per sample} & \textbf{\$330} & \textbf{\$18} & \textbf{\$1,170} & \textbf{\$45} & \textbf{\$34} \\
+\textbf{Usable samples per run} & plan & plan & plan & plan & plan \\
+\textbf{Fully loaded cost/sample} & calculate & calculate & calculate & calculate & calculate \\
 \bottomrule
 \end{tabularx}
-\vspace{2pt}
-{\footnotesize \fmark{c} Flongle flow cell. \fmark{d} Standard MinION R10.4.1 flow cell.}
 \end{table}
 
 \begin{keyconcept}[title={Hidden Costs to Budget For}]
@@ -238,15 +228,7 @@ C_{\text{sample}} = \frac{C_{\text{instrument}}}{N_{\text{lifetime}} \times S_{\
 
 \noindent where $C_{\text{instrument}}$ is the capital cost of the instrument, $N_{\text{lifetime}}$ is the total number of runs over the instrument's lifetime, $S_{\text{run}}$ is the number of samples per run, $C_{\text{consumable}}$ is the per-run consumable cost (flow cell + library prep), $C_{\text{extraction}}$ is the per-sample DNA extraction cost, and $C_{\text{overhead}}$ captures personnel time, compute, storage, and facility costs.
 
-For example, consider a community laboratory that purchases a MinION starter pack (\$1,000) and plans to perform 100 Flongle runs over two years, with 12 barcoded samples per run:
-
-\begin{align}
-C_{\text{sample}} &= \frac{\$1{,}000}{100 \times 12} + \frac{\$140 + \$90}{12} + \$10 + \$5 \notag \\
-                    &= \$0.83 + \$19.17 + \$10 + \$5 \notag \\
-                    &= \$35.00 \text{ per sample}
-\end{align}
-
-This is competitive with commercial sequencing services, with the added advantages of rapid turnaround (same-day results), complete control over the protocol, and the educational value of performing sequencing in-house.
+For a defensible comparison, calculate this expression with the quoted instrument bundle, the planned number of usable runs, the effective number of passing samples per run, and local consumable and overhead costs. Then compare the result with a core-facility quote that includes the same scope (extraction, library preparation, analysis, storage, and turnaround). Do not assume that nominal multiplexing capacity equals the number of usable samples.
 
 %% ============================================================
 \section{Community Labs and Maker Spaces}
@@ -308,7 +290,7 @@ A functional sequencing workspace can be established within a community laborato
 \toprule
 \textbf{Equipment} & \textbf{Cost} & \textbf{Essential?} & \textbf{Budget Alternative} \\
 \midrule
-MinION Mk1B & \$1,000 & Yes & --- \\
+MinION-compatible starter bundle & Current quote & Yes & Contents vary by region and date \\
 Laptop (16\,GB RAM, GPU) & \$1,200 & Yes & Used/refurbished; cloud basecalling \\
 Micropipettes (P2, P20, P200, P1000) & \$1,500 & Yes & Used pipettes (\$200--\$500) \\
 Minicentrifuge & \$200 & Yes & --- \\
@@ -517,19 +499,16 @@ The following five-session curriculum is designed for an undergraduate molecular
 \subsection{Cost Per Student}
 \label{subsec:accessible:coststudent}
 
-Assuming a class of 24 students sharing a single Flongle flow cell with barcoding:
+For a class of 24 students sharing a single lower-throughput flow cell with barcoding, calculate:
 
-\begin{align}
-C_{\text{student}} &= \frac{C_{\text{flowcell}} + C_{\text{libprep}} + C_{\text{barcoding}}}{24} + C_{\text{extraction}} + C_{\text{consumables}} \notag \\
-                     &= \frac{\$140 + \$60 + \$45}{24} + \$8 + \$5 \notag \\
-                     &= \$10.21 + \$8 + \$5 \notag \\
-                     &= \$23.21 \text{ per student}
-\end{align}
+\begin{equation}
+C_{\text{student}} = \frac{C_{\text{flowcell}} + C_{\text{libprep}} + C_{\text{barcoding}}}{24} + C_{\text{extraction}} + C_{\text{consumables}}.
+\end{equation}
 
-This is comparable to the cost of a conventional molecular biology teaching lab exercise involving \acrshort{PCR} and gel electrophoresis, and far less expensive than outsourcing Sanger sequencing of individual student samples.
+Add instructor time, controls, failed-run reserve, compute, storage, and shipping before comparing this estimate with a conventional teaching exercise or outsourced sequencing.
 
 \begin{tipbox}[title={Oxford Nanopore Educational Discounts}]
-\acrshort{ONT} offers an educational programme with discounted starter packs and flow cells for registered academic institutions. Contact the \acrshort{ONT} education team or check the Oxford Nanopore store for current academic pricing. Several grant programmes (e.g., the HHMI Inclusive Excellence programme in the US, the Wellcome Trust Public Engagement Grants in the UK) specifically fund sequencing equipment for teaching laboratories.
+Ask the vendor and your institution's procurement office whether educational or volume pricing is currently available. Eligibility, programme names, pack contents, and grant calls change; verify them directly rather than budgeting from an undated example.
 \end{tipbox}
 
 \subsection{High School Protocols}
@@ -546,45 +525,45 @@ Sequencing can be brought into high school settings with appropriate simplificat
 \end{itemize}
 
 %% ============================================================
-\section{What Can You Realistically Do with \$1,000?}
+\section{Why a \$1,000 Headline Budget Is Misleading}
 \label{sec:accessible:thousand}
 %% ============================================================
 
-The MinION starter pack costs approximately \$1,000 and includes the device, two Flongle flow cells, one MinION flow cell, and a wash kit. With this initial investment, what sequencing projects are realistically achievable? \Cref{tab:accessible:feasibility} provides a feasibility matrix.
+Earlier MinION access programmes made the ``\$1,000 sequencer'' a useful historical headline, but it is not a current complete-laboratory budget. The US starter-pack price checked on 1 September 2026 already exceeded that amount, before sample preparation, quality control, compute, shipping, training, or facilities. \Cref{tab:accessible:feasibility} should therefore be read as a comparison of data requirements, not as a promise that the projects fit a current \$1,000 purchase.
 
 \begin{table}[htbp]
 \centering
-\caption[Feasibility matrix: what \$1,000 can accomplish]{Feasibility matrix for sequencing projects within a \$1,000 total budget (including the MinION starter pack). Coverage is estimated for the included flow cells. ``Feasible'' indicates that useful results can be obtained; ``marginal'' indicates that results are possible but may be incomplete.}
+\caption[Feasibility matrix for small projects]{Illustrative data requirements for small sequencing projects. Commercial feasibility must be recalculated from a current regional quote and expected, rather than maximum, usable yield.}
 \label{tab:accessible:feasibility}
 \small
 \renewcommand{\arraystretch}{1.3}
-\begin{tabularx}{\textwidth}{@{}X c c c l@{}}
+\begin{tabularx}{\textwidth}{@{}X p{2.4cm} p{2.7cm} p{5.2cm}@{}}
 \toprule
-\textbf{Project} & \textbf{Genome Size} & \textbf{Data Needed} & \textbf{Achievable?} & \textbf{Notes} \\
+\textbf{Project} & \textbf{Genome Size} & \textbf{Data Needed} & \textbf{Planning note} \\
 \midrule
-Bacterial genome (single) & 5\megabase & 150\megabase{} (30$\times$) & Feasible & Flongle; excellent results \\
+Bacterial genome (single) & 5\megabase & 150\megabase{} (30$\times$) & Potentially suitable for a lower-throughput flow cell; validate expected usable yield \\
 \addlinespace
-16S amplicon (24 samples) & N/A & 50\megabase & Feasible & Flongle + barcoding \\
+16S amplicon (24 samples) & N/A & 50\megabase & Lower-throughput flow cell plus validated barcoding design \\
 \addlinespace
-Fungal genome & 30--40\megabase & 1.2\gigabase{} (30$\times$) & Feasible & Flongle; sufficient yield \\
+Fungal genome & 30--40\megabase & 1.2\gigabase{} (30$\times$) & Feasibility depends on observed usable yield and assembly goals \\
 \addlinespace
-Plant/insect genome & 200\megabase--2\gigabase & 6--60\gigabase{} (30$\times$) & Marginal & MinION flow cell; low coverage for large genomes \\
+Plant/insect genome & 200\megabase--2\gigabase & 6--60\gigabase{} (30$\times$) & Match genome size, heterozygosity, and assembly goal to observed yield \\
 \addlinespace
-Human \acrshort{WGS} (30$\times$) & 3.1\gigabase & 93\gigabase & Not feasible & Requires multiple flow cells (\$900+ each) \\
+Human \acrshort{WGS} (30$\times$) & 3.1\gigabase & 93\gigabase & Requires a higher-throughput configuration and current yield validation \\
 \addlinespace
-Viral genome & 10--30\kilobase & $<$1\megabase & Feasible & Flongle; massive over-coverage \\
+Viral genome & 10--30\kilobase & $<$1\megabase & Usually amplicon- or enrichment-dependent; include controls \\
 \addlinespace
-eDNA species detection & N/A & 100\megabase & Feasible & Flongle; amplicon approach \\
+eDNA species detection & N/A & 100\megabase & Assay and database quality matter more than nominal genome size \\
 \addlinespace
-Food authentication & N/A & 100\megabase & Feasible & Flongle; barcode approach \\
+Food authentication & N/A & 100\megabase & Validate barcode resolution, mixtures, and reference coverage \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \begin{warningbox}[title={Honest Expectations}]
-The \$1,000 entry point is real but comes with important caveats:
+Low-capital access is real, but a fixed \$1,000 entry point is not current or universal:
 \begin{itemize}[nosep]
-  \item The starter pack does \emph{not} include DNA extraction kits, library preparation reagents, pipettes, or any other laboratory equipment. Total out-of-pocket cost for a first project is realistically \$1,300--\$1,800.
+  \item Starter-pack contents and prices change and do not constitute a complete laboratory. Build a current bill of materials that includes extraction, library preparation, calibrated pipettes, QC, shipping, compute, storage, training, facilities, and contingency for failed runs.
   \item The included flow cells have limited shelf life. If you do not use them within 8--12 weeks, pore counts degrade significantly.
   \item Basecalling at SUP accuracy requires a computer with a capable GPU (\$800+ if purchased new) or access to cloud computing.
   \item Nanopore sequencing has a steeper learning curve than users accustomed to ``send sample, receive data'' core facility models. Expect your first 2--3 runs to be practice runs with suboptimal results.
@@ -905,7 +884,7 @@ When all four elements are in place, sequencing transitions from a specialised t
 This chapter has surveyed the expanding landscape of accessible sequencing, from the practical mechanics of budget planning and platform selection to the broader implications of democratised genomics. The key takeaways are:
 
 \begin{enumerate}[itemsep=2pt]
-  \item \textbf{Entry costs are genuinely low:} A complete nanopore sequencing setup can be assembled for \$1,000--\$5,000, enabling bacterial genomes, amplicon surveys, and small targeted projects.
+  \item \textbf{Entry costs can be comparatively low:} Portable nanopore access can require much less capital than a conventional high-throughput instrument, but no universal \$1,000--\$5,000 complete-setup claim is supportable without a dated bill of materials.
   \item \textbf{Budget realistically:} Consumables, compute, and personnel time dominate costs. The sequencing device itself is often the smallest line item.
   \item \textbf{Field sequencing is proven:} Portable sequencing has been deployed in outbreak response, biodiversity monitoring, and remote research settings with real scientific impact.
   \item \textbf{Education benefits enormously:} Real sequencing in teaching labs provides an unmatched pedagogical experience at a per-student cost comparable to traditional molecular biology exercises.

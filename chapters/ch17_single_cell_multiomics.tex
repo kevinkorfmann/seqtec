@@ -1,6 +1,10 @@
 \chapter{Single-Cell and Spatial Multiomics}
 \label{ch:multiomics}
 
+\begin{sourcebox}
+Joint transcript and surface-protein measurement and weighted multimodal analysis are anchored by CITE-seq and Seurat method papers \cite{stoeckius2017,hao2021}. Co-measurement reduces, but does not eliminate, measurement error or the need for causal validation of inferred regulatory links.
+\end{sourcebox}
+
 \begin{keyconcept}
 Multiomics refers to the simultaneous measurement of two or more molecular modalities---such as the transcriptome, epigenome, proteome, or genome---from the same individual cell or spatial location. By capturing multiple layers of biological information together, multiomics technologies resolve cellular states with far greater precision than any single assay alone, enabling the reconstruction of gene regulatory networks, lineage hierarchies, and tissue architectures that would otherwise remain hidden.
 \end{keyconcept}
@@ -204,22 +208,22 @@ where $\tilde{x}_{gi}$ is the normalized, scaled expression of target gene $g$ i
 \centering
 \caption[Comparison of GRN inference methods for single-cell multiomics.]{Comparison of gene regulatory network inference methods applicable to single-cell multiomics data.}
 \label{tab:multiomics:grn-comparison}
-\small
-\begin{tabularx}{\textwidth}{>{\bfseries\raggedright}p{2.3cm} X c c c}
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{1.8cm} X >{\raggedright\arraybackslash}p{2.1cm} >{\raggedright\arraybackslash}p{3.7cm}}
 \toprule
-\textbf{Method} & \textbf{Approach} & \textbf{Uses ATAC} & \textbf{Scalability} & \textbf{Output} \\
+\textbf{Method} & \textbf{Evidence used} & \textbf{Typical scale} & \textbf{Output} \\
 \midrule
-SCENIC+ & GRNBoost2 regression + cisTarget motif filtering & Yes & High ($>$100K cells) & TF regulons with enhancer links \\
+SCENIC+ & Expression regression plus accessible-region motif support & Large datasets & TF regulons with enhancer links \\
 \addlinespace
-CellOracle & Bayesian regression with TF binding site priors from ATAC & Yes & Moderate & Directed GRN with perturbation simulation \\
+CellOracle & Regression with TF-binding priors that can be derived from ATAC & Moderate & Directed GRN and in-silico perturbation \\
 \addlinespace
-Dictys & Context-specific GRN using joint RNA + ATAC with dynamic modelling & Yes & Moderate & Dynamic, context-specific GRN \\
+Dictys & Joint RNA and ATAC in a context-specific dynamic model & Moderate & Dynamic, context-specific GRN \\
 \addlinespace
-GENIE3 & Random forest regression of TF--gene relationships & No & Low--Moderate & Undirected TF--gene importance scores \\
+GENIE3 & Tree-based regression of TF--gene relationships; no ATAC required & Small--moderate & TF--gene importance scores \\
 \addlinespace
-GRaNIE & Integrates peak--gene correlations with TF motif enrichment & Yes & High & TF--peak--gene triplets \\
+GRaNIE & Peak--gene correlations plus TF motif enrichment & Large datasets & TF--peak--gene triplets \\
 \addlinespace
-FigR & DORC-based regulatory inference linking TF activity to gene modules & Yes & High & TF--DORC--gene regulatory circuits \\
+FigR & DORC-based links between TF activity and gene modules & Large datasets & TF--DORC--gene circuits \\
 \bottomrule
 \end{tabularx}
 \end{table}

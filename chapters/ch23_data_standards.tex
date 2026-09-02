@@ -1,6 +1,10 @@
 \chapter{Data Standards, Sharing, and Reproducibility}
 \label{ch:datastandards}
 
+\begin{sourcebox}
+The data-management principles are anchored by the FAIR principles \cite{wilkinson2016}. Repository rules, funder policies, privacy law, security controls, and prices are jurisdiction- and date-sensitive; current issuer guidance takes precedence over this educational summary.
+\end{sourcebox}
+
 \begin{keyconcept}
 Genomics data has maximal value when it is shared openly, described with rich metadata, stored in standardised formats, and produced by reproducible methods. Data sharing is not merely a journal requirement---it is a fundamental pillar of the scientific process that enables reuse, meta-analysis, validation, and discovery far beyond the original study. This chapter describes the repositories, standards, and best practices for making NGS data findable, accessible, interoperable, and reusable.
 \end{keyconcept}
@@ -19,7 +23,7 @@ The genomics community generates petabytes of data annually. Without standards a
   \item \textbf{Equity:} Open data enables researchers in resource-limited settings to participate in cutting-edge genomics research.
 \end{itemize}
 
-Most funding agencies (NIH, ERC, Wellcome Trust, BBSRC, DFG) and journals (Nature, Science, Cell, PNAS, Genome Biology, etc.) now mandate data deposition in public repositories as a condition of funding or publication.
+Many funders and journals require a data-management plan, an availability statement, or deposition of data supporting a publication, but the exact rule and permitted exceptions vary by funder, journal, data type, consent, and jurisdiction. Confirm the current policy that applies to the specific award and submission; do not infer a universal open-deposition mandate from this overview.
 
 %=============================================================================
 \section{Public Repositories for Raw Sequencing Data}
@@ -32,7 +36,7 @@ The three primary archives for raw sequencing data are part of the INSDC, which 
 
 \begin{description}[style=nextline, font=\bfseries, itemsep=4pt]
   \item[NCBI SRA (Sequence Read Archive)]
-  The largest raw sequencing data archive, hosted by the US National Center for Biotechnology Information. SRA stores raw reads in a compressed format and provides programmatic access via the SRA Toolkit. As of 2026, SRA contains over 80 petabases of data from millions of experiments.
+  A major raw sequencing data archive hosted by the US National Center for Biotechnology Information. SRA stores submitted reads and provides programmatic access via the SRA Toolkit. Archive totals change continuously, so consult NCBI's current growth statistics rather than relying on a static petabase count.
 
   \item[ENA (European Nucleotide Archive)]
   The European counterpart to SRA, hosted by EMBL-EBI. ENA stores the same data (mirrored from SRA) and provides a more flexible submission interface. ENA additionally stores assembled sequences and functional annotations.
@@ -501,7 +505,7 @@ Most funding agencies require a Data Management Plan (DMP) as part of grant appl
 
 \begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
   \item[NIH (USA)]
-  Since January 2023, the NIH Data Management and Sharing Policy requires all funded research to submit a DMP describing: (1) data types generated, (2) data standards and metadata, (3) preservation and access plans, (4) timeline for sharing, and (5) oversight. Genomic data must be shared through approved repositories (SRA, GEO, dbGaP for controlled-access data).
+  The NIH Data Management and Sharing Policy has applied since 25 January 2023 to NIH-funded or -conducted research that generates scientific data. It requires a Data Management and Sharing Plan and compliance with the approved plan; it does not mean that every NIH-funded activity or every dataset must be openly released. As of 25 May 2026, NIH requires its revised 2026 plan format. Studies within the scope of the separate Genomic Data Sharing Policy must also address its repository, consent, certification, timing, and controlled-access expectations. Legal, ethical, technical, and consent constraints can limit sharing.
 
   \item[ERC (European Research Council)]
   Requires compliance with the EU Open Science policy. Research data should be ``as open as possible, as closed as necessary.'' Open access to publications and FAIR data sharing are expected.
@@ -521,7 +525,7 @@ Most funding agencies require a Data Management Plan (DMP) as part of grant appl
 \toprule
 \textbf{Data Type} & \textbf{Size per Sample} & \textbf{Compression} & \textbf{Storage Notes} \\
 \midrule
-FASTQ (30$\times$ WGS) & 60--90 Gb & gzip: 3--4$\times$ & Archive in SRA; delete local copies after verification \\
+FASTQ (30$\times$ WGS) & 60--90 GB & gzip compressed & Deposit when policy and consent permit; retain according to the approved plan \\
 BAM (30$\times$ WGS) & 50--80 Gb & CRAM: 30--60\% smaller & Regenerable from FASTQ; archive or delete \\
 VCF & 0.1--1 Gb & bgzip + tabix & Small; retain permanently \\
 RNA-seq FASTQ & 3--8 Gb & gzip & Archive in SRA \\
@@ -532,7 +536,7 @@ BigWig tracks & 0.1--1 Gb & Pre-compressed & Retain for visualization \\
 \end{table}
 
 \begin{tipbox}[title={Data Retention Strategy}]
-Not all data needs to be kept permanently. Raw FASTQ files should be archived in SRA/ENA (free, permanent storage). Intermediate files (unsorted BAMs, temporary files) can be deleted after the pipeline completes. Final processed results (VCFs, count matrices, peak files) should be retained locally and deposited in GEO or equivalent. BAM files can often be regenerated from FASTQ, so consider deleting them after analysis if storage is limited.
+Not all intermediate data needs to be kept permanently, but deletion must follow the approved data-management plan, consent, funder and institutional retention rules, repository confirmation, and a tested recovery path. A repository accession is not automatically a backup of every local file, and controlled-access or embargoed data may have additional obligations. Record checksums, reference and software versions, and the exact provenance needed to regenerate any file before deleting a local copy.
 \end{tipbox}
 
 \subsection{Data Security and Patient Consent}
@@ -541,7 +545,7 @@ Genomic data from human subjects requires careful attention to privacy and conse
 
 \begin{description}[style=nextline, font=\bfseries, itemsep=3pt]
   \item[HIPAA (USA)]
-  The Health Insurance Portability and Accountability Act governs the use and disclosure of protected health information. Genomic data linked to patient identifiers is subject to HIPAA. De-identification is required for open sharing; controlled-access repositories (dbGaP) are used for data that cannot be fully de-identified.
+  The HIPAA Privacy Rule applies to protected health information held or transmitted by covered entities and business associates; it is not a general US genomic-data law applying to every researcher. Whether genomic data is PHI depends on the holder and context. HIPAA de-identification alone does not settle consent, Common Rule, state-law, contractual, or repository obligations.
 
   \item[GDPR (EU)]
   The General Data Protection Regulation classifies genetic data as ``special category'' personal data, subject to strict processing requirements. Explicit consent, data minimization, and purpose limitation principles apply. Cross-border data transfer requires specific legal mechanisms.
@@ -573,7 +577,7 @@ Scope & Applies to ``covered entities'' (healthcare providers, insurers) and the
 \addlinespace
 Genomic data classification & Protected Health Information (PHI) when linked to identifiers; not explicitly classified as a special category & Explicitly classified as ``genetic data'' under Article 9 (special category), requiring additional safeguards \\
 \addlinespace
-Consent requirements & Authorization required for use/disclosure; research exemption via IRB-approved waiver possible & Explicit consent required for processing genetic data; broad consent for future research possible under certain conditions \\
+Consent requirements & Authorization or another permitted basis is required for covered uses/disclosures; an IRB or Privacy Board may waive authorization when regulatory criteria are met & Explicit consent is one possible Article~9 condition, but research processing may rely on other EU or Member-State legal bases with safeguards; requirements are context-specific \\
 \addlinespace
 De-identification & Safe Harbor (remove 18 identifiers) or Expert Determination method; de-identified data is no longer PHI & Pseudonymisation reduces risk but data remains ``personal data'' under GDPR; full anonymisation (irreversible) removes GDPR obligations \\
 \addlinespace
@@ -581,7 +585,7 @@ Breach notification & Within 60 days to HHS and affected individuals; without un
 \addlinespace
 Cross-border data transfer & No specific restrictions within the US; international transfers follow institutional policy & Transfers outside EU/EEA require adequacy decision, Standard Contractual Clauses (SCCs), or Binding Corporate Rules \\
 \addlinespace
-Penalties & Up to \$1.9 million per violation category per year; criminal penalties possible & Up to 4\% of global annual turnover or \texteuro 20 million, whichever is higher \\
+Penalties & Tiered civil monetary penalties are adjusted for inflation and depend on culpability and circumstances; criminal provisions can also apply & For the higher administrative-fine tier, up to 4\% of worldwide annual turnover or \texteuro 20 million, whichever is higher, subject to the regulation and enforcement context \\
 \addlinespace
 Right to deletion & No general right to deletion of PHI; retention required for specified periods & ``Right to be forgotten'' (Article 17); individuals can request deletion of their genetic data \\
 \addlinespace
@@ -591,7 +595,7 @@ Research exemption & Common Rule (45 CFR 46) provides exemptions for de-identifi
 \end{table}
 
 \begin{tipbox}[title={Practical Implications for Genomics Researchers}]
-If your study involves collaborators or participants across US and EU jurisdictions, you must comply with \textit{both} HIPAA and GDPR. In practice, this means: (1) obtain explicit consent that satisfies GDPR requirements (which are stricter), (2) use controlled-access repositories (dbGaP, EGA) for data sharing, (3) implement data processing agreements for cross-border transfers, and (4) consult your institutional privacy officer before beginning the study.
+If a study spans US and EU jurisdictions, do not assume that HIPAA automatically applies to every US collaborator or that explicit consent is always the GDPR legal basis. Map the participating entities, data flows, roles, consent language, applicable research and health-information rules, transfer mechanism, and repository conditions with institutional privacy, legal, ethics, and information-security offices before collection or transfer.
 \end{tipbox}
 
 \subsection{Controlled Access Repositories and Federated Analysis}
@@ -684,7 +688,7 @@ Genomic data volumes grow faster than storage costs decline, making storage cost
 
 \begin{table}[htbp]
 \centering
-\caption{AWS S3 storage tiers and approximate costs (as of 2025). Costs vary by region.}
+\caption{Illustrative AWS S3 storage inputs copied from a 2025 price snapshot. These are not current quotes; verify region, minimum duration, request, retrieval, early-deletion, monitoring, and egress charges in the official calculator before budgeting.}
 \label{tab:s3-tiers}
 \small
 \renewcommand{\arraystretch}{1.3}

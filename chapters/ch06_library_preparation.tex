@@ -1,6 +1,10 @@
 \chapter{Library Preparation: From Sample to Sequencer}
 \label{ch:libprep}
 
+\begin{sourcebox}
+Transposase-based library construction is anchored by its primary demonstration \cite{adey2010}. Exact volumes, incubation times, adapter structures, and compatibility statements remain kit- and revision-specific and must be verified against the protocol shipped for the reagent lot in use.
+\end{sourcebox}
+
 Every sequencing experiment, regardless of platform, begins with the transformation of a biological sample into a \textbf{sequencing library}: a collection of DNA (or cDNA) fragments that carry the platform-specific adapter sequences required for cluster generation (or equivalent amplification), priming, and sequencing. Library preparation is arguably the most critical step in the entire sequencing workflow---poor library quality cannot be rescued by downstream bioinformatics. This chapter covers the complete library preparation process, from nucleic acid extraction through quality control, with detailed discussion of specific protocols, multiplexing strategies, and common failure modes.
 
 \section{What Is a Sequencing Library?}
@@ -829,6 +833,7 @@ The choice of library preparation protocol depends on multiple factors. The foll
 
 \begin{figure}[htbp]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
   decision/.style={diamond, draw=MidnightBlue!70, fill=MidnightBlue!8,
     inner sep=1pt, aspect=3.0, align=center, font=\small\sffamily},
@@ -872,7 +877,8 @@ The choice of library preparation protocol depends on multiple factors. The foll
 \draw[arr] (q3a) -- node[lbl, left] {Low ($<$100 ng)} (r_tagment);
 \draw[arr] (q3a) -- node[lbl, right] {High ($>$100 ng)} (r_pcr_free);
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \caption[Library preparation decision flowchart]{Decision flowchart for selecting a library preparation method. The primary decision points are the nucleic acid type (DNA vs.\ RNA), the sequencing platform, the available input amount, and the target transcript population.}
 \label{fig:libprep_decision}
 \end{figure}

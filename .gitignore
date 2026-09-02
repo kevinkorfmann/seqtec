@@ -1,0 +1,34 @@
+# Python and Sphinx
+.venv/
+__pycache__/
+.pytest_cache/
+docs/_build/
+
+# LaTeX build products
+*.acn
+*.acr
+*.alg
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.glg
+*.glo
+*.gls
+*.ist
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.toc
+*.synctex.gz
+main.pdf
+seqtec_v2.pdf
+
+# Local render/verification output
+tmp/
+output/
+.DS_Store

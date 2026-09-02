@@ -1,9 +1,10 @@
 # Configuration file for the Sphinx documentation builder.
 
 project = "SeqTec"
-copyright = "2026, SeqTec Authors"
-author = "SeqTec Authors"
-release = "1.0"
+copyright = "2026, Kevin Korfmann"
+author = "Kevin Korfmann"
+version = "2.0"
+release = "2.0.0-dev"
 
 extensions = [
     "sphinx_rtd_theme",

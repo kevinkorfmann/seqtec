@@ -1,6 +1,10 @@
 \chapter{Three-Dimensional Genome Architecture}
 \label{ch:3dgenome}
 
+\begin{sourcebox}
+Genome-wide Hi-C and the original compartment analysis are anchored by the primary Hi-C report \cite{lieberman2009}. Nominal matrix bin size is not the same as statistically supported biological resolution; depth requirements depend on genome size, contact range, filtering, and the feature being tested.
+\end{sourcebox}
+
 \begin{keyconcept}
 The genome is not a linear string of DNA floating freely in the nucleus. Instead, it is elaborately folded in three-dimensional space, and this folding is functionally critical. Enhancers must physically contact the promoters they regulate, often across hundreds of kilobases of linear genomic distance. The genome is organised hierarchically---from chromosome territories and A/B compartments to topologically associating domains (TADs) and individual chromatin loops---and this organisation is mediated by architectural proteins such as CTCF and cohesin. Sequencing-based chromosome conformation capture methods, most notably Hi-C and its variants, allow researchers to map these three-dimensional interactions genome-wide, revealing the structural principles that govern gene regulation.
 \end{keyconcept}
@@ -523,7 +527,7 @@ where $A_i = \sum_{j=i-w}^{i-1} M_{ij}$ is the total upstream contact frequency,
 The DI approach is implemented in the original \software{Juicer/Arrowhead} tool and in \software{HiCExplorer hicFindTADs}.
 
 \subsection{Compartment Analysis}
-\label{subsec:3dgenome:compartments}
+\label{subsec:3dgenome:compartment-analysis}
 
 At the megabase scale, the genome is partitioned into two types of compartments: \textbf{A compartments} (active, gene-rich, open chromatin) and \textbf{B compartments} (inactive, gene-poor, closed chromatin). These compartments manifest as a ``checkerboard'' (plaid) pattern in the Hi-C contact matrix.
 

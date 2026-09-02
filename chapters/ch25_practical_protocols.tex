@@ -1,8 +1,12 @@
 \chapter{Practical Protocols: From Sample to Sequencer}
 \label{ch:protocols}
 
+\begin{sourcebox}
+This chapter is a teaching aid, not a controlled laboratory document. Before bench use, replace every kit-specific step with the current manufacturer's protocol for the exact kit revision, complete a local risk assessment, and record deviations. Field use is contextualized by a published deployment \cite{quick2016}.
+\end{sourcebox}
+
 \begin{keyconcept}
-This chapter provides detailed, step-by-step laboratory protocols for the complete nanopore sequencing workflow---from sample collection and DNA extraction through library preparation, flow cell loading, and sequencing. Each protocol has been optimised for reliability and is presented in a format that can be printed and brought directly to the bench. Where previous chapters discussed the \emph{theory} behind library preparation (\cref{ch:libprep}) and experimental design (\cref{ch:expdesign}), this chapter provides the \emph{practice}: precise volumes, incubation times, decision trees, and troubleshooting tables to ensure success on the first attempt.
+This chapter provides illustrative workflow outlines for nanopore sequencing---from sample collection and DNA extraction through library preparation, flow cell loading, and sequencing. It is not a controlled protocol and must not be printed and used at the bench without reconciliation to the current manufacturer instructions, kit revision, sample-specific method, and local safety documentation. The examples explain why volumes, incubation times, decision points, and troubleshooting checks matter; they cannot ensure success on a first attempt or substitute for local validation.
 \end{keyconcept}
 
 %% ============================================================
@@ -15,7 +19,7 @@ Before beginning any sequencing workflow, it is essential to understand the safe
 \subsection{Biosafety Levels}
 \label{subsec:protocols:bsl}
 
-The Centres for Disease Control and Prevention (CDC) and the World Health Organisation (WHO) classify laboratories into four \textbf{Biosafety Levels} (BSL) based on the risk posed by the organisms handled:
+CDC/NIH and WHO guidance describe four laboratory containment levels, but assigning practices and containment is a protocol-specific risk-assessment decision rather than a simple label attached permanently to an organism. Route of exposure, concentration, volume, manipulations that generate aerosols, host range, local epidemiology, personnel competence, and available prophylaxis all matter. The outline below is orientation only; the institutional biosafety committee or responsible authority must approve the actual work.
 
 \begin{description}[style=nextline]
   \item[BSL-1] Work with well-characterised agents not known to cause disease in healthy adults. Standard microbiological practices; no special containment equipment required. \emph{Examples:} non-pathogenic \species{Escherichia coli} strains, environmental DNA from water samples, human saliva for self-experimentation.
@@ -888,13 +892,12 @@ A single R10.4.1 flow cell can be reused 2--3 times with nuclease flushes. Use t
 \label{sec:protocols:troubleshooting}
 %% ============================================================
 
-\begin{table}[htbp]
 \centering
-\caption{Comprehensive troubleshooting guide for nanopore sequencing workflows.}
-\label{tab:protocols:troubleshooting}
 \small
 \renewcommand{\arraystretch}{1.3}
 \begin{longtable}{@{}p{3.5cm} p{4.5cm} p{6.5cm}@{}}
+\caption{Comprehensive troubleshooting guide for nanopore sequencing workflows.}
+\label{tab:protocols:troubleshooting}\\
 \toprule
 \textbf{Problem} & \textbf{Likely Cause} & \textbf{Solution} \\
 \midrule
@@ -964,7 +967,6 @@ Flow cell check shows 0 pores & Flow cell not inserted properly or damaged & Rem
 Mux scan shows declining pores & Normal pore attrition over time or membrane fouling & Normal for runs $>$24\,h; consider nuclease flush and reload to recover pores \\
 
 \end{longtable}
-\end{table}
 
 \begin{tipbox}[title={Keep a Sequencing Log}]
 Record every run: date, operator, flow cell ID, pore count, kit, DNA input, run time, total reads, N50, and anomalies. This record is invaluable for diagnosing problems and tracking performance.
@@ -1077,7 +1079,7 @@ Notes & Free text & Any anomalies, deviations from protocol, or observations \\
 \end{table}
 
 \begin{tipbox}[title={Use Standardised Metadata Standards}]
-Align metadata with GSC MIxS (Minimum Information about any (x) Sequence) checklists and \acrshort{SRA} submission requirements from the outset---recording these at collection saves hours of retroactive data entry. See \cref{ch:datastd} for details on data standards.
+Align metadata with GSC MIxS (Minimum Information about any (x) Sequence) checklists and \acrshort{SRA} submission requirements from the outset---recording these at collection saves hours of retroactive data entry. See \cref{ch:datastandards} for details on data standards.
 \end{tipbox}
 
 \begin{warningbox}[title={Metadata Cannot Be Reconstructed}]

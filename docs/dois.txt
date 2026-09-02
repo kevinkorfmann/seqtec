@@ -1,0 +1,34 @@
+# key | DOI | expected first-author surname
+sanger1977|10.1073/pnas.74.12.5463|Sanger
+venter2001|10.1126/science.1058040|Venter
+watson1953|10.1038/171737a0|Watson
+landerwaterman1988|10.1016/0888-7543(88)90007-9|Lander
+bentley2008|10.1038/nature07517|Bentley
+eid2009|10.1126/science.1162986|Eid
+jain2018|10.1038/nbt.4060|Jain
+adey2010|10.1186/gb-2010-11-12-r119|Adey
+nurk2022|10.1126/science.abj6987|Nurk
+depristo2011|10.1038/ng.806|DePristo
+richards2015|10.1038/gim.2015.30|Richards
+callahan2016|10.1038/nmeth.3869|Callahan
+love2014|10.1186/s13059-014-0550-8|Love
+patro2017|10.1038/nmeth.4197|Patro
+wolf2018|10.1186/s13059-017-1382-0|Wolf
+hao2021|10.1016/j.cell.2021.04.048|Hao
+stahl2016|10.1126/science.aaf2403|Stahl
+krueger2011|10.1093/bioinformatics/btr167|Krueger
+buenrostro2013|10.1038/nmeth.2688|Buenrostro
+skene2017|10.7554/eLife.21856|Skene
+lieberman2009|10.1126/science.1181369|Lieberman-Aiden
+stoeckius2017|10.1038/nmeth.4380|Stoeckius
+ingolia2009|10.1126/science.1168978|Ingolia
+liao2023|10.1038/s41586-023-05896-x|Liao
+li2009|10.1093/bioinformatics/btp352|Li
+li2009bwa|10.1093/bioinformatics/btp324|Li
+diTommaso2017|10.1038/nbt.3820|Di Tommaso
+molder2021|10.12688/f1000research.29032.2|Molder
+wilkinson2016|10.1038/sdata.2016.18|Wilkinson
+quick2016|10.1038/nature16996|Quick
+kolmogorov2019|10.1038/s41587-019-0072-8|Kolmogorov
+wood2019|10.1186/s13059-019-1891-0|Wood
+zheng2022|10.1038/s43588-022-00387-x|Zheng

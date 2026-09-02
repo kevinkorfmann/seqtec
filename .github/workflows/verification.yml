@@ -1,0 +1,36 @@
+name: Verify Version 2
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  source-and-website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r docs/requirements.txt -r requirements-dev.txt
+      - run: python -m pytest -q
+      - run: python -m sphinx -W --keep-going -n -b html docs docs/_build/html
+
+  book:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install TeX Live
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y latexmk biber texlive-bibtex-extra texlive-fonts-recommended texlive-latex-extra texlive-pictures
+      - run: |
+          latexmk -pdf -interaction=nonstopmode -halt-on-error -jobname=seqtec_v2 main.tex
+          makeglossaries seqtec_v2
+          latexmk -pdf -interaction=nonstopmode -halt-on-error -jobname=seqtec_v2 main.tex
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seqtec-v2-book
+          path: seqtec_v2.pdf

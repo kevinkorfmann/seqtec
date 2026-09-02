@@ -4,6 +4,10 @@
 \chapter{Spatial Transcriptomics}
 \label{ch:spatial}
 
+\begin{sourcebox}
+The field is anchored here by the original array-based spatial transcriptomics report \cite{stahl2016}. Resolution, area, plex, sensitivity, and analysis-software claims for commercial systems require current product documentation and must not be compared as if they measured identical quantities.
+\end{sourcebox}
+
 \begin{keyconcept}
 Spatial transcriptomics measures gene expression while preserving the physical
 location of each measurement within a tissue section. By retaining spatial
@@ -856,7 +860,7 @@ or in serial sections from the same block:
 \label{sec:spatial:snakemake}
 
 \begin{lstlisting}[language=Python, caption={Snakemake workflow for 10x Visium
-spatial transcriptomics analysis.}, label={lst:spatial:snakemake}, float=htbp]
+spatial transcriptomics analysis.}, label={lst:spatial:snakemake}]
 # Snakefile for Spatial Transcriptomics (10x Visium)
 # ====================================================
 # Pipeline: Space Ranger -> Squidpy / Scanpy analysis
@@ -968,7 +972,7 @@ rule spatial_communication:
 
 \begin{lstlisting}[language=Java, caption={Nextflow DSL2 workflow for 10x
 Visium spatial transcriptomics analysis.},
-label={lst:spatial:nextflow}, float=htbp]
+label={lst:spatial:nextflow}]
 #!/usr/bin/env nextflow
 // Spatial Transcriptomics Pipeline (Nextflow DSL2)
 // ==================================================

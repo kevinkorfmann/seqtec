@@ -1,6 +1,10 @@
 \chapter{Variant Discovery and Interpretation}
 \label{ch:variants}
 
+\begin{sourcebox}
+The computational framework and clinical classification discussion are anchored by the GATK framework and ACMG/AMP consensus guideline \cite{depristo2011,richards2015}. These sources do not make a teaching workflow clinically validated, and later ClinGen refinements and disease-specific specifications may alter evidence use.
+\end{sourcebox}
+
 Every human genome carries approximately 4--5 million genetic variants relative to the reference sequence. The vast majority are benign polymorphisms inherited from our ancestors, but a small fraction can cause disease, influence drug response, or drive cancer. Identifying these variants from sequencing data---and distinguishing the pathogenic needles from the benign haystack---is one of the central challenges of modern genomics. This chapter provides a comprehensive treatment of variant types, calling algorithms, quality control, annotation, and clinical interpretation, with practical pipeline examples in both Snakemake and Nextflow.
 
 %% ============================================================
@@ -12,7 +16,7 @@ Genetic variants span a wide size range, from single nucleotide changes to chrom
 
 \subsection{Single Nucleotide Variants (SNVs) and Single Nucleotide Polymorphisms (SNPs)}
 
-An SNV is a change of a single nucleotide at a specific genomic position. When an SNV is present in $\geq$1\% of a population, it is conventionally called a \textbf{single nucleotide polymorphism (SNP)}. SNVs are the most abundant variant class: a typical human genome contains $\sim$4.1--4.5 million SNVs compared to the GRCh38 reference.
+An SNV is a change of a single nucleotide at a specific genomic position. A \textbf{single nucleotide polymorphism (SNP)} is an SNV treated as polymorphic in a population; although a 1\% minor-allele-frequency threshold is historically common, nomenclature and database usage do not apply that cutoff uniformly. SNVs are the most abundant variant class: a typical human genome contains millions relative to a reference, with the exact count depending on ancestry, reference assembly, callable regions, and filtering.
 
 SNVs in coding regions are classified by their effect on the encoded protein:
 \begin{description}[nosep]

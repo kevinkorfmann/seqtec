@@ -1,6 +1,10 @@
 \chapter{Long-Read Sequencing Platforms}
 \label{ch:longread}
 
+\begin{sourcebox}
+The technology discussion is anchored by the original SMRT report and an ultra-long nanopore human-genome demonstration \cite{eid2009,jain2018}. PacBio and ONT model, chemistry, yield, and accuracy figures are checked separately against current official specifications.
+\end{sourcebox}
+
 While short-read sequencing excels at generating massive volumes of highly accurate data, it has an inherent limitation: individual reads of 100--300 bases cannot span many of the repetitive elements, structural variants, and complex genomic regions that are biologically and clinically important. Long-read sequencing technologies---generating reads from thousands to millions of bases---address these limitations and have opened entirely new areas of genomics research. This chapter provides a comprehensive survey of long-read sequencing platforms, focusing on the two dominant technologies: Pacific Biosciences (PacBio) Single Molecule, Real-Time (SMRT) sequencing and Oxford Nanopore Technologies (ONT) nanopore sequencing.
 
 \section{Why Long Reads Matter}
@@ -39,7 +43,7 @@ Specific application areas where long reads are essential or strongly preferred 
 
 \subsection{Historical Context}
 
-Pacific Biosciences (Menlo Park, California) commercialised single-molecule real-time (\gls{SMRTseq}) sequencing in 2011 with the RS system. The technology has undergone continuous improvement through the RS~II, Sequel, Sequel~II, Sequel~IIe, Revio, and most recently the Vega system. PacBio was acquired by and subsequently merged operations with the former Illumina competitor Omniome, whose sequencing-by-binding (SBB) chemistry now forms the basis of PacBio's short-read instrument, the Onso.
+Pacific Biosciences (Menlo Park, California) commercialised single-molecule real-time (\gls{SMRTseq}) sequencing in 2011 with the RS system. The technology has undergone continuous improvement through the RS~II, Sequel, Sequel~II, Sequel~IIe, Revio, and Vega systems. PacBio acquired Omniome in 2021; Omniome's sequencing-by-binding chemistry subsequently became the basis of PacBio's short-read Onso instrument.
 
 \subsection{SMRT Sequencing Principle}
 
@@ -210,20 +214,20 @@ The Revio, launched in late 2022 and widely deployed from 2023 onward, is PacBio
 
 \begin{itemize}[nosep]
   \item \textbf{SMRT Cells:} each cell contains approximately 25~million ZMWs.
-  \item \textbf{Throughput:} approximately 90~Gb of HiFi reads per SMRT Cell; with four SMRT Cell positions running in parallel, up to 360~Gb per day.
+  \item \textbf{Throughput:} with the SPRQ-Nx specification accessed 1 September 2026, up to approximately 120~Gb of HiFi reads per SMRT Cell and 480~Gb when four cells are run together. Yield depends on insert length and library quality; the maximum is not guaranteed for every library.
   \item \textbf{Movie time:} 24 hours per SMRT Cell (standard).
-  \item \textbf{Cost:} approximately \$800--1{,}000 per SMRT Cell; approximately \$1{,}000--1{,}500 for a 30$\times$ human \gls{WGS} (HiFi).
+  \item \textbf{Cost:} contract-, chemistry-, utilization-, and region-dependent; use a current local quote and state whether library preparation and analysis are included.
   \item \textbf{On-instrument analysis:} HiFi read generation (CCS calling) occurs on-instrument in real time using GPUs.
   \item \textbf{Key improvement over Sequel~IIe:} approximately 8-fold increase in throughput per instrument per day, primarily through the 25M ZMW SMRT Cell (vs.\ 8M on Sequel~IIe) and reduced run turnaround.
 \end{itemize}
 
 \subsubsection{Vega System}
 
-The Vega, announced in 2024 and entering the market in 2025, is PacBio's next-generation benchtop system.
+The Vega, announced in 2024 and commercialised as a benchtop HiFi system, complements rather than replaces the production-scale Revio.
 
 \begin{itemize}[nosep]
   \item \textbf{Positioning:} designed for laboratories seeking HiFi data at lower capital cost and smaller scale.
-  \item \textbf{Throughput:} lower than Revio per run but sufficient for individual genome projects, targeted long-read panels, and isoform sequencing.
+  \item \textbf{Throughput:} up to approximately 90~Gb per SMRT Cell with the SPRQ-Nx specification accessed 1 September 2026; output depends on library type and run configuration.
   \item \textbf{SMRT Cell format:} uses a new, smaller SMRT Cell format optimised for lower-throughput applications.
   \item \textbf{Workflow simplification:} streamlined library preparation and reduced hands-on time.
 \end{itemize}
@@ -500,10 +504,10 @@ The MinION has been used for sequencing in remarkably challenging environments: 
 \begin{itemize}[nosep]
   \item \textbf{Format:} production-scale instruments running 24 (P24) or 48 (P48) high-capacity flow cells.
   \item \textbf{Channels per flow cell:} approximately 2{,}675 (roughly 5$\times$ a MinION flow cell).
-  \item \textbf{Output per flow cell:} up to 290~Gb.
+  \item \textbf{Output per flow cell:} current A-Series technical documentation specifies up to 200~Gb per PromethION flow cell. Older promotional material quoted a 290~Gb theoretical maximum, illustrating why an access date and document revision are essential.
   \item \textbf{Total output:} up to approximately 14~Tb (P48, all flow cells).
   \item \textbf{Run time:} typically 72 hours per flow cell.
-  \item \textbf{Cost:} approximately \$600--900 per flow cell; approximately \$1{,}000--2{,}000 for a 30$\times$ human \gls{WGS}.
+  \item \textbf{Cost:} access-plan-, contract-, and utilization-dependent; quote the current local total rather than a universal per-flow-cell figure.
   \item \textbf{Use cases:} population-scale \gls{WGS}, large cohort studies, production metagenomics, clinical genome sequencing.
 \end{itemize}
 
@@ -587,12 +591,12 @@ Read length (max) & ${\sim}$25\kilobase\ (HiFi); $>$300\kilobase\ (CLR) & $>$4\m
 Per-read accuracy & $>$Q30 (99.9\%) & Q20 simplex (99\%); $>$Q30 duplex \\
 Consensus accuracy & $>$Q50 at 30$\times$ & $>$Q50 at 30$\times$ (with R10.4.1) \\
 Error type & Balanced (sub, ins, del) & Indels, especially in homopolymers \\
-Throughput/cell & ${\sim}$90\gigabase\ HiFi & ${\sim}$290\gigabase\ (PromethION) \\
-Throughput/instrument & 360\gigabase/day (4 cells) & up to 14\,Tb (P48) \\
+Throughput/cell & Up to ${\sim}$120\gigabase\ HiFi & Up to ${\sim}$200\gigabase\ (current PromethION specification) \\
+Throughput/instrument & Up to ${\sim}$480\gigabase\ for four cells & up to 14\,Tb theoretical system output (P48) \\
 Run time & 24\,h per cell & 72\,h per flow cell \\
-Cost per Gb & \$10--15 (HiFi) & \$3--8 \\
-Cost per 30$\times$ genome & \$1{,}000--1{,}500 & \$1{,}000--2{,}000 \\
-Instrument cost & ${\sim}$\$600K (Revio) & ${\sim}$\$250K (P24); ${\sim}$\$450K (P48) \\
+Cost per Gb & Quote-, utilization-, and library-dependent & Access-plan-, utilization-, and library-dependent \\
+Cost per 30$\times$ genome & Quote-dependent & Quote-dependent \\
+Instrument cost & Quote-dependent & Device and access-plan dependent \\
 Portability & Benchtop only & MinION: fully portable \\
 Real-time analysis & No (batch processing) & Yes (data streams during run) \\
 Adaptive sampling & No & Yes \\
